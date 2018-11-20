@@ -6,6 +6,13 @@ set(CMAKE_COLOR_MAKEFILE ON)
 set(VERBOSE_BUILD ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+include("cmake/HunterGate.cmake")
+
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.23.55.tar.gz"
+    SHA1 "da31d97da47cdde05f958786b6729ba9b773bb17"
+)
+
 option(CONFIG_USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
 option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
 option(USE_OPENMP "compile with OpenMP support" ON)
@@ -14,7 +21,12 @@ option(USE_CUDA "compile with CUDA support" ON)
 
 project(tri LANGUAGES C CXX CUDA VERSION 0.1.0)
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+
+
+
+hunter_add_package(spdlog)
+find_package(spdlog CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
 IF(OPENMP_FOUND)
@@ -25,6 +37,11 @@ ENDIF()
 
 find_package(CUDA REQUIRED)
 
+if (CUDA_FOUND)
+  if (CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -G)
+  endif()
+endif()
 
 # Disable extended variants of C++ dialects
 # i.e. don't choose gnu++17 over c++17
@@ -51,7 +68,6 @@ endif()
 
 LIST(APPEND CMAKE_CUDA_FLAGS ${CUDA_ARCH_FLAGS}
 					         -Wno-deprecated-gpu-targets
-					         -lineinfo
 					         --expt-extended-lambda
 )
 
@@ -63,14 +79,17 @@ set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
+    src/logger.cpp
     src/main.cpp
+    src/triangle_counter.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
+    include/graph/logger.hpp
 )
 set(TRI_CUDA_SOURCES
     src/utilities.cu
-    src/cutrianglecounter.cu
+    src/gpu_triangle_counter.cu
 )
 
 
@@ -91,9 +110,9 @@ set_target_properties(tri PROPERTIES
 	CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
 
-# target_link_libraries(scope benchmark::benchmark)
+
 # target_link_libraries(scope fmt::fmt)
-# target_link_libraries(scope spdlog::spdlog)
+target_link_libraries(tri spdlog::spdlog)
 target_link_libraries(tri ${CUDA_LIBRARIES})
 target_link_libraries(tri ${OpenMP_LIBRARIES})
 # target_link_libraries(scope nvToolsExt)

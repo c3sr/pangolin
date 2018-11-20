@@ -8,6 +8,7 @@
 void CuTriangleCounter::execute(const char* filename, int omp_numthreads) {
 
 	for (int devid = 0; devid < NUMDEV; devid++){
+		std::cerr << __FILE__ << " " << __LINE__ << "device " << devid << std::endl;
 		CUDA_RUNTIME(cudaSetDevice(devid));
 		CUDA_RUNTIME(cudaDeviceSynchronize());
 	}

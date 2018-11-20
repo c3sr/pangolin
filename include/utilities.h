@@ -24,7 +24,7 @@
 #define CSR_READ
 #define SNAP_READ
 
-#define NUMDEV 4
+#define NUMDEV 1
 #define WORK_FRAC_GPU 0.9f
 #define MAX_EDGES_GPU 0xFFFFFFFFLL
 
