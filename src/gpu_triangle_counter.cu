@@ -23,7 +23,14 @@
         long long int v_ptr = cpu_rowptrs[v];
         long long int v_end = cpu_rowptrs[v + 1];
         int v_u, v_v;
+
+        // if (u_ptr >= size) {
+        //     printf("u_ptr too large\n");
+        // }
         v_u = cpu_edgeids_dest[u_ptr];
+        // if (v_ptr >= size) {
+        //     printf("v_ptr too large: %lu >= %lu\n", v_ptr, size);
+        // }
         v_v = cpu_edgeids_dest[v_ptr];
 
         while (u_ptr < u_end && v_ptr < v_end){
@@ -189,6 +196,7 @@ GPUTriangleCounter::GPUTriangleCounter() {
  
              calculateSquareDims(blocks_per_grid, threads_per_block, total_blocks, gpu_edgecount);
  #ifdef CSR_READ
+            LOG(debug, "Kernel gridDim={} blockDim={}, gpu edges={}, gpu iter={}", blocks_per_grid.x, threads_per_block.x, gpu_edgecount, gpu_iterator_begin);
              kernel_triangleCounter_tc << <blocks_per_grid, threads_per_block >> >(cpu_tc, graph.edgeids_src, graph.edgeids_dest, graph.rowptrs, gpu_edgecount, gpu_iterator_begin);
  #endif
  #ifndef CSR_READ
@@ -260,6 +268,13 @@ GPUTriangleCounter::GPUTriangleCounter() {
      
  CUDA_RUNTIME(cudaHostAlloc((void**)&graph.edgeids_src, edgecount * sizeof(int), cudaHostAllocMapped));
  CUDA_RUNTIME(cudaHostAlloc((void**)&graph.edgeids_dest, edgecount * sizeof(int), cudaHostAllocMapped));
+//  LOG(debug, "mapping...");
+//  CUDA_RUNTIME(cudaHostRegister(edge_vec_src.data(), edge_vec_src.size() * sizeof(edge_vec_src[0]), cudaHostRegisterMapped));
+//  CUDA_RUNTIME(cudaHostRegister(edge_vec_dest.data(), edge_vec_dest.size() * sizeof(edge_vec_dest[0]), cudaHostRegisterMapped));
+//  graph.edgeids_src = edge_vec_src.data();
+//  graph.edgeids_dest = edge_vec_dest.data();
+//  LOG(debug, "mapping done");
+
  CUDA_RUNTIME(cudaHostAlloc((void**)&graph.rowptrs, (nodecount + 1) * sizeof(long long int), cudaHostAllocMapped));
      std::copy(edge_vec_src.begin(), edge_vec_src.end(), graph.edgeids_src);
      std::copy(edge_vec_dest.begin(), edge_vec_dest.end(), graph.edgeids_dest);
