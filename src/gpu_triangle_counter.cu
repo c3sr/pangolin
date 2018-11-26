@@ -2,6 +2,8 @@
  #include "graph/logger.hpp"
  #include "utilities.h"
 
+ #include "graph/dag2019.hpp"
+
  __global__ void kernel_triangleCounter_tc(long long int *cpu_tc, int *cpu_edgeids_src, int *cpu_edgeids_dest, long long int *cpu_rowptrs, long long int size, long long int offset){
      
     long long int blockId = (long long int)blockIdx.y * (long long int)gridDim.x + (long long int)blockIdx.x;
@@ -63,9 +65,104 @@
     }
 }
 
-GPUTriangleCounter::GPUTriangleCounter() {
-    LOG(debug, "constructing GPU triangle counter");
+__global__ void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+     
+    const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += blockDim.x * gridDim.x) {
+
+        // get the src and dst node for this edge
+        const Int src = edgeSrc[i];
+        const Int dst = edgeDst[i];
+
+        Int src_edge = nodes[src];
+        const Int src_edge_end = nodes[src + 1];
+
+        Int dst_edge = nodes[dst];
+        const Int dst_edge_end = nodes[dst + 1];
+
+        size_t count = 0;
+        while (src_edge < src_edge_end && dst_edge < dst_edge_end){
+
+            Int u = edgeDst[src_edge];
+            Int v = edgeDst[dst_edge];
+
+            // the two nodes that make up this edge both have a common dst
+            if (u == v) {
+                ++count;
+                ++src_edge;
+                ++dst_edge;
+            }
+            else if (u < v){
+                ++src_edge;
+            }
+            else {
+                ++dst_edge;
+            }
+        }
+        triangleCounts[i] = count;
     }
+}
+
+GPUTriangleCounter::GPUTriangleCounter() {
+    LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
+    }
+
+GPUTriangleCounter::~GPUTriangleCounter() {
+    LOG(debug, "dtor GPU triangle counter");
+}
+
+void GPUTriangleCounter::read_data(const std::string &path) {
+
+    LOG(info, "reading {}", path);
+    auto edgeList = EdgeList::read_tsv(path);
+    LOG(debug, "building DAG");
+    hostDAG_ = DAG2019::from_edgelist(edgeList);
+
+    LOG(info, "{} nodes", hostDAG_.num_nodes());
+    LOG(info, "{} edges", hostDAG_.num_edges());
+}
+
+size_t GPUTriangleCounter::count() {
+    
+    const size_t edgeBytes = hostDAG_.edgeSrc_.size() * sizeof(Int);
+    const size_t nodeBytes = hostDAG_.nodes_.size() * sizeof(Int);
+    size_t *triangleCounts;
+    const size_t countBytes = hostDAG_.num_edges() * sizeof(*triangleCounts);
+
+    LOG(debug, "registering {}B", edgeBytes);
+    CUDA_RUNTIME(cudaHostRegister(hostDAG_.edgeSrc_.data(), edgeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
+    LOG(debug, "registering {}B @ ", edgeBytes);
+    CUDA_RUNTIME(cudaHostRegister(hostDAG_.edgeDst_.data(), edgeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
+    LOG(debug, "registering {}B", nodeBytes);
+    CUDA_RUNTIME(cudaHostRegister(hostDAG_.nodes_.data(), nodeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
+
+    LOG(debug, "alloc/mapping {}B", countBytes);
+    CUDA_RUNTIME(cudaHostAlloc(&triangleCounts, countBytes, cudaHostAllocMapped));
+
+    dim3 dimBlock(256);
+    dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
+
+    Int *edgeSrc_d, *edgeDst_d, *nodes_d;
+    CUDA_RUNTIME(cudaHostGetDevicePointer(&edgeSrc_d, hostDAG_.edgeSrc_.data(), 0));
+    CUDA_RUNTIME(cudaHostGetDevicePointer(&edgeDst_d, hostDAG_.edgeDst_.data(), 0)); 
+    CUDA_RUNTIME(cudaHostGetDevicePointer(&nodes_d, hostDAG_.nodes_.data(), 0));
+
+    kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts, edgeSrc_d, edgeDst_d, nodes_d, 0, hostDAG_.num_edges());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
+
+    size_t total = 0;
+    for(size_t i = 0; i < hostDAG_.num_edges(); ++i) {
+        total += triangleCounts[i];
+    }
+
+    LOG(debug, "unregistering/freeing CUDA memory");
+    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.edgeSrc_.data()));
+    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.edgeDst_.data()));
+    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.nodes_.data()));
+    CUDA_RUNTIME(cudaFreeHost(triangleCounts));
+    return total;
+}
 
  void GPUTriangleCounter::execute(const char* filename, int omp_numthreads) {
  

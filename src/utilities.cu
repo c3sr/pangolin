@@ -1,6 +1,7 @@
 /* Author: Ketan Date */
 
 #include "utilities.h"
+#include "graph/logger.hpp"
 
 
 void checkCuda(cudaError_t result, const char *file, const int line) {
@@ -223,6 +224,7 @@ int numVertices(std::vector<long long int> &edge_vec) {
 void readGraph_DARPA(const char* filename, std::vector<long long int> &edge_vec, long long int &edgecount, int &nodecount) {
 	std::ifstream ss(filename);
 
+
 	edgecount = 0;
 	nodecount = 0;
 
@@ -255,9 +257,17 @@ void readGraph_DARPA_CSR(const char* filename, std::vector<long long int> &edge_
 void readGraph_DARPA_CSR(const char* filename, std::vector<int> &edge_vec_src,std::vector<int> &edge_vec_dest, std::vector<long long int> &row_ptrs, long long int &edgecount, int &nodecount) {
 #endif
 
+
+
+
 	int key, val, weight;
 	std::ifstream ss(filename);
 	std::vector<std::pair<int, long long int> > temp_row_ptrs_vec;
+
+	if (!ss.good()) {
+		LOG(critical, "couldn't open {}", filename);
+		exit(-1);
+	}
 
 	edgecount = 0;
 	nodecount = 0;
