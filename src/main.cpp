@@ -6,80 +6,74 @@
 
 #ifdef USE_OPENMP
 #include <omp.h>
-#endif 
+#endif
 
 #include "clara.hpp"
 #include "graph/logger.hpp"
 #include "graph/gpu_triangle_counter.hpp"
-
+#include "graph/config.hpp"
 
 #include "cutrianglecounter.h"
 
-int main(int argc, char** argv){
-	
+int main(int argc, char **argv)
+{
+
+	Config config;
 
 	std::string adjacencyListPath;
-	int numThreads = 1;
-	int numGPUs = 1;
 	bool help = false;
 	bool debug = false;
 	bool verbose = false;
 
 	clara::Parser cli;
 
-	cli = cli | clara::Opt( numThreads, "int" )
-        ["-c"]["--num_cpu"]
-        ("How many CPU threads?");
-	cli = cli | clara::Opt( numGPUs, "int" )
-        ["-g"]["--num_gpu"]
-        ("How many GPUs?");
-	cli = cli | clara::Opt( debug )
-                ["--debug"]	
-		( "log debug messages" );
-	cli = cli | clara::Opt( verbose )
-                ["--verbose"]	
-		( "log verbose messages" );
+	cli = cli | clara::Opt(config.numCPUThreads_, "int")
+					["-c"]["--num_cpu"]("How many CPU threads?");
+	cli = cli | clara::Opt(config.numGPUs_, "int")
+					["-g"]["--num_gpu"]("How many GPUs?");
+	cli = cli | clara::Opt(debug)
+					["--debug"]("log debug messages");
+	cli = cli | clara::Opt(verbose)
+					["--verbose"]("log verbose messages");
 	cli = cli | clara::Help(help);
-	cli = cli | clara::Arg( adjacencyListPath, "file" )
-        ("Path to adjacency list");
+	cli = cli | clara::Arg(adjacencyListPath, "file")("Path to adjacency list").required();
 
-
-	const char* adj_filename = argv[1];
-	
-	auto result = cli.parse( clara::Args( argc, argv ) );
-	if( !result ) {
+	auto result = cli.parse(clara::Args(argc, argv));
+	if (!result)
+	{
 		LOG(error, "Error in command line: {}", result.errorMessage());
 		exit(1);
 	}
 
-	if (help) {
+	if (help)
+	{
 		std::cout << cli;
 		return 0;
 	}
 
-	if (debug) {
+	if (debug)
+	{
 		logger::console->set_level(spdlog::level::debug);
-	} else if (verbose) {
+	}
+	else if (verbose)
+	{
 		logger::console->set_level(spdlog::level::trace);
 	}
 
-	if (numThreads <= 0)
-		numThreads = 1;
-	if (numThreads >= omp_get_max_threads())
-		numThreads = omp_get_max_threads();
+	if (config.numCPUThreads_ <= 0)
+		config.numCPUThreads_ = 1;
+	if (config.numCPUThreads_ >= omp_get_max_threads())
+		config.numCPUThreads_ = omp_get_max_threads();
 
-	LOG(info, "{} gpus", numGPUs);
-	LOG(info, "{} cpus", numThreads);
+	LOG(info, "{} gpus", config.numGPUs_);
+	LOG(info, "{} cpus", config.numCPUThreads_);
 
 	TriangleCounter *tc;
 	tc = new GPUTriangleCounter();
-	tc->execute(adjacencyListPath.c_str(), numThreads);
+	tc->read_data(adjacencyListPath);
+	const auto numTriangles = tc->count();
+	tc->execute(adjacencyListPath.c_str(), config.numCPUThreads_);
 
 	delete tc;
 	return 0;
 }
-
-
-
-
-

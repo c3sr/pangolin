@@ -64,8 +64,21 @@
 }
 
 GPUTriangleCounter::GPUTriangleCounter() {
-    LOG(debug, "constructing GPU triangle counter");
+    LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
     }
+
+GPUTriangleCounter::~GPUTriangleCounter() {
+    LOG(debug, "dtor GPU triangle counter");
+}
+
+void GPUTriangleCounter::read_data(const std::string &path) {
+    LOG(warn, "read_data is deferred to execute()");
+}
+
+size_t GPUTriangleCounter::count() {
+    LOG(warn, "count is deferred to execute()");
+    return 0;
+}
 
  void GPUTriangleCounter::execute(const char* filename, int omp_numthreads) {
  
