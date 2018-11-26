@@ -8,7 +8,6 @@
 
 CPUTriangleCounter::CPUTriangleCounter(const Config &c)
 {
-    LOG(debug, "CPU Triangle Counters");
     numThreads_ = c.numCPUThreads_;
     LOG(debug, "config requested {} threads", numThreads_);
 
@@ -84,10 +83,8 @@ size_t CPUTriangleCounter::count()
                 ++v_ptr;
             }
         }
-#pragma omp critical
-        {
-            total += count;
-        }
+#pragma omp atomic
+        total += count;
     }
 
     return total;

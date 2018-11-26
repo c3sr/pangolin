@@ -26,17 +26,16 @@ int main(int argc, char **argv)
 	bool verbose = false;
 
 	clara::Parser cli;
-
-	cli = cli | clara::Opt(config.numCPUThreads_, "int")
-					["-c"]["--num_cpu"]("How many CPU threads?");
-	cli = cli | clara::Opt(config.numGPUs_, "int")
-					["-g"]["--num_gpu"]("How many GPUs?");
-	cli = cli | clara::Opt(debug)
-					["--debug"]("log debug messages");
-	cli = cli | clara::Opt(verbose)
-					["--verbose"]("log verbose messages");
 	cli = cli | clara::Help(help);
-	cli = cli | clara::Opt(config.type_, "type cpu|gpu|nvgraph")["-t"]["--type"]("Triangle counting method (default = gpu)").required();
+	cli = cli | clara::Opt(debug)
+					["--debug"]("print debug messages to stderr");
+	cli = cli | clara::Opt(verbose)
+					["--verbose"]("print verbose messages to stderr");
+	cli = cli | clara::Opt(config.numCPUThreads_, "int")
+					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
+	cli = cli | clara::Opt(config.numGPUs_, "int")
+					["-g"]["--num_gpu"]("number of gpus");
+	cli = cli | clara::Opt(config.type_, "cpu|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
@@ -59,20 +58,6 @@ int main(int argc, char **argv)
 	else if (debug)
 	{
 		logger::console->set_level(spdlog::level::debug);
-	}
-
-	if (config.type_.empty())
-	{
-		LOG(critical, "type must be provided");
-		std::cout << cli;
-		return -1;
-	}
-
-	if (adjacencyListPath.empty())
-	{
-		LOG(critical, "graph file must be provided");
-		std::cout << cli;
-		return -1;
 	}
 
 	TriangleCounter *tc;
