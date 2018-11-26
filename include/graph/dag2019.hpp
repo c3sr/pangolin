@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -35,6 +37,5 @@ class DAG2019
         return edgeSrc.size();
     }
 
-    // expects the input file to be lines of dst\tsrc\tweight, sorted by src
-    static DAG2019 from_edgelist(const EdgeList &l);
+    static DAG2019 from_edgelist(EdgeList &l);
 };

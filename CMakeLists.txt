@@ -102,11 +102,12 @@ set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
-    src/logger.cpp
-    src/main.cpp
-    src/triangle_counter.cpp
-    src/edge_list.cpp
-    src/nvgraph_triangle_counter.cpp
+  src/dag2019.cpp
+  src/edge_list.cpp
+  src/logger.cpp
+  src/main.cpp
+  src/nvgraph_triangle_counter.cpp
+  src/triangle_counter.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp

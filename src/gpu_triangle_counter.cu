@@ -2,6 +2,8 @@
  #include "graph/logger.hpp"
  #include "utilities.h"
 
+ #include "graph/dag2019.hpp"
+
  __global__ void kernel_triangleCounter_tc(long long int *cpu_tc, int *cpu_edgeids_src, int *cpu_edgeids_dest, long long int *cpu_rowptrs, long long int size, long long int offset){
      
     long long int blockId = (long long int)blockIdx.y * (long long int)gridDim.x + (long long int)blockIdx.x;
@@ -72,6 +74,15 @@ GPUTriangleCounter::~GPUTriangleCounter() {
 }
 
 void GPUTriangleCounter::read_data(const std::string &path) {
+
+    LOG(info, "reading {}", path);
+    auto edgeList = EdgeList::read_tsv(path);
+    LOG(debug, "building DAG");
+    auto dag = DAG2019::from_edgelist(edgeList);
+
+    LOG(info, "{} nodes", dag.num_nodes());
+    LOG(info, "{} edges", dag.num_edges());
+
     LOG(warn, "read_data is deferred to execute()");
 }
 

@@ -52,13 +52,13 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	if (debug)
-	{
-		logger::console->set_level(spdlog::level::debug);
-	}
-	else if (verbose)
+	if (verbose)
 	{
 		logger::console->set_level(spdlog::level::trace);
+	}
+	else if (debug)
+	{
+		logger::console->set_level(spdlog::level::debug);
 	}
 
 	if (config.type_.empty())
