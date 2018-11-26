@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "graph/config.hpp"
+
 class TriangleCounter
 {
 
@@ -11,4 +13,6 @@ public:
 
   virtual void read_data(const std::string &path) = 0;
   virtual size_t count() = 0;
+
+  static TriangleCounter *CreateTriangleCounter(Config &config);
 };

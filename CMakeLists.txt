@@ -106,6 +106,7 @@ set(TRI_CPP_SOURCES
     src/main.cpp
     src/triangle_counter.cpp
     src/edge_list.cpp
+    src/nvgraph_triangle_counter.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
@@ -114,6 +115,7 @@ set(TRI_CPP_HEADERS
     include/graph/dag2019.hpp
     include/graph/triangle_counter.hpp
     include/graph/gpu_triangle_counter.hpp
+    include/graph/nvgraph_triangle_counter.hpp
 )
 set(TRI_CUDA_SOURCES
     src/utilities.cu

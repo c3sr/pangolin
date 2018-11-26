@@ -2,8 +2,9 @@
 
 #include <string>
 
-struct Config {
-    std::string type_;
+struct Config
+{
+    std::string type_ = "gpu";
     int numCPUThreads_ = 1;
     int numGPUs_ = 1;
 };
