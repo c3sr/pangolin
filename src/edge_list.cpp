@@ -10,9 +10,14 @@ EdgeList EdgeList::read_tsv(const std::string &path)
 
     Int src, dst, weight;
     std::ifstream ss(path);
-    std::vector<std::pair<int, long long int>> temp_row_ptrs_vec;
 
-    Int prevkey = -1;
+    if (!ss.good())
+    {
+        LOG(critical, "couldn't open {}", path);
+        exit(-1);
+    }
+
+    std::vector<std::pair<int, long long int>> temp_row_ptrs_vec;
 
     while (ss.good())
     {

@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 	cli = cli | clara::Opt(verbose)
 					["--verbose"]("log verbose messages");
 	cli = cli | clara::Help(help);
-	cli = cli | clara::Opt(config.type_, "type gpu|nvgraph")["-t"]["--type"]("Triangle counting method").required();
+	cli = cli | clara::Opt(config.type_, "type cpu|gpu|nvgraph")["-t"]["--type"]("Triangle counting method (default = gpu)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
@@ -75,18 +75,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if (config.numCPUThreads_ <= 0)
-		config.numCPUThreads_ = 1;
-	if (config.numCPUThreads_ >= omp_get_max_threads())
-		config.numCPUThreads_ = omp_get_max_threads();
-
-	LOG(info, "{} gpus", config.numGPUs_);
-	LOG(info, "{} cpus", config.numCPUThreads_);
-
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 	tc->read_data(adjacencyListPath);
 	const auto numTriangles = tc->count();
+	LOG(info, "{} triangles", numTriangles);
 	tc->execute(adjacencyListPath.c_str(), config.numCPUThreads_);
 
 	delete tc;

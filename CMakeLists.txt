@@ -106,6 +106,7 @@ set(TRI_CPP_SOURCES
   src/edge_list.cpp
   src/logger.cpp
   src/main.cpp
+  src/cpu_triangle_counter.cpp
   src/nvgraph_triangle_counter.cpp
   src/triangle_counter.cpp
 )
@@ -115,6 +116,7 @@ set(TRI_CPP_HEADERS
     include/graph/edge_list.hpp
     include/graph/dag2019.hpp
     include/graph/triangle_counter.hpp
+    include/graph/cpu_triangle_counter.hpp
     include/graph/gpu_triangle_counter.hpp
     include/graph/nvgraph_triangle_counter.hpp
 )
