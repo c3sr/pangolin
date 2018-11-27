@@ -1,13 +1,5 @@
-/* Author: Ketan Date 
-           Vikram Sharma Mailthdoy
- */
-
 #include <iostream>
 #include <fmt/format.h>
-
-#ifdef USE_OPENMP
-#include <omp.h>
-#endif
 
 #include "clara.hpp"
 #include "graph/logger.hpp"
