@@ -7,7 +7,8 @@
 
 TriangleCounter::~TriangleCounter() {}
 
-void TriangleCounter::setup_data() {
+void TriangleCounter::setup_data()
+{
     LOG(info, "setup_data no-op");
 }
 

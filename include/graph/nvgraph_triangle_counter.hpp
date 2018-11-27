@@ -4,6 +4,5 @@
 
 class NvGraphTriangleCounter : public TriangleCounter
 {
-
-  public:
+public:
 };

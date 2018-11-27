@@ -11,7 +11,6 @@ EdgeList EdgeList::read_tsv(const std::string &path)
 
     int64_t src64, dst64, weight64;
 
-
     std::ifstream ss(path);
 
     if (!ss.good())
@@ -27,11 +26,13 @@ EdgeList EdgeList::read_tsv(const std::string &path)
         ss >> src64;
         ss >> weight64;
 
-        if (src64 > std::numeric_limits<Int>::max()) {
+        if (src64 > std::numeric_limits<Int>::max())
+        {
             LOG(critical, "{} is too large for sizeof(Int)={}", src64, sizeof(Int));
             exit(-1);
         }
-        if (dst64 > std::numeric_limits<Int>::max()) {
+        if (dst64 > std::numeric_limits<Int>::max())
+        {
             LOG(critical, "{} is too large for sizeof(Int)={}", dst64, sizeof(Int));
             exit(-1);
         }
@@ -43,7 +44,7 @@ EdgeList EdgeList::read_tsv(const std::string &path)
 
     LOG(debug, "EdgeList with {} entries", l.size());
     LOG(debug, "edge 0: {} -> {}", l.begin()->src_, l.begin()->dst_);
-    LOG(debug, "last edge: {} -> {}", (l.end()-1)->src_, (l.end()-1)->dst_);
+    LOG(debug, "last edge: {} -> {}", (l.end() - 1)->src_, (l.end() - 1)->dst_);
 
     ss.close();
     return l;

@@ -7,17 +7,15 @@
 #include <iostream>
 
 class CudaMemcpyTC : public TriangleCounter
-
 {
-
-  private:
+private:
 	DAG2019 hostDAG_;
 	size_t *triangleCounts_; // per-edge triangle counts
 	Int *edgeSrc_d_;
 	Int *edgeDst_d_;
 	Int *nodes_d_;
 
-  public:
+public:
 	CudaMemcpyTC();
 	virtual ~CudaMemcpyTC();
 	virtual void read_data(const std::string &path) override;

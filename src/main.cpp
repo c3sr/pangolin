@@ -58,14 +58,14 @@ int main(int argc, char **argv)
 
 	auto start = std::chrono::system_clock::now();
 	tc->setup_data();
-	double elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+	double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(debug, "setup_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
 	const auto numTriangles = tc->count();
-	elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 
-	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles/elapsed);
+	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles / elapsed);
 
 	delete tc;
 	return 0;
