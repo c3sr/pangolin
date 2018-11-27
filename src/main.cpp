@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
 	cli = cli | clara::Opt(config.numGPUs_, "int")
 					["-g"]["--num_gpu"]("number of gpus");
-	cli = cli | clara::Opt(config.type_, "cpu|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
+	cli = cli | clara::Opt(config.type_, "cpu|cudamemcpy|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));

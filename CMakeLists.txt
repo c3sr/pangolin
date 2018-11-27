@@ -118,6 +118,7 @@ set(TRI_CPP_SOURCES
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/cpu_triangle_counter.hpp
+    include/graph/cudamemcpy_tc.hpp
     include/graph/dag2019.hpp
     include/graph/edge_list.hpp
     include/graph/gpu_triangle_counter.hpp
@@ -128,6 +129,7 @@ set(TRI_CPP_HEADERS
 )
 set(TRI_CUDA_SOURCES
     src/gpu_triangle_counter.cu
+    src/cudamemcpy_tc.cu
 )
 
 
