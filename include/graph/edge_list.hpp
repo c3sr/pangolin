@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <istream>
 
 #include "graph/types.hpp"
 
@@ -42,7 +43,6 @@ public:
     return edges_.end();
   }
 
-  static EdgeList read_tsv(const std::string &path);
   void push_back(const Edge &e)
   {
     edges_.push_back(e);
@@ -52,6 +52,11 @@ public:
   {
     return edges_.size();
   }
+
+  // create edgelist from a tsv file
+  static EdgeList read_tsv(const std::string &path);
+  // create edgelist from an istream, reading until end
+  static EdgeList read_tsv(std::istream &is, std::istream::streampos end);
 
 private:
   std::vector<Edge> edges_;

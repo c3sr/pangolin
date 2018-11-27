@@ -9,7 +9,7 @@ TriangleCounter::~TriangleCounter() {}
 
 void TriangleCounter::setup_data()
 {
-    LOG(info, "setup_data no-op");
+    LOG(debug, "triangle counter setup_data is a no-op");
 }
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)

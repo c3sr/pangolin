@@ -114,6 +114,7 @@ set(TRI_CPP_SOURCES
   src/nvgraph_triangle_counter.cpp
   src/triangle_counter.cpp
   src/utilities.cpp
+  src/reader/gc_tsv_reader.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
@@ -127,6 +128,7 @@ set(TRI_CPP_HEADERS
     include/graph/um_tc.hpp
     include/graph/utilities.hpp
     include/graph/zc_tc.hpp
+    include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES
   src/cudamemcpy_tc.cu

@@ -54,16 +54,20 @@ int main(int argc, char **argv)
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 
-	tc->read_data(adjacencyListPath);
-
 	auto start = std::chrono::system_clock::now();
-	tc->setup_data();
+	tc->read_data(adjacencyListPath);
 	double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+	LOG(debug, "read_data time {}s", elapsed);
+
+	start = std::chrono::system_clock::now();
+	tc->setup_data();
+	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(debug, "setup_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
 	const auto numTriangles = tc->count();
 	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+	LOG(info, "count time {}s", elapsed);
 
 	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles / elapsed);
 
