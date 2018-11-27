@@ -15,7 +15,7 @@ void checkNvgraph(nvgraphStatus_t result, const char *file, const int line)
 {
 	if (result != NVGRAPH_STATUS_SUCCESS)
 	{
-		printf("ERROR : %d in %s : %d\n", result, __FILE__, __LINE__);
+		printf("nvgraph Error: %d in %s : %d\n", result, file, line);
 		exit(0);
 	}
 }
