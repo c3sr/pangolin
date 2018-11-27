@@ -10,3 +10,12 @@ void checkCuda(cudaError_t result, const char *file, const int line)
 		assert(result == cudaSuccess);
 	}
 }
+
+void checkNvgraph(nvgraphStatus_t result, const char *file, const int line)
+{
+	if (result != NVGRAPH_STATUS_SUCCESS)
+	{
+		printf("ERROR : %d in %s : %d\n", result, __FILE__, __LINE__);
+		exit(0);
+	}
+}

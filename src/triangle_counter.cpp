@@ -26,6 +26,10 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     {
         return new UMTC();
     }
+    else if (c.type_ == "nv")
+    {
+        return new NvGraphTriangleCounter();
+    }
     else if (c.type_ == "cpu")
     {
         return new CPUTriangleCounter(c);
