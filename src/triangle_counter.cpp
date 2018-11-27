@@ -7,8 +7,9 @@
 
 TriangleCounter::~TriangleCounter() {}
 
-void TriangleCounter::setup_data() {
-    LOG(info, "setup_data no-op");
+void TriangleCounter::setup_data()
+{
+    LOG(debug, "triangle counter setup_data is a no-op");
 }
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
@@ -24,6 +25,15 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     else if (c.type_ == "um")
     {
         return new UMTC();
+    }
+    else if (c.type_ == "nv")
+    {
+        if (sizeof(Int) != sizeof(int))
+        {
+            LOG(critical, "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
+            exit(-1);
+        }
+        return new NvGraphTriangleCounter();
     }
     else if (c.type_ == "cpu")
     {

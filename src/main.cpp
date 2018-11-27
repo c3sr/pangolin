@@ -1,13 +1,5 @@
-/* Author: Ketan Date 
-           Vikram Sharma Mailthdoy
- */
-
 #include <iostream>
 #include <fmt/format.h>
-
-#ifdef USE_OPENMP
-#include <omp.h>
-#endif
 
 #include "clara.hpp"
 #include "graph/logger.hpp"
@@ -59,21 +51,28 @@ int main(int argc, char **argv)
 		logger::console->set_level(spdlog::level::debug);
 	}
 
+#ifndef TRI_RELEASE
+	LOG(warn, "Not a release build");
+#endif
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 
-	tc->read_data(adjacencyListPath);
-
 	auto start = std::chrono::system_clock::now();
+	tc->read_data(adjacencyListPath);
+	double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+	LOG(debug, "read_data time {}s", elapsed);
+
+	start = std::chrono::system_clock::now();
 	tc->setup_data();
-	double elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(debug, "setup_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
 	const auto numTriangles = tc->count();
-	elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+	LOG(info, "count time {}s", elapsed);
 
-	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles/elapsed);
+	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles / elapsed);
 
 	delete tc;
 	return 0;

@@ -2,6 +2,7 @@
 #include <omp.h>
 #endif
 
+#include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/cpu_triangle_counter.hpp"
 #include "graph/logger.hpp"
 #include "graph/dag2019.hpp"
@@ -35,7 +36,10 @@ void CPUTriangleCounter::read_data(const std::string &path)
 
     {
         LOG(info, "reading {}", path);
-        auto edgeList = EdgeList::read_tsv(path);
+        auto r = GraphChallengeTSVReader(path);
+        const auto sz = r.size();
+
+        auto edgeList = r.read_edges(0, sz);
         LOG(debug, "building DAG");
         dag_ = DAG2019::from_edgelist(edgeList);
     }

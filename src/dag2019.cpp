@@ -10,12 +10,13 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
     }
 
     // sort the edge list by src, with dst sorted within each src
-    std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
-        return a.dst_ < b.dst_;
-    });
-    std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
-        return a.src_ < b.src_;
-    });
+    // the file should come in this way
+    // std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
+    //     return a.dst_ < b.dst_;
+    // });
+    // std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
+    //     return a.src_ < b.src_;
+    // });
 
     // ensure node IDs are 0 - whatever
     const auto smallest = l.begin()->src_;

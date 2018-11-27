@@ -55,9 +55,7 @@ IF(OPENMP_FOUND)
 ENDIF()
 
 
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-  set(CMAKE_VERBOSE_MAKEFILE ON)
-endif()
+
 
 find_package(CUDA REQUIRED)
 if (CUDA_FOUND)
@@ -106,6 +104,7 @@ set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
+  src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
   src/edge_list.cpp
   src/logger.cpp
@@ -114,11 +113,13 @@ set(TRI_CPP_SOURCES
   src/nvgraph_triangle_counter.cpp
   src/triangle_counter.cpp
   src/utilities.cpp
+  src/reader/gc_tsv_reader.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/cpu_triangle_counter.hpp
     include/graph/cudamemcpy_tc.hpp
+    include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
@@ -127,6 +128,7 @@ set(TRI_CPP_HEADERS
     include/graph/um_tc.hpp
     include/graph/utilities.hpp
     include/graph/zc_tc.hpp
+    include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES
   src/cudamemcpy_tc.cu
@@ -139,8 +141,6 @@ add_executable(tri32 ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 add_executable(tri64 ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 
 target_compile_definitions(tri64 PRIVATE -DUSE_INT64)
-
-
 
 if (OPENMP_FOUND)
   tri_compile_definitions(PRIVATE -DUSE_OPENMP)
@@ -162,11 +162,10 @@ set_tri_properties(PROPERTIES
 )
 
 
-# target_link_libraries(scope fmt::fmt)
 tri_link_libraries(spdlog::spdlog)
-tri_link_libraries(${CUDA_LIBRARIES})
+tri_link_libraries(${CUDA_LIBRARIES} -lnvgraph)
 tri_link_libraries(${OpenMP_LIBRARIES})
-# target_link_libraries(scope nvToolsExt)
+# tri_link_libraries(nvToolsExt)
 
 # Request that scope be built with -std=c++11
 # As this is a public compile feature anything that links to
@@ -179,6 +178,12 @@ tri_compile_features(PUBLIC cxx_std_11)
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+  tri_compile_definitions(PUBLIC -DTRI_RELEASE)
+endif()
 
 # Add a special target to clean nvcc generated files.
 CUDA_BUILD_CLEAN_TARGET()
