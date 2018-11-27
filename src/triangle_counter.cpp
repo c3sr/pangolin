@@ -28,6 +28,11 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     }
     else if (c.type_ == "nv")
     {
+        if (sizeof(Int) != sizeof(int))
+        {
+            LOG(critical, "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
+            exit(-1);
+        }
         return new NvGraphTriangleCounter();
     }
     else if (c.type_ == "cpu")

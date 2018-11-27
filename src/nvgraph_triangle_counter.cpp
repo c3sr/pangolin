@@ -5,18 +5,16 @@
 
 void NvGraphTriangleCounter::read_data(const std::string &path)
 {
-    {
-        LOG(info, "reading {}", path);
-        auto r = GraphChallengeTSVReader(path);
-        const auto sz = r.size();
+    LOG(info, "reading {}", path);
+    auto r = GraphChallengeTSVReader(path);
+    const auto sz = r.size();
 
-        auto edgeList = r.read_edges(0, sz);
-        LOG(debug, "building DAG");
-        dag_ = DAGLowerTriangularCSR::from_edgelist(edgeList);
+    auto edgeList = r.read_edges(0, sz);
+    LOG(debug, "building DAG");
+    dag_ = DAGLowerTriangularCSR::from_edgelist(edgeList);
 
-        LOG(debug, "{} nodes", dag_.num_nodes());
-        LOG(debug, "{} edges", dag_.num_edges());
-    }
+    LOG(debug, "{} nodes", dag_.num_nodes());
+    LOG(debug, "{} edges", dag_.num_edges());
 }
 
 void NvGraphTriangleCounter::setup_data()
