@@ -5,6 +5,10 @@
 
 TriangleCounter::~TriangleCounter() {}
 
+void TriangleCounter::setup_data() {
+    LOG(info, "setup_data no-op");
+}
+
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
 {
     if (c.type_ == "gpu")

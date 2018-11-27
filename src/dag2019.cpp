@@ -9,14 +9,17 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         return dag;
     }
 
-    // sort the edge list by src
-    std::sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
+    // sort the edge list by src, with dst sorted within each src
+    std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
+        return a.dst_ < b.dst_;
+    });
+    std::stable_sort(l.begin(), l.end(), [](const Edge &a, const Edge &b) -> bool {
         return a.src_ < b.src_;
     });
 
     // ensure node IDs are 0 - whatever
     const auto smallest = l.begin()->src_;
-    LOG(trace, "smallest node was {}", smallest);
+    LOG(debug, "smallest node was {}", smallest);
     for (auto &e : l)
     {
         e.src_ -= smallest;
@@ -30,7 +33,7 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
 
         if (dag.nodes_.empty() || (currentSrc != edge.src_))
         {
-            LOG(trace, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
+            // LOG(trace, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
             dag.nodes_.push_back(dag.edgeSrc_.size());
         }
 
@@ -39,13 +42,13 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         {
             dag.edgeSrc_.push_back(edge.src_);
             dag.edgeDst_.push_back(edge.dst_);
-            LOG(trace, "added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
+            // LOG(trace, "added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
         }
 
         currentSrc = edge.src_;
     }
     dag.nodes_.push_back(dag.edgeSrc_.size());
-    LOG(trace, "final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
+    // LOG(trace, "final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
 
     // check that all nodes point to an edge or one past the end of the edge arrays
     for (const auto n : dag.nodes_)
