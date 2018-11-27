@@ -101,12 +101,35 @@ void GPUTriangleCounter::setup_data() {
 
 size_t GPUTriangleCounter::count() {
     
-    dim3 dimBlock(512);
-    dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
+    int numDev;
+    CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
 
-    LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-    kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, 0, hostDAG_.num_edges());
-    CUDA_RUNTIME(cudaDeviceSynchronize());
+    // split edges into devices
+    size_t edgesPerDevice = (hostDAG_.num_edges() + numDev - 1) / numDev;
+    LOG(debug, "{} edges per GPU", edgesPerDevice);
+
+    size_t edgeOffset = 0;
+    for (int i = 0; i < numDev; ++i) {
+        CUDA_RUNTIME(cudaSetDevice(i));
+
+
+        size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
+        LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
+
+
+        dim3 dimBlock(512);
+        dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
+    
+        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+        kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
+        edgeOffset += edgesPerDevice;
+    }
+    
+    for (int i = 0; i < numDev; ++i) {
+        CUDA_RUNTIME(cudaSetDevice(i));
+        LOG(debug, "Waiting for GPU {}", i);
+        CUDA_RUNTIME(cudaDeviceSynchronize());
+    }
 
     auto start = std::chrono::system_clock::now();
     size_t total = 0;
