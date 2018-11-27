@@ -51,6 +51,9 @@ int main(int argc, char **argv)
 		logger::console->set_level(spdlog::level::debug);
 	}
 
+#ifndef TRI_RELEASE
+	LOG(warn, "Not a release build");
+#endif
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 

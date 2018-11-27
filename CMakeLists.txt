@@ -55,9 +55,7 @@ IF(OPENMP_FOUND)
 ENDIF()
 
 
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-  set(CMAKE_VERBOSE_MAKEFILE ON)
-endif()
+
 
 find_package(CUDA REQUIRED)
 if (CUDA_FOUND)
@@ -180,6 +178,12 @@ tri_compile_features(PUBLIC cxx_std_11)
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+  tri_compile_definitions(PUBLIC -DTRI_RELEASE)
+endif()
 
 # Add a special target to clean nvcc generated files.
 CUDA_BUILD_CLEAN_TARGET()
