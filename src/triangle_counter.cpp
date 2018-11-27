@@ -1,9 +1,14 @@
 #include "graph/triangle_counter.hpp"
 #include "graph/cpu_triangle_counter.hpp"
+#include "graph/cudamemcpy_tc.hpp"
 #include "graph/gpu_triangle_counter.hpp"
 #include "graph/nvgraph_triangle_counter.hpp"
 
 TriangleCounter::~TriangleCounter() {}
+
+void TriangleCounter::setup_data() {
+    LOG(info, "setup_data no-op");
+}
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
 {
@@ -14,6 +19,10 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     else if (c.type_ == "cpu")
     {
         return new CPUTriangleCounter(c);
+    }
+    else if (c.type_ == "cudamemcpy")
+    {
+        return new CudaMemcpyTC();
     }
     else
     {

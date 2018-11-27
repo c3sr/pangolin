@@ -3,6 +3,7 @@
  */
 
 #include <iostream>
+#include <fmt/format.h>
 
 #ifdef USE_OPENMP
 #include <omp.h>
@@ -12,8 +13,6 @@
 #include "graph/logger.hpp"
 #include "graph/gpu_triangle_counter.hpp"
 #include "graph/config.hpp"
-
-#include "cutrianglecounter.h"
 
 int main(int argc, char **argv)
 {
@@ -35,7 +34,7 @@ int main(int argc, char **argv)
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
 	cli = cli | clara::Opt(config.numGPUs_, "int")
 					["-g"]["--num_gpu"]("number of gpus");
-	cli = cli | clara::Opt(config.type_, "cpu|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
+	cli = cli | clara::Opt(config.type_, "cpu|cudamemcpy|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
@@ -62,10 +61,19 @@ int main(int argc, char **argv)
 
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
+
 	tc->read_data(adjacencyListPath);
+
+	auto start = std::chrono::system_clock::now();
+	tc->setup_data();
+	double elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+	LOG(debug, "setup_data time {}s", elapsed);
+
+	start = std::chrono::system_clock::now();
 	const auto numTriangles = tc->count();
-	LOG(info, "{} triangles", numTriangles);
-	tc->execute(adjacencyListPath.c_str(), config.numCPUThreads_);
+	elapsed = (std::chrono::system_clock::now() - start).count()/1e9;
+
+	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles/elapsed);
 
 	delete tc;
 	return 0;

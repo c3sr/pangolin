@@ -40,6 +40,10 @@ macro(tri_compile_features)
   target_compile_features(tri32 ${ARGN})
   target_compile_features(tri64 ${ARGN})
 endmacro()
+macro(tri_compile_definitions)
+  target_compile_definitions(tri32 ${ARGN})
+  target_compile_definitions(tri64 ${ARGN})
+endmacro()
 hunter_add_package(spdlog)
 find_package(spdlog CONFIG REQUIRED)
 
@@ -109,31 +113,36 @@ set(TRI_CPP_SOURCES
   src/cpu_triangle_counter.cpp
   src/nvgraph_triangle_counter.cpp
   src/triangle_counter.cpp
+  src/utilities.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
-    include/graph/logger.hpp
-    include/graph/edge_list.hpp
-    include/graph/dag2019.hpp
-    include/graph/triangle_counter.hpp
     include/graph/cpu_triangle_counter.hpp
+    include/graph/cudamemcpy_tc.hpp
+    include/graph/dag2019.hpp
+    include/graph/edge_list.hpp
     include/graph/gpu_triangle_counter.hpp
+    include/graph/logger.hpp
     include/graph/nvgraph_triangle_counter.hpp
+    include/graph/triangle_counter.hpp
+    include/graph/utilities.hpp
 )
 set(TRI_CUDA_SOURCES
-    src/utilities.cu
     src/gpu_triangle_counter.cu
+    src/cudamemcpy_tc.cu
 )
 
 
 add_executable(tri32 ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 add_executable(tri64 ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 
-target_compile_definitions(tri64 PUBLIC -DUSE_INT64)
+target_compile_definitions(tri64 PRIVATE -DUSE_INT64)
 
 
 
-# Add include directories
+if (OPENMP_FOUND)
+  tri_compile_definitions(PRIVATE -DUSE_OPENMP)
+endif()
 
 
 if (CUDA_FOUND)

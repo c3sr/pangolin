@@ -17,7 +17,6 @@ private:
 
 public:
 	CPUTriangleCounter(const Config &c);
-	virtual void execute(const char *filename, const int omp_numthreads) override;
 	virtual void read_data(const std::string &path) override;
 	virtual size_t count() override;
 };

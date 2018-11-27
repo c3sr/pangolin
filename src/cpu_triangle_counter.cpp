@@ -33,10 +33,12 @@ CPUTriangleCounter::CPUTriangleCounter(const Config &c)
 void CPUTriangleCounter::read_data(const std::string &path)
 {
 
-    LOG(info, "reading {}", path);
-    auto edgeList = EdgeList::read_tsv(path);
-    LOG(debug, "building DAG");
-    dag_ = DAG2019::from_edgelist(edgeList);
+    {
+        LOG(info, "reading {}", path);
+        auto edgeList = EdgeList::read_tsv(path);
+        LOG(debug, "building DAG");
+        dag_ = DAG2019::from_edgelist(edgeList);
+    }
 
     LOG(info, "{} nodes", dag_.num_nodes());
     LOG(info, "{} edges", dag_.num_edges());
@@ -62,11 +64,13 @@ size_t CPUTriangleCounter::count()
         Int v_ptr = dag_.nodes_[v];
         Int v_end = dag_.nodes_[v + 1];
 
-        while (u_ptr < u_end && v_ptr < v_end)
+        Int v_u, v_v;
+
+        while ((u_ptr < u_end) && (v_ptr < v_end))
         {
 
-            Int v_u = dag_.edgeDst_[u_ptr];
-            Int v_v = dag_.edgeDst_[v_ptr];
+            v_u = dag_.edgeDst_[u_ptr];
+            v_v = dag_.edgeDst_[v_ptr];
 
             if (v_u == v_v)
             {
@@ -83,14 +87,10 @@ size_t CPUTriangleCounter::count()
                 ++v_ptr;
             }
         }
+
 #pragma omp atomic
         total += count;
     }
 
     return total;
-}
-
-void CPUTriangleCounter::execute(const char *filename, int omp_numthreads)
-{
-    LOG(warn, "CPUTriangleCounter does not execute");
 }

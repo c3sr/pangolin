@@ -6,7 +6,7 @@
 #include <vector>
 #include <iostream>
 
-class GPUTriangleCounter : public TriangleCounter
+class CudaMemcpyTC : public TriangleCounter
 
 {
 
@@ -18,8 +18,8 @@ class GPUTriangleCounter : public TriangleCounter
 	Int *nodes_d_;
 
   public:
-	GPUTriangleCounter();
-	virtual ~GPUTriangleCounter();
+	CudaMemcpyTC();
+	virtual ~CudaMemcpyTC();
 	virtual void read_data(const std::string &path) override;
 	virtual void setup_data() override;
 	virtual size_t count() override;
