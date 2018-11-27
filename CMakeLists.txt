@@ -121,15 +121,17 @@ set(TRI_CPP_HEADERS
     include/graph/cudamemcpy_tc.hpp
     include/graph/dag2019.hpp
     include/graph/edge_list.hpp
-    include/graph/gpu_triangle_counter.hpp
     include/graph/logger.hpp
     include/graph/nvgraph_triangle_counter.hpp
     include/graph/triangle_counter.hpp
+    include/graph/um_tc.hpp
     include/graph/utilities.hpp
+    include/graph/zc_tc.hpp
 )
 set(TRI_CUDA_SOURCES
-    src/gpu_triangle_counter.cu
-    src/cudamemcpy_tc.cu
+  src/cudamemcpy_tc.cu
+  src/um_tc.cu
+  src/zc_tc.cu
 )
 
 

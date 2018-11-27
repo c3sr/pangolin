@@ -1,10 +1,10 @@
- #include "graph/gpu_triangle_counter.hpp"
+ #include "graph/um_tc.hpp"
  #include "graph/logger.hpp"
  #include "graph/utilities.hpp"
 
  #include "graph/dag2019.hpp"
 
-__global__ void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+__global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -45,7 +45,7 @@ __global__ void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int 
     }
 }
 
-GPUTriangleCounter::GPUTriangleCounter() {
+UMTC::UMTC() {
     LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
 
     int numDev;
@@ -59,16 +59,16 @@ GPUTriangleCounter::GPUTriangleCounter() {
 
     }
 
-GPUTriangleCounter::~GPUTriangleCounter() {
+UMTC::~UMTC() {
     LOG(debug, "dtor GPU triangle counter");
-    LOG(debug, "unregistering/freeing CUDA memory");
-    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.edgeSrc_.data()));
-    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.edgeDst_.data()));
-    CUDA_RUNTIME(cudaHostUnregister(hostDAG_.nodes_.data()));
-    CUDA_RUNTIME(cudaFreeHost(triangleCounts_));
+    LOG(debug, "freeing CUDA memory");
+    CUDA_RUNTIME(cudaFree(edgeSrc_d_));
+    CUDA_RUNTIME(cudaFree(edgeDst_d_));
+    CUDA_RUNTIME(cudaFree(nodes_d_));
+    CUDA_RUNTIME(cudaFree(triangleCounts_));
 }
 
-void GPUTriangleCounter::read_data(const std::string &path) {
+void UMTC::read_data(const std::string &path) {
 
     LOG(info, "reading {}", path);
     auto edgeList = EdgeList::read_tsv(path);
@@ -79,27 +79,23 @@ void GPUTriangleCounter::read_data(const std::string &path) {
     LOG(info, "{} edges", hostDAG_.num_edges());
 }
 
-void GPUTriangleCounter::setup_data() {
+void UMTC::setup_data() {
     const size_t edgeBytes = hostDAG_.edgeSrc_.size() * sizeof(Int);
     const size_t nodeBytes = hostDAG_.nodes_.size() * sizeof(Int);
     const size_t countBytes = hostDAG_.num_edges() * sizeof(*triangleCounts_);
 
-    LOG(debug, "registering {}B", edgeBytes);
-    CUDA_RUNTIME(cudaHostRegister(hostDAG_.edgeSrc_.data(), edgeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
-    LOG(debug, "registering {}B", edgeBytes);
-    CUDA_RUNTIME(cudaHostRegister(hostDAG_.edgeDst_.data(), edgeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
-    LOG(debug, "registering {}B", nodeBytes);
-    CUDA_RUNTIME(cudaHostRegister(hostDAG_.nodes_.data(), nodeBytes, cudaHostRegisterMapped | cudaHostRegisterPortable));
-    LOG(debug, "alloc/mapping {}B", countBytes);
-    CUDA_RUNTIME(cudaHostAlloc(&triangleCounts_, countBytes, cudaHostAllocMapped));
+    CUDA_RUNTIME(cudaMallocManaged(&edgeSrc_d_, edgeBytes));
+    CUDA_RUNTIME(cudaMallocManaged(&edgeDst_d_, edgeBytes));
+    CUDA_RUNTIME(cudaMallocManaged(&nodes_d_, nodeBytes));
+    CUDA_RUNTIME(cudaMallocManaged(&triangleCounts_, countBytes));
 
-    CUDA_RUNTIME(cudaHostGetDevicePointer(&edgeSrc_d_, hostDAG_.edgeSrc_.data(), 0));
-    CUDA_RUNTIME(cudaHostGetDevicePointer(&edgeDst_d_, hostDAG_.edgeDst_.data(), 0)); 
-    CUDA_RUNTIME(cudaHostGetDevicePointer(&nodes_d_, hostDAG_.nodes_.data(), 0));
+    CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
+    CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault)); 
+    CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
 
 }
 
-size_t GPUTriangleCounter::count() {
+size_t UMTC::count() {
     
     int numDev;
     CUDA_RUNTIME(cudaGetDeviceCount(&numDev));

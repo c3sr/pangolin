@@ -11,7 +11,7 @@
 
 #include "clara.hpp"
 #include "graph/logger.hpp"
-#include "graph/gpu_triangle_counter.hpp"
+#include "graph/triangle_counter.hpp"
 #include "graph/config.hpp"
 
 int main(int argc, char **argv)
@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
 	cli = cli | clara::Opt(config.numGPUs_, "int")
 					["-g"]["--num_gpu"]("number of gpus");
-	cli = cli | clara::Opt(config.type_, "cpu|cudamemcpy|gpu|nvgraph")["-m"]["--method"]("method (default = gpu)").required();
+	cli = cli | clara::Opt(config.type_, "cpu|cudamemcpy|nvgraph|um|zc")["-m"]["--method"]("method (default = um)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
