@@ -33,6 +33,7 @@ __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int
 
             // the two nodes that make up this edge both have a common dst
             if (u == v) {
+                // printf("%d, %d -> %d\n", src, dst, u);
                 ++count;
                 ++src_edge;
                 ++dst_edge;

@@ -4,6 +4,8 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
 {
     DAGLowerTriangularCSR dag;
 
+    LOG(debug, "Building DAGLowerTriangularCSR from EdgeList with {} edges", l.size());
+
     if (l.size() == 0)
     {
         return dag;
@@ -27,14 +29,15 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
         e.dst_ -= smallest;
     }
 
-    for (const auto edge : l)
+    for (const auto &edge : l)
     {
-
+        // LOG(debug, "{} {}", edge.src_, edge.dst_);
         // a new source node or the first source node.
         // assume this come in in order
         if (dag.sourceOffsets_.size() != size_t(edge.src_ + 1))
         {
-            assert(edge.src_ > dag.sourceOffsets_.back());
+            // LOG(debug, "new source node {} starts at offset {}", edge.src_, dag.destinationIndices_.size());
+            // node ids should cover all numbers and be increasing
             assert(edge.src_ == dag.sourceOffsets_.size());
             // mark where the source node's destination indices start
             dag.sourceOffsets_.push_back(dag.destinationIndices_.size());
@@ -47,6 +50,8 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
         }
     }
     dag.sourceOffsets_.push_back(dag.destinationIndices_.size());
+
+    LOG(debug, "{}", dag.destinationIndices_.back());
 
     return dag;
 }

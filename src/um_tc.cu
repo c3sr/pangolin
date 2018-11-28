@@ -45,6 +45,8 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
     }
 }
 
+
+
 UMTC::UMTC() {
     LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
 

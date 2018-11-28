@@ -30,13 +30,12 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
     for (const auto edge : l)
     {
 
-        assert(edge.src_ > 0);
-        assert(edge.dst_ > 0);
+        assert(edge.src_ >= 0);
+        assert(edge.dst_ >= 0);
 
         if (dag.nodes_.size() != size_t(edge.src_ + 1))
         {
-            assert(edge.src_ > dag.nodes_.back());
-            assert(edge.src_ == dag.sourceOffsets_.size());
+            assert(edge.src_ == dag.nodes_.size());
             // LOG(trace, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
             dag.nodes_.push_back(dag.edgeSrc_.size());
         }
