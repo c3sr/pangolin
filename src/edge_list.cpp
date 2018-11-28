@@ -11,13 +11,25 @@ EdgeList EdgeList::read_tsv(std::istream &is, std::istream::streampos end)
 
     LOG(debug, "reading from {} until {}", is.tellg(), end);
 
-    while (is.good())
+    while (is.good() && is.tellg() < end)
     {
         int64_t src64, dst64, weight64;
+        // LOG(debug, "{}", is.tellg());
         is >> dst64;
-        is >> src64;
-        is >> weight64;
 
+        // if we fail in the middle of what should be a good edge, the file ends with an empty line
+        if (!is.good())
+        {
+            break;
+        }
+
+        // LOG(debug, "{} after {}", is.tellg(), dst64);
+        is >> src64;
+        // LOG(debug, "{} after {}", is.tellg(), src64);
+        is >> weight64;
+        // LOG(debug, "{},{} after {}", is.tellg(), is.good(), weight64);
+
+        // If we read past the limit during the reading of this edge, don't record this edge
         if (is.tellg() >= end)
         {
             break;
@@ -43,6 +55,7 @@ EdgeList EdgeList::read_tsv(std::istream &is, std::istream::streampos end)
     if (l.size())
     {
         LOG(debug, "first edge {} -> {}", l.begin()->src_, l.begin()->dst_);
+        LOG(debug, "2nd last  edge {} -> {}", (l.end() - 2)->src_, (l.end() - 2)->dst_);
         LOG(debug, "last  edge {} -> {}", (l.end() - 1)->src_, (l.end() - 1)->dst_);
     }
     return l;
