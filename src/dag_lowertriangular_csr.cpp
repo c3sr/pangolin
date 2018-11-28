@@ -32,7 +32,7 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
 
         // a new source node or the first source node.
         // assume this come in in order
-        if (dag.sourceOffsets_.size() != edge.src_ + 1)
+        if (dag.sourceOffsets_.size() != size_t(edge.src_ + 1))
         {
             assert(edge.src_ > dag.sourceOffsets_.back());
             assert(edge.src_ == dag.sourceOffsets_.size());
