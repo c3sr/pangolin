@@ -72,6 +72,70 @@ __global__ static void kernel_tc(int * __restrict__ blockTriangleCounts, const I
 
 }
 
+__global__ static void kernel_tc2(int * __restrict__ blockTriangleCounts, const Int *cols, const Int *roff, const size_t numRows){
+     
+    int count = 0;
+    const size_t U_DST_BS = 32;
+    __shared__ Int uDsts[U_DST_BS];
+
+    // one block per vertex (u)
+    for (size_t u = blockIdx.x; u < numRows; u += gridDim.x) {
+        
+        const size_t uRowStart = roff[u];
+        const size_t uRowEnd = roff[u+1];
+
+        // loop over chunks of vs in shared memory for the v's destinations to compare against i
+        for (size_t uRowChunkOff = uRowStart; uRowChunkOff < uRowEnd; uRowChunkOff += U_DST_BS) {
+            for (size_t i = threadIdx.x; i < U_DST_BS; i += BLOCK_DIM) {
+                size_t idx = uRowChunkOff + i;
+                if (idx < uRowEnd) {
+                    uDsts[threadIdx.x] = cols[uRowChunkOff + i];
+                } else {
+                    uDsts[threadIdx.x] = -1;
+                }
+            }
+            __syncthreads();
+
+
+            // in each chunk of v's, follow all u-> edges in groups of BLOCK_DIM and compare against that chunk of v's
+            // follow BLOCK_DIM u -> v edges at a time
+            for (size_t uRowOff = uRowStart; uRowOff < uRowEnd; uRowOff += BLOCK_DIM) {
+
+                size_t vIdx = uRowOff + threadIdx.x;
+                int64_t v = vIdx < uRowEnd ? cols[vIdx] : -1; // -1 is sentinel for more threads than nodes adjacent to u
+
+                if (v != -1) {
+                    const size_t vRowStart = roff[v];
+                    const size_t vRowEnd = roff[v+1];
+
+                    int local_counts = 0;
+                    local_counts = intersections(
+                        &cols[vRowStart],
+                        &cols[vRowEnd],
+                        &uDsts[0],
+                        &uDsts[U_DST_BS]);
+                    if (local_counts) {
+                        // printf("...in %lu -> %lu\n", u, v);
+                    }
+                    count += local_counts;
+                }
+
+            }
+
+
+        }
+
+    }
+
+    if (threadIdx.x == 0) {
+        blockTriangleCounts[blockIdx.x] = 0;
+    }
+    __syncthreads();
+    // block reduce
+    atomicAdd(&blockTriangleCounts[blockIdx.x], count);
+
+}
+
 VertexTC::VertexTC() {
 
     int numDev;
@@ -120,7 +184,7 @@ size_t VertexTC::count() {
     dim3 dimBlock(BLOCK_DIM);
     dim3 dimGrid(160);
 
-    kernel_tc<<<dimGrid, dimBlock>>>(blockTriangleCounts_, destinationIndices_, sourceOffsets_, dag_.num_nodes());
+    kernel_tc2<<<dimGrid, dimBlock>>>(blockTriangleCounts_, destinationIndices_, sourceOffsets_, dag_.num_nodes());
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
     for (int i = 0; i < dimGrid.x; ++i) {
