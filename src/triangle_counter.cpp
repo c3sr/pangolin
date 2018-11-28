@@ -34,7 +34,7 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
             LOG(critical, "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
             exit(-1);
         }
-        return new NvGraphTriangleCounter();
+        return new NvGraphTriangleCounter(c);
     }
     else if (c.type_ == "vertex")
     {

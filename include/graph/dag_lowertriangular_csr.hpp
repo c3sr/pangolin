@@ -6,6 +6,29 @@
 #include "graph/edge_list.hpp"
 #include "graph/logger.hpp"
 
+struct VertexGroup
+{
+    virtual size_t count(const Int &e) const = 0;
+    virtual ~VertexGroup() {}
+    virtual Int begin() const = 0;
+    virtual Int end() const = 0;
+};
+
+struct VertexRange : public VertexGroup
+{
+    Int min_;
+    Int max_;
+
+    VertexRange(Int min, Int max) : min_(min), max_(max) {}
+
+    size_t count(const Int &e) const override
+    {
+        return (e >= min_ && e < max_) ? 1 : 0;
+    }
+    virtual Int begin() const override { return min_; }
+    virtual Int end() const override { return max_; }
+};
+
 // Lower Triangular adjacency matrix in CSR format
 class DAGLowerTriangularCSR
 {
@@ -39,4 +62,9 @@ class DAGLowerTriangularCSR
     }
 
     static DAGLowerTriangularCSR from_edgelist(EdgeList &l);
+
+    // get all edges that nodes along edges from srcGroup -> dstGroup participat in.
+    // this is more than just srcGroup -> dstGroup edges
+    EdgeList get_node_edges(const VertexGroup &srcGroup, const VertexGroup &dstGroup) const;
+    std::vector<DAGLowerTriangularCSR> partition(const std::vector<VertexGroup *> &vertexGroups);
 };
