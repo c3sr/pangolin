@@ -4,13 +4,14 @@
 
  #include "graph/dag2019.hpp"
 
-__global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
-     
-    const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += blockDim.x * gridDim.x) {
+const int BLOCK_DIM_X = 128;
 
-        // get the src and dst node for this edge
+__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+     
+    const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
+    
+    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += BLOCK_DIM_X * gridDim.x) {
+
         const Int src = edgeSrc[i];
         const Int dst = edgeDst[i];
 
@@ -20,24 +21,33 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
         Int dst_edge = nodes[dst];
         const Int dst_edge_end = nodes[dst + 1];
 
+
         size_t count = 0;
 
+        bool update_u = true;
+        bool update_v = true;
         while (src_edge < src_edge_end && dst_edge < dst_edge_end){
-
-            Int u = edgeDst[src_edge];
-            Int v = edgeDst[dst_edge];
+            Int u, v;
+            if (update_u) u = edgeDst[src_edge];
+            if (update_v) v = edgeDst[dst_edge];
 
             // the two nodes that make up this edge both have a common dst
             if (u == v) {
                 ++count;
                 ++src_edge;
                 ++dst_edge;
+                update_u = true;
+                update_v = true;
             }
             else if (u < v){
                 ++src_edge;
+                update_u = true;
+                update_v = false;
             }
             else {
                 ++dst_edge;
+                update_u = false;
+                update_v = true;
             }
         }
 
@@ -113,7 +123,7 @@ size_t CudaMemcpyTC::count() {
         LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
 
-        dim3 dimBlock(512);
+        dim3 dimBlock(BLOCK_DIM_X);
         dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
     
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
