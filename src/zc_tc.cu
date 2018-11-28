@@ -4,7 +4,7 @@
 
  #include "graph/dag2019.hpp"
 
-__global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
     
