@@ -17,3 +17,7 @@
 
 * [website](https://www.andrew.cmu.edu/user/dwise/15418/)
 * Partitioning Idea
+
+## High Performance Exact Triangle Counting on GPUs
+
+* Mauro Bisson and Massimiliano Fatica
