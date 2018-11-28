@@ -1,5 +1,6 @@
 
 #include <fstream>
+#include <sstream>
 #include <limits>
 
 #include "graph/edge_list.hpp"
@@ -8,39 +9,41 @@
 EdgeList EdgeList::read_tsv(std::istream &is, std::istream::streampos end)
 {
     EdgeList l;
+    const Int intMax = std::numeric_limits<Int>::max();
 
     LOG(debug, "reading from {} until {}", is.tellg(), end);
 
-    while (is.good() && is.tellg() < end)
+    for (std::string line; std::getline(is, line);)
     {
-        int64_t src64, dst64, weight64;
-        // LOG(debug, "{}", is.tellg());
-        is >> dst64;
 
-        // if we fail in the middle of what should be a good edge, the file ends with an empty line
-        if (!is.good())
+        // only check position if we're not reading the whole file
+        if (end != -1)
+        {
+            // if we read past the end for this line, don't record edge
+            if (is.tellg() > end)
+            {
+                LOG(debug, "read past requested end {}", end);
+                break;
+            }
+        }
+
+        std::istringstream iss(line);
+
+        int64_t src64, dst64;
+        iss >> dst64;
+        iss >> src64;
+        // no characters extracted or parsing error
+        if (iss.fail())
         {
             break;
         }
 
-        // LOG(debug, "{} after {}", is.tellg(), dst64);
-        is >> src64;
-        // LOG(debug, "{} after {}", is.tellg(), src64);
-        is >> weight64;
-        // LOG(debug, "{},{} after {}", is.tellg(), is.good(), weight64);
-
-        // If we read past the limit during the reading of this edge, don't record this edge
-        if (is.tellg() >= end)
-        {
-            break;
-        }
-
-        if (src64 > std::numeric_limits<Int>::max())
+        if (src64 > intMax)
         {
             LOG(critical, "{} is too large for sizeof(Int)={}", src64, sizeof(Int));
             exit(-1);
         }
-        if (dst64 > std::numeric_limits<Int>::max())
+        if (dst64 > intMax)
         {
             LOG(critical, "{} is too large for sizeof(Int)={}", dst64, sizeof(Int));
             exit(-1);

@@ -77,7 +77,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
     size_t edgeEnd;
     if (end >= size_t(sz))
     {
-        edgeEnd = sz;
+        edgeEnd = -1;
     }
     else
     {

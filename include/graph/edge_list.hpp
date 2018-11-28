@@ -56,7 +56,7 @@ public:
   // create edgelist from a tsv file
   static EdgeList read_tsv(const std::string &path);
   // create edgelist from an istream, reading until end
-  static EdgeList read_tsv(std::istream &is, std::istream::streampos end);
+  static EdgeList read_tsv(std::istream &is, std::istream::streampos end = -1);
 
 private:
   std::vector<Edge> edges_;
