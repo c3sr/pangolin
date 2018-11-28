@@ -61,6 +61,8 @@ find_package(CUDA REQUIRED)
 if (CUDA_FOUND)
   if (CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -G)
+  elseif (CMAKE_BUILD_TYPE MATCHES Release)
+    set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -lineinfo)
   endif()
 endif()
 
