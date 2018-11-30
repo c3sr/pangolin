@@ -22,22 +22,35 @@ __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int
 
         size_t count = 0;
 
+        bool uRead = true;
+        bool vRead = true;
+        Int u, v;
+
         while (src_edge < src_edge_end && dst_edge < dst_edge_end){
 
-            Int u = edgeDst[src_edge];
-            Int v = edgeDst[dst_edge];
+            if (uRead) {
+                u = edgeDst[src_edge];
+            }
+            if (vRead) {
+                v = edgeDst[dst_edge];
+            }
+            
 
             // the two nodes that make up this edge both have a common dst
             if (u == v) {
                 ++count;
                 ++src_edge;
+                uRead = true;
                 ++dst_edge;
+                vRead = true;
             }
             else if (u < v){
                 ++src_edge;
+                uRead = true;
             }
             else {
                 ++dst_edge;
+                vRead = true;
             }
         }
 
