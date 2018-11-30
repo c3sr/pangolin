@@ -4,7 +4,7 @@
 
  #include "graph/dag2019.hpp"
 
-__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+__global__ static void kernel_tc(Uint * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -34,7 +34,7 @@ __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int
             if (vRead) {
                 v = edgeDst[dst_edge];
             }
-            
+
 
             // the two nodes that make up this edge both have a common dst
             if (u == v) {
@@ -112,7 +112,7 @@ void ZeroCopyTriangleCounter::setup_data() {
 
 }
 
-size_t ZeroCopyTriangleCounter::count() {
+Uint ZeroCopyTriangleCounter::count() {
     
     int numDev;
     CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
@@ -145,7 +145,7 @@ size_t ZeroCopyTriangleCounter::count() {
     }
 
     auto start = std::chrono::system_clock::now();
-    size_t total = 0;
+    Uint total = 0;
     for(size_t i = 0; i < hostDAG_.num_edges(); ++i) {
         total += triangleCounts_[i];
     }
