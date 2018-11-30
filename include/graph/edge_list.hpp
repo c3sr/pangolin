@@ -13,6 +13,18 @@ public:
   EdgeBase(const T &src, const T &dst) : src_(src), dst_(dst) {}
   T src_;
   T dst_;
+
+  inline bool operator<(const EdgeBase &rhs) const noexcept
+  {
+    if (src_ == rhs.src_)
+    {
+      return dst_ < rhs.dst_;
+    }
+    else
+    {
+      return src_ < rhs.src_;
+    }
+  }
 };
 
 typedef EdgeBase<Int> Edge;

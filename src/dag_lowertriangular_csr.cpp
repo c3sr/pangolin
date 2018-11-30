@@ -57,9 +57,20 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
     return dag;
 }
 
-EdgeList DAGLowerTriangularCSR::get_node_edges(const VertexGroup &srcGroup, const VertexGroup &dstGroup) const
+EdgeList DAGLowerTriangularCSR::get_node_edges(const VertexSet &srcGroup, const VertexSet &dstGroup) const
 {
 
+    for (const auto &n : srcGroup)
+    {
+        LOG(trace, "srcGroup has node {}", n);
+    }
+
+    for (const auto &n : dstGroup)
+    {
+        LOG(trace, "dstGroup has node {}", n);
+    }
+
+#if 0
     // collect all nodes in edges between nodes in srcGroup and nodes in dstGroup
     std::set<Int> nodes;
     for (Int u = 0; u < num_nodes(); ++u)
@@ -70,7 +81,7 @@ EdgeList DAGLowerTriangularCSR::get_node_edges(const VertexGroup &srcGroup, cons
         for (Int vOff = vStart; vOff < vEnd; ++vOff)
         {
             const Int v = destinationIndices_[vOff];
-            if (srcGroup.count(u) && dstGroup.count(v))
+            if (srcGroup.count(u) && dstGroup.count(v)) // u -> v, u in srcGroup, v in dstGroup
             {
                 nodes.insert(u);
                 nodes.insert(v);
@@ -79,7 +90,7 @@ EdgeList DAGLowerTriangularCSR::get_node_edges(const VertexGroup &srcGroup, cons
     }
 
     // collect all edges that are between those nodes
-    EdgeList edges;
+    std::set<Edge> edgeSet;
     for (Int u = 0; u < num_nodes(); ++u)
     {
         if (nodes.count(u))
@@ -91,48 +102,190 @@ EdgeList DAGLowerTriangularCSR::get_node_edges(const VertexGroup &srcGroup, cons
                 const Int v = destinationIndices_[vOff];
                 if (nodes.count(v))
                 {
-                    edges.push_back(Edge(u, v));
+                    edgeSet.insert(Edge(u, v));
                 }
             }
         }
     }
 
-    // also add edges vSrc -> vn ->vDst for vSrc != vDst
-    if (&srcGroup != &dstGroup)
-    { // FIXME, actually compare probably
+    // for (const auto &e : edgeSet)
+    // {
+    //     LOG(trace, "edge {} -> {}", e.src_, e.dst_);
+    // }
 
-        for (Int u = 0; u < num_nodes(); ++u)
+    // // also add edges vSrc -> vn ->vDst for vSrc != vDst and vn not in vSrc and vn not in vDst
+
+    for (Int u = 0; u < num_nodes(); ++u)
+    {
+        if (srcGroup.count(u)) // vSrc -> ...
         {
-            if (srcGroup.count(u)) // vSrc -> ...
+            const Int nStart = sourceOffsets_[u];
+            const Int nEnd = sourceOffsets_[u + 1];
+            for (Int nOff = nStart; nOff < nEnd; ++nOff)
             {
-                const Int nStart = sourceOffsets_[u];
-                const Int nEnd = sourceOffsets_[u + 1];
-                for (Int nOff = nStart; nOff < nEnd; ++nOff)
+                const Int n = destinationIndices_[nOff]; // vSrc -> vn
+                if (srcGroup.count(n) || dstGroup.count(n))
                 {
-                    const Int n = destinationIndices_[nOff]; // vSrc -> vn
+                    continue;
+                }
 
-                    const Int vStart = sourceOffsets_[n];
-                    const Int vEnd = sourceOffsets_[n + 1];
-                    for (Int vOff = vStart; vOff < vEnd; ++vOff)
-                    {
-                        const Int v = destinationIndices_[vOff]; // vSrc -> vn -> vDst
-                        if (srcGroup.count(u) && dstGroup.count(v))
-                        {
-                            edges.push_back(Edge(u, n));
-                            edges.push_back(Edge(n, v));
-                        }
+                // vSrc -> vn, vn not in vSrc and vn not in vDst
+
+                const Int vStart = sourceOffsets_[n];
+                const Int vEnd = sourceOffsets_[n + 1];
+                for (Int vOff = vStart; vOff < vEnd; ++vOff)
+                {
+                    const Int v = destinationIndices_[vOff];
+                    if (dstGroup.count(v))
+                    { // vSrc -> vn -> vDst
+
+                        // only add if u and v are not in the same group
+                        if (srcGroup.count(u) && srcGroup.count(v))
+                            continue;
+                        if (dstGroup.count(u) && dstGroup.count(v))
+                            continue;
+                        LOG(trace, "adding {}->{}, {}->{}", u, n, n, v);
+                        edgeSet.insert(Edge(u, n));
+                        edgeSet.insert(Edge(n, v));
                     }
                 }
             }
         }
     }
 
-    return edges;
+
+    EdgeList edgeList;
+    for (const auto &e : edgeSet)
+    {
+        LOG(trace, "edge {} -> {}", e.src_, e.dst_);
+        edgeList.push_back(e);
+    }
+#endif
+
+#if 0
+// this part works but lots of duplication
+    std::set<Int> edgeHeads;
+    std::set<Int> edgeTails;
+    std::set<Edge> edgeSet;
+    for (Int u = 0; u < num_nodes(); ++u)
+    {
+
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            if (srcGroup.count(u) && dstGroup.count(v)) // u -> v, u in srcGroup, v in dstGroup
+            {
+                edgeHeads.insert(u);
+                edgeTails.insert(v);
+                edgeSet.insert(Edge(u, v));
+            }
+        }
+    }
+
+
+
+    // add nodes that leave head of an edge and do not end in the dstGroup or source gro
+    for (Int u : edgeHeads)
+    {
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            if (!dstGroup.count(v) && !srcGroup.count(v))
+            {
+                edgeSet.insert(Edge(u, v));
+            }
+        }
+    }
+
+    // add nodes that enter the tail of an edge that do not start in the srcGroup
+    for (Int u = 0; u < num_nodes(); ++u)
+    {
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            if (edgeTails.count(v) && !srcGroup.count(u) && !dstGroup.count(u))
+            {
+                edgeSet.insert(Edge(u, v));
+            }
+        }
+    }
+#endif
+
+    // partition for just two vertex groups
+    // all src->dst edges
+    // all head->head and tail->tail edges
+
+#if 1 // all src->dst Edges + adjacencies not in src or dst
+    // what if we add all one- and two-edge paths from srcGroup to dstGroup
+
+    // this part works but lots of duplication
+    std::set<Int> edgeHeads;
+    std::set<Int> edgeTails;
+    std::set<Edge> edgeSet;
+    for (Int u = 0; u < num_nodes(); ++u)
+    {
+
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            if (srcGroup.count(u) && dstGroup.count(v)) // u -> v, u in srcGroup, v in dstGroup
+            {
+                edgeHeads.insert(u);
+                edgeTails.insert(v);
+                edgeSet.insert(Edge(u, v));
+            }
+        }
+    }
+
+    // add nodes that leave head of an edge
+    for (Int u : edgeHeads)
+    {
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            edgeSet.insert(Edge(u, v));
+        }
+    }
+
+    // add nodes that enter the tail of an edge that do not start in the srcGroup
+    for (Int u = 0; u < num_nodes(); ++u)
+    {
+        const Int vStart = sourceOffsets_[u];
+        const Int vEnd = sourceOffsets_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            const Int v = destinationIndices_[vOff];
+            if (edgeTails.count(v) && !srcGroup.count(u) && !dstGroup.count(u))
+            {
+                edgeSet.insert(Edge(u, v));
+            }
+        }
+    }
+
+#endif
+
+    EdgeList edgeList;
+    for (const auto &e : edgeSet)
+    {
+        LOG(trace, "edge {} -> {}", e.src_, e.dst_);
+        edgeList.push_back(e);
+    }
+    return edgeList;
 }
 
-std::vector<DAGLowerTriangularCSR> DAGLowerTriangularCSR::partition(const std::vector<VertexGroup *> &vertexGroups)
+std::vector<DAGLowerTriangularCSR> DAGLowerTriangularCSR::partition(const std::vector<VertexSet> &vertexGroups)
 {
-    LOG(debug, "Partitioning into {} vertex groups", vertexGroups.size());
+    LOG(debug, "partitioning based on {} vertex groups", vertexGroups.size());
     std::vector<DAGLowerTriangularCSR> ret;
 
     for (const auto &srcGroup : vertexGroups)
@@ -140,7 +293,7 @@ std::vector<DAGLowerTriangularCSR> DAGLowerTriangularCSR::partition(const std::v
         for (const auto &dstGroup : vertexGroups)
         {
 
-            EdgeList origEdges = get_node_edges(*srcGroup, *dstGroup);
+            EdgeList origEdges = get_node_edges(srcGroup, dstGroup);
             LOG(debug, "edgelist has {} edges", origEdges.size());
 
             // these edges are only the edges src -> dst where src > dst

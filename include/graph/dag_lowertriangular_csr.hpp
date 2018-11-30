@@ -2,31 +2,61 @@
 
 #include <vector>
 #include <string>
+#include <set>
+#include <iterator>
 
 #include "graph/edge_list.hpp"
 #include "graph/logger.hpp"
 
-struct VertexGroup
+// struct VertexGroup
+// {
+//     virtual size_t count(const Int &e) const = 0;
+//     virtual ~VertexGroup() {}
+//     virtual std::iterator<std::bidirectional_iterator_tag, Int> begin() = 0;
+//     virtual std::iterator<std::bidirectional_iterator_tag, Int> end() = 0;
+// };
+
+// struct VertexRange : public VertexGroup
+// {
+//     Int min_;
+//     Int max_;
+
+//     VertexRange(Int min, Int max) : min_(min), max_(max) {}
+
+//     size_t count(const Int &e) const override
+//     {
+//         return (e >= min_ && e < max_) ? 1 : 0;
+//     }
+//     virtual Int begin() const override { return min_; }
+//     virtual Int end() const override { return max_; }
+// };
+
+struct VertexSet
 {
-    virtual size_t count(const Int &e) const = 0;
-    virtual ~VertexGroup() {}
-    virtual Int begin() const = 0;
-    virtual Int end() const = 0;
-};
+    typedef std::set<Int> container_t;
+    container_t set_;
 
-struct VertexRange : public VertexGroup
-{
-    Int min_;
-    Int max_;
-
-    VertexRange(Int min, Int max) : min_(min), max_(max) {}
-
-    size_t count(const Int &e) const override
+    size_t count(const Int &e) const noexcept
     {
-        return (e >= min_ && e < max_) ? 1 : 0;
+        return set_.count(e);
     }
-    virtual Int begin() const override { return min_; }
-    virtual Int end() const override { return max_; }
+
+    void insert(const Int &e)
+    {
+        set_.insert(e);
+    }
+
+    virtual container_t::const_iterator begin() const { return set_.begin(); }
+    virtual container_t::const_iterator end() const { return set_.end(); }
+    size_t size() const noexcept
+    {
+        return set_.size();
+    }
+
+    bool operator==(const VertexSet &rhs) const noexcept
+    {
+        return set_ == rhs.set_;
+    }
 };
 
 // Lower Triangular adjacency matrix in CSR format
@@ -65,6 +95,6 @@ class DAGLowerTriangularCSR
 
     // get all edges that nodes along edges from srcGroup -> dstGroup participat in.
     // this is more than just srcGroup -> dstGroup edges
-    EdgeList get_node_edges(const VertexGroup &srcGroup, const VertexGroup &dstGroup) const;
-    std::vector<DAGLowerTriangularCSR> partition(const std::vector<VertexGroup *> &vertexGroups);
+    EdgeList get_node_edges(const VertexSet &srcGroup, const VertexSet &dstGroup) const;
+    std::vector<DAGLowerTriangularCSR> partition(const std::vector<VertexSet> &vertexGroups);
 };

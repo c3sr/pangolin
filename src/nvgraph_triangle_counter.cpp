@@ -33,38 +33,48 @@ void NvGraphTriangleCounter::read_data(const std::string &path)
     {
         LOG(debug, "partitioning for {} GPUs", numGPUs_);
 
-        auto numGroups = std::ceil(std::sqrt(numGPUs_));
-        size_t groupSize = (dag.num_nodes() + numGroups - 1) / numGroups;
-        LOG(debug, "selected {} groups of size {}", numGroups, groupSize);
+        auto numGroups = size_t(std::ceil(std::sqrt(numGPUs_)));
+        LOG(debug, "creating {} groups", numGroups);
 
-        std::vector<std::shared_ptr<VertexGroup>> groups;
-
-        size_t rangeStart = 0;
-        for (int i = 0; i < numGroups; ++i)
+        // groups of random vertices
+        std::vector<VertexSet> groups(numGroups);
+        for (Int n = 0; n < dag.num_nodes(); ++n)
         {
-            size_t rangeEnd = std::min(rangeStart + groupSize, dag.num_nodes());
-            LOG(debug, "Adding group for vertices {} to {}", rangeStart, rangeEnd);
-            groups.push_back(std::make_shared<VertexRange>(rangeStart, rangeEnd));
-            rangeStart += groupSize;
+            auto targetGroup = rand() % numGroups;
+            LOG(trace, "node {} in group {}", n, targetGroup);
+            groups[targetGroup].insert(n);
         }
 
-        std::vector<VertexGroup *> raw;
         for (auto g : groups)
         {
-            raw.push_back(g.get());
+            LOG(trace, "created a group with {} nodes", g.size());
         }
 
-        dags_ = dag.partition(raw);
+        dags_ = dag.partition(groups);
     }
     else
     {
         dags_.push_back(dag);
     }
+
+    size_t partitionedTotalEdges = 0;
+    size_t partitionedTotalNodes = 0;
+    size_t partitionedMaxEdges = 0;
+    size_t partitionedMaxNodes = 0;
     for (const auto &dag : dags_)
     {
         LOG(debug, "{} nodes", dag.num_nodes());
         LOG(debug, "{} edges", dag.num_edges());
+        partitionedTotalEdges += dag.num_edges();
+        partitionedTotalNodes += dag.num_nodes();
+        partitionedMaxEdges = std::max(partitionedMaxEdges, dag.num_edges());
+        partitionedMaxNodes = std::max(partitionedMaxNodes, dag.num_nodes());
     }
+
+    LOG(info, "edge replication {}", double(partitionedTotalEdges) / dag.num_edges());
+    LOG(info, "node replication {}", double(partitionedTotalNodes) / dag.num_nodes());
+    LOG(info, "edge shrinkage {}", double(partitionedMaxEdges) / dag.num_edges());
+    LOG(info, "node shrinkage {}", double(partitionedMaxNodes) / dag.num_nodes());
 }
 
 void NvGraphTriangleCounter::setup_data()
