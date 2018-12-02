@@ -83,6 +83,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     auto ri = sortedRemote.begin();
     const auto le = sortedLocal.end();
     const auto re = sortedRemote.end();
+    Int maxDst = -1; // there may be nodes that have no outgoing edges, so we have to track them to fill out the row
     while ((li != le) || (ri != re))
     {
         bool edgeIsLocal;
@@ -112,6 +113,8 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
             ++ri;
         }
 
+        maxDst = std::max(edge.dst_, maxDst);
+
         LOG(trace, "edge {} -> {} local={}", edge.src_, edge.dst_, edgeIsLocal);
         if (graph.rowStarts_.size() != edge.src_ + 1)
         {
@@ -123,7 +126,16 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
         graph.nonZeros_.push_back(edge.dst_);
         graph.isLocalNonZero_.push_back(edgeIsLocal);
     }
+
+    // fill up to maxDst
+    while (graph.rowStarts_.size() < maxDst + 1)
+    {
+        LOG(trace, "adding node {} with 0 out degree", graph.rowStarts_.size());
+        graph.rowStarts_.push_back(graph.nonZeros_.size());
+    }
+
     graph.rowStarts_.push_back(graph.nonZeros_.size());
+    LOG(trace, "final rowStarts length is {}", graph.rowStarts_.size());
 
 #ifdef __TRI_SANITY_CHECK
     assert(graph.isLocalNonZero_.size() == graph.nonZeros_.size());
