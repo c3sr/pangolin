@@ -80,7 +80,7 @@ __global__ static void kernel_tc(
                     }
                     else {
                         ++tailEdge;
-                        readTail = false;
+                        readTail = true;
                     }
                 }
             } 
@@ -94,7 +94,7 @@ __global__ static void kernel_tc(
     // atomicAdd(&triangleCounts[blockIdx.x], count);
     Uint aggregate = BlockReduce(temp_storage).Sum(count);
     if (threadIdx.x == 0) {
-    triangleCounts[blockIdx.x] = aggregate;
+        triangleCounts[blockIdx.x] = aggregate;
     }
     
 }
