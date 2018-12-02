@@ -6,51 +6,57 @@
 
 const int BLOCK_DIM_X = 128;
 
-__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, 
+    const Int *edgeSrc, 
+    const Int *edgeDst, 
+    const Int *nodes,
+    const bool *localDst, // if an edge is local ( should be counted)
+    const size_t edgeOffset, 
+    const size_t numEdges){
      
+
+/*
+
+Some edges may not be local.
+These edges are needed to correctly count local triangles, but should not be counted as the base of a triangle themselves
+
+*/
+
     const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
     
     for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += BLOCK_DIM_X * gridDim.x) {
 
+        // get the src and dst node for this edge
         const Int src = edgeSrc[i];
         const Int dst = edgeDst[i];
-
-        Int src_edge = nodes[src];
-        const Int src_edge_end = nodes[src + 1];
-
-        Int dst_edge = nodes[dst];
-        const Int dst_edge_end = nodes[dst + 1];
-
-
         size_t count = 0;
-
-        bool update_u = true;
-        bool update_v = true;
-        while (src_edge < src_edge_end && dst_edge < dst_edge_end){
-            Int u, v;
-            if (update_u) u = edgeDst[src_edge];
-            if (update_v) v = edgeDst[dst_edge];
-
-            // the two nodes that make up this edge both have a common dst
-            if (u == v) {
-                // printf("%d, %d -> %d\n", src, dst, u);
-                ++count;
-                ++src_edge;
-                ++dst_edge;
-                update_u = true;
-                update_v = true;
+        if (localDst && localDst[i]) {
+            Int src_edge = nodes[src];
+            const Int src_edge_end = nodes[src + 1];
+    
+            Int dst_edge = nodes[dst];
+            const Int dst_edge_end = nodes[dst + 1];
+    
+    
+            while (src_edge < src_edge_end && dst_edge < dst_edge_end){
+    
+                Int u = edgeDst[src_edge];
+                Int v = edgeDst[dst_edge];
+    
+                // the two nodes that make up this edge both have a common dst
+                if (u == v) {
+                    ++count;
+                    ++src_edge;
+                    ++dst_edge;
+                }
+                else if (u < v){
+                    ++src_edge;
+                }
+                else {
+                    ++dst_edge;
+                }
             }
-            else if (u < v){
-                ++src_edge;
-                update_u = true;
-                update_v = false;
-            }
-            else {
-                ++dst_edge;
-                update_u = false;
-                update_v = true;
-            }
-        }
+        } 
 
         triangleCounts[i] = count;
     }
@@ -128,7 +134,7 @@ size_t CudaMemcpyTC::count() {
         dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
     
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
+        kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, nullptr, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     
