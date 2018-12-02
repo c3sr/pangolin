@@ -10,6 +10,8 @@
 class CSRTC : public TriangleCounter
 {
   private:
+	std::vector<int> gpus_; // which GPUs to use
+	size_t numCPUThreads_;  // how many threads to use
 	ParGraph graph_;
 	Uint *triangleCounts_; // per-edge triangle counts
 	Int *rowStarts_d_;

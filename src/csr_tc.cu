@@ -189,9 +189,10 @@ __global__ static void kernel_tc2(
 
 
 CSRTC::CSRTC(Config &c) : dimGrid_(1000) {
-    int numDev;
-    CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
-    for (int i = 0; i < numDev; ++i) {
+
+    gpus_ = c.gpus_;
+
+    for (auto i : gpus_) {
         LOG(info, "Initializing CUDA device {}", i);
         CUDA_RUNTIME(cudaSetDevice(i));
         CUDA_RUNTIME(cudaFree(0));
@@ -228,6 +229,8 @@ void CSRTC::read_data(const std::string &path) {
 }
 
 void CSRTC::setup_data() {
+    assert(gpus_.size());
+    CUDA_RUNTIME(cudaSetDevice(gpus_[0]));
     const size_t rowStartsSz = graph_.rowStarts_.size() * sizeof(Int);
     const size_t nonZerosSz = graph_.nonZeros_.size() * sizeof(Int);
     const size_t isLocalNonZeroSz = 0;

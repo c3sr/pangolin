@@ -123,6 +123,7 @@ set(TRI_CPP_SOURCES
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
+    include/graph/allocator/cuda_managed.hpp
     include/graph/cpu_triangle_counter.hpp
     include/graph/csr_tc.hpp
     include/graph/cudamemcpy_tc.hpp

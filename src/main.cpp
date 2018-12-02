@@ -25,8 +25,8 @@ int main(int argc, char **argv)
 					["--verbose"]("print verbose messages to stderr");
 	cli = cli | clara::Opt(config.numCPUThreads_, "int")
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
-	cli = cli | clara::Opt(config.numGPUs_, "int")
-					["-g"]["--num_gpu"]("number of gpus");
+	cli = cli | clara::Opt(config.gpus_, "ids")
+					["-g"]("gpus to use");
 	cli = cli | clara::Opt([&](unsigned int seed) {
 			  seedSet = true;
 			  config.seed_ = seed;
