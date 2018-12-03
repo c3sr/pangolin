@@ -1,10 +1,10 @@
- #include "graph/csr_tc.hpp"
- #include "graph/logger.hpp"
- #include "graph/utilities.hpp"
+#include "graph/csr_tc.hpp"
+#include "graph/logger.hpp"
+#include "graph/utilities.hpp"
+#include "graph/reader/gc_tsv_reader.hpp"
+#include "graph/par_graph.hpp"
 
- #include "graph/par_graph.hpp"
-
- #include <cub/cub.cuh>
+#include <cub/cub.cuh>
 
 const int BLOCK_DIM_X = 128;
 
@@ -123,12 +123,15 @@ CSRTC::~CSRTC() {
 void CSRTC::read_data(const std::string &path) {
 
     LOG(info, "reading {}", path);
-    auto edgeList = EdgeList::read_tsv(path);
+
+    GraphChallengeTSVReader reader(path);
+
+    auto edgeList = reader.read_edges();
 
     // convert edge list to DAG by src < dst
     EdgeList filtered;
     for (const auto &e : edgeList) {
-        if (e.src_ < e.dst_) {
+        if (e.first < e.second) {
             filtered.push_back(e);
         }
     }

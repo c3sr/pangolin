@@ -1,9 +1,8 @@
- #include "graph/vertex_tc.hpp"
- #include "graph/logger.hpp"
- #include "graph/utilities.hpp"
-
- #include "graph/dag_lowertriangular_csr.hpp"
- #include "graph/reader/gc_tsv_reader.hpp"
+#include "graph/vertex_tc.hpp"
+#include "graph/logger.hpp"
+#include "graph/utilities.hpp"
+#include "graph/dag_lowertriangular_csr.hpp"
+#include "graph/reader/gc_tsv_reader.hpp"
 
 
 __device__ size_t intersections(const Int *a_b, const Int *a_e, const Int *b_b, const Int *b_e) {

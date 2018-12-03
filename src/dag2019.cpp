@@ -19,32 +19,32 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
     // });
 
     // ensure node IDs are 0 - whatever
-    const auto smallest = l.begin()->src_;
+    const auto smallest = l.begin()->first;
     LOG(debug, "smallest node was {}", smallest);
     for (auto &e : l)
     {
-        e.src_ -= smallest;
-        e.dst_ -= smallest;
+        e.first -= smallest;
+        e.second -= smallest;
     }
 
     for (const auto edge : l)
     {
 
-        assert(edge.src_ >= 0);
-        assert(edge.dst_ >= 0);
+        assert(edge.first >= 0);
+        assert(edge.second >= 0);
 
-        if (dag.nodes_.size() != size_t(edge.src_ + 1))
+        if (dag.nodes_.size() != size_t(edge.first + 1))
         {
-            assert(edge.src_ == dag.nodes_.size());
+            assert(edge.first == dag.nodes_.size());
             // LOG(trace, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
             dag.nodes_.push_back(dag.edgeSrc_.size());
         }
 
         // convert to directed graph by only saving one direction of edges
-        if (edge.src_ < edge.dst_)
+        if (edge.first < edge.second)
         {
-            dag.edgeSrc_.push_back(edge.src_);
-            dag.edgeDst_.push_back(edge.dst_);
+            dag.edgeSrc_.push_back(edge.first);
+            dag.edgeDst_.push_back(edge.second);
             // LOG(trace, "added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
         }
     }

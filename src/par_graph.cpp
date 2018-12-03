@@ -22,8 +22,8 @@ ParGraph ParGraph::from_edges(const std::set<Edge> &local, const std::set<Edge> 
 ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 {
     // sort local and remove
-    std::vector<Edge> sortedLocal = local.edges_;
-    std::vector<Edge> sortedRemote = remote.edges_;
+    EdgeList sortedLocal = local;
+    EdgeList sortedRemote = remote;
 
     // rename node ids to be consecutive 0 -> n-1
     // order by src in local and remote and then dst in local and remote
@@ -32,30 +32,30 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     Int nextId = 0;
     for (const auto &e : local)
     {
-        if (0 == rename.count(e.src_))
+        if (0 == rename.count(e.first))
         {
-            rename[e.src_] = nextId++;
+            rename[e.first] = nextId++;
         }
     }
     for (const auto &e : remote)
     {
-        if (0 == rename.count(e.src_))
+        if (0 == rename.count(e.first))
         {
-            rename[e.src_] = nextId++;
+            rename[e.first] = nextId++;
         }
     }
     for (const auto &e : local)
     {
-        if (0 == rename.count(e.dst_))
+        if (0 == rename.count(e.second))
         {
-            rename[e.dst_] = nextId++;
+            rename[e.second] = nextId++;
         }
     }
     for (const auto &e : remote)
     {
-        if (0 == rename.count(e.dst_))
+        if (0 == rename.count(e.second))
         {
-            rename[e.dst_] = nextId++;
+            rename[e.second] = nextId++;
         }
     }
 
@@ -63,30 +63,30 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     LOG(debug, "renaming");
     for (auto &e : sortedLocal)
     {
-        e.src_ = rename[e.src_];
-        e.dst_ = rename[e.dst_];
+        e.first = rename[e.first];
+        e.second = rename[e.second];
     }
     for (auto &e : sortedRemote)
     {
-        e.src_ = rename[e.src_];
-        e.dst_ = rename[e.dst_];
+        e.first = rename[e.first];
+        e.second = rename[e.second];
     }
 
     // sort local and remote by src id
     LOG(debug, "sorting");
     std::sort(sortedLocal.begin(), sortedLocal.end(), [&](const Edge &a, const Edge &b) {
-        if (a.src_ == b.src_)
+        if (a.first == b.first)
         {
-            return (a.dst_ < b.dst_);
+            return (a.second < b.second);
         }
-        return a.src_ < b.src_;
+        return a.first < b.first;
     });
     std::sort(sortedRemote.begin(), sortedRemote.end(), [&](const Edge &a, const Edge &b) {
-        if (a.src_ == b.src_)
+        if (a.first == b.first)
         {
-            return (a.dst_ < b.dst_);
+            return (a.second < b.second);
         }
-        return a.src_ < b.src_;
+        return a.first < b.first;
     });
 
     ParGraph graph;
@@ -127,17 +127,17 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
             ++ri;
         }
 
-        maxDst = std::max(edge.dst_, maxDst);
+        maxDst = std::max(edge.second, maxDst);
 
-        LOG(trace, "edge {} -> {} local={}", edge.src_, edge.dst_, edgeIsLocal);
-        if (graph.rowStarts_.size() != edge.src_ + 1)
+        LOG(trace, "edge {} -> {} local={}", edge.first, edge.second, edgeIsLocal);
+        if (graph.rowStarts_.size() != edge.first + 1)
         {
-            LOG(trace, "new row {} at {}", edge.src_, graph.nonZeros_.size());
-            assert(graph.rowStarts_.size() == edge.src_);
+            LOG(trace, "new row {} at {}", edge.first, graph.nonZeros_.size());
+            assert(graph.rowStarts_.size() == edge.first);
             graph.rowStarts_.push_back(graph.nonZeros_.size());
         }
 
-        graph.nonZeros_.push_back(edge.dst_);
+        graph.nonZeros_.push_back(edge.second);
         graph.isLocalNonZero_.push_back(edgeIsLocal);
     }
 
@@ -213,11 +213,11 @@ std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
                 LOG(debug, "remote set with {} edges", remoteSet.size());
                 for (const auto &e : localSet)
                 {
-                    LOG(trace, "local edge {} -> {}", e.src_, e.dst_);
+                    LOG(trace, "local edge {} -> {}", e.first, e.second);
                 }
                 for (const auto &e : remoteSet)
                 {
-                    LOG(trace, "remote edge {} -> {}", e.src_, e.dst_);
+                    LOG(trace, "remote edge {} -> {}", e.first, e.second);
                 }
 
                 graphs.push_back(ParGraph::from_edges(localSet, remoteSet));
@@ -243,11 +243,11 @@ std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
         LOG(debug, "remote set with {} edges", remoteSet.size());
         for (const auto &e : localSet)
         {
-            LOG(trace, "local edge {} -> {}", e.src_, e.dst_);
+            LOG(trace, "local edge {} -> {}", e.first, e.second);
         }
         for (const auto &e : remoteSet)
         {
-            LOG(trace, "remote edge {} -> {}", e.src_, e.dst_);
+            LOG(trace, "remote edge {} -> {}", e.first, e.second);
         }
 
         graphs.push_back(ParGraph::from_edges(localSet, remoteSet));

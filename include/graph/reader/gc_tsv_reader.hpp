@@ -13,15 +13,15 @@ sorted with increasing src, and within each src increasing dst
 class GraphChallengeTSVReader
 {
 
-  private:
-    std::string path_;
+private:
+  std::string path_;
 
-  public:
-    GraphChallengeTSVReader(const std::string &path);
+public:
+  GraphChallengeTSVReader(const std::string &path);
 
-    // read_edges(0, N/2)
-    // read_edges(N/2, N)
-    /*
+  // read_edges(0, N/2)
+  // read_edges(N/2, N)
+  /*
     Read edges starting from the first complete edge after start to the
     last complete edge after end. So, a Reader on a file with length N
     would be completely covered like this:
@@ -30,7 +30,10 @@ class GraphChallengeTSVReader
     If start is 0, start there
     if end is past EOF, read until EOF
     */
-    EdgeList read_edges(size_t start, size_t end);
+  EdgeList read_edges(size_t start, size_t end);
 
-    long size();
+  // Read all edges
+  EdgeList read_edges();
+
+  long size();
 };

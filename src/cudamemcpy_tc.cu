@@ -1,8 +1,8 @@
- #include "graph/cudamemcpy_tc.hpp"
- #include "graph/logger.hpp"
- #include "graph/utilities.hpp"
-
- #include "graph/dag2019.hpp"
+#include "graph/cudamemcpy_tc.hpp"
+#include "graph/logger.hpp"
+#include "graph/utilities.hpp"
+#include "graph/reader/gc_tsv_reader.hpp"
+#include "graph/dag2019.hpp"
 
 const int BLOCK_DIM_X = 128;
 
@@ -88,7 +88,8 @@ CudaMemcpyTC::~CudaMemcpyTC() {
 void CudaMemcpyTC::read_data(const std::string &path) {
 
     LOG(info, "reading {}", path);
-    auto edgeList = EdgeList::read_tsv(path);
+    GraphChallengeTSVReader reader(path);
+    auto edgeList = reader.read_edges();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
 

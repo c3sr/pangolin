@@ -1,9 +1,69 @@
 #include <fstream>
 #include <limits>
+#include <sstream>
 
 #include "graph/edge_list.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/logger.hpp"
+
+// read stream until end
+static EdgeList read_stream(std::istream &is, std::istream::streampos end)
+{
+    EdgeList l;
+    const Int intMax = std::numeric_limits<Int>::max();
+
+    LOG(debug, "reading from {} until {}", is.tellg(), end);
+
+    for (std::string line; std::getline(is, line);)
+    {
+
+        // only check position if we're not reading the whole file
+        if (end != -1)
+        {
+            // if we read past the end for this line, don't record edge
+            if (is.tellg() > end)
+            {
+                LOG(debug, "read past requested end {}", end);
+                break;
+            }
+        }
+
+        std::istringstream iss(line);
+
+        int64_t src64, dst64;
+        iss >> dst64;
+        iss >> src64;
+        // no characters extracted or parsing error
+        if (iss.fail())
+        {
+            break;
+        }
+
+        if (src64 > intMax)
+        {
+            LOG(critical, "{} is too large for sizeof(Int)={}", src64, sizeof(Int));
+            exit(-1);
+        }
+        if (dst64 > intMax)
+        {
+            LOG(critical, "{} is too large for sizeof(Int)={}", dst64, sizeof(Int));
+            exit(-1);
+        }
+        Int src = src64;
+        Int dst = dst64;
+
+        l.push_back(Edge(src, dst));
+    }
+    LOG(debug, "finished reading stream at {}", is.tellg());
+
+    if (l.size())
+    {
+        LOG(debug, "first edge {} -> {}", l.begin()->first, l.begin()->second);
+        LOG(debug, "2nd last edge {} -> {}", (l.end() - 2)->first, (l.end() - 2)->second);
+        LOG(debug, "last edge {} -> {}", (l.end() - 1)->first, (l.end() - 1)->second);
+    }
+    return l;
+}
 
 GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : path_(path) {}
 
@@ -87,6 +147,11 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
 
     fs = std::ifstream(path_);
     fs.seekg(edgeStart);
-    EdgeList l = EdgeList::read_tsv(fs, edgeEnd);
+    EdgeList l = read_stream(fs, edgeEnd);
     return l;
+}
+
+EdgeList GraphChallengeTSVReader::read_edges()
+{
+    return read_edges(0, -1);
 }

@@ -112,7 +112,6 @@ set(TRI_CPP_SOURCES
   src/config.cpp
   src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
-  src/edge_list.cpp
   src/logger.cpp
   src/main.cpp
   src/cpu_triangle_counter.cpp
@@ -124,13 +123,13 @@ set(TRI_CPP_SOURCES
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
-    include/graph/allocator/cuda_managed.hpp
     include/graph/config.hpp
     include/graph/cpu_triangle_counter.hpp
     include/graph/csr_tc.hpp
     include/graph/cudamemcpy_tc.hpp
     include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
+    include/graph/edge.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
     include/graph/nvgraph_triangle_counter.hpp
@@ -140,6 +139,7 @@ set(TRI_CPP_HEADERS
     include/graph/utilities.hpp
     include/graph/vertex_tc.hpp
     include/graph/zc_tc.hpp
+    include/graph/allocator/cuda_managed.hpp
     include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES
