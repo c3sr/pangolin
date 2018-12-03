@@ -15,7 +15,8 @@ class ParGraph
   public:
     std::vector<Int> rowStarts_;
     std::vector<Int> nonZeros_;
-    std::vector<bool> isLocalNonZero_;
+    // use unsigned char instead of bool so it's easy to copy to GPU
+    std::vector<unsigned char> isLocalNonZero_;
 
   public:
     ParGraph() {}
@@ -33,34 +34,6 @@ class ParGraph
         }
     }
 
-    size_t num_nodes() const noexcept
-    {
-        std::set<Int> ids;
-        for (Int i = 0; i < rowStarts_.size() - 1; ++i)
-        {
-            auto start = rowStarts_[i];
-            auto end = rowStarts_[i + 1];
-            LOG(trace, "node {} has offsets {} {}", i, start, end);
-            if (start != end)
-            {
-                ids.insert(i);
-            }
-            else
-            {
-                assert(false);
-            }
-
-            assert(start <= nnz());
-            assert(end <= nnz());
-            assert(end >= start);
-            for (Int j = start; j != end; ++j)
-            {
-                ids.insert(nonZeros_[j]);
-            }
-        }
-        return ids.size();
-    }
-
     size_t nnz() const noexcept
     {
 #ifdef __TRI_SANITY_CHECK
@@ -73,6 +46,8 @@ class ParGraph
     }
 
     static ParGraph from_edges(const EdgeList &local, const EdgeList &remote);
+    static ParGraph from_edges(const std::set<Edge> &local, const std::set<Edge> &remote);
+    std::vector<ParGraph> partition_nonzeros(const size_t numParts) const;
 };
 
 #undef __TRI_SANITY_CHECK

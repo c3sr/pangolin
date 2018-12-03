@@ -5,6 +5,20 @@
 
 #define __TRI_SANITY_CHECK
 
+ParGraph ParGraph::from_edges(const std::set<Edge> &local, const std::set<Edge> &remote)
+{
+    EdgeList localList, remoteList;
+    for (const auto &e : local)
+    {
+        localList.push_back(e);
+    }
+    for (const auto &e : remote)
+    {
+        remoteList.push_back(e);
+    }
+    return from_edges(localList, remoteList);
+}
+
 ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 {
     // sort local and remove
@@ -142,6 +156,105 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 #endif
 
     return graph;
+}
+
+std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
+{
+    size_t targetNumNonZeros = (nnz() + numParts - 1) / numParts;
+    LOG(debug, "partitioning into {} graphs with nnz ~= {}", numParts, targetNumNonZeros);
+    std::vector<ParGraph> graphs;
+
+    // Iterate over edges
+
+    std::set<Edge> localSet, remoteSet;
+    for (Int u = 0; u < rowStarts_.size(); ++u)
+    {
+        Int vStart = rowStarts_[u];
+        Int vEnd = rowStarts_[u + 1];
+        for (Int vOff = vStart; vOff < vEnd; ++vOff)
+        {
+            // Add the edge to the local set
+            Int v = nonZeros_[vOff];
+
+            localSet.insert(Edge(u, v));
+
+            // all outgoing edges from u and v need to be in the remote set
+            for (Int dstOff = vStart; dstOff < vEnd; ++dstOff)
+            {
+                Int dst = nonZeros_[dstOff];
+                Edge remoteEdge(u, dst);
+                if (!localSet.count(remoteEdge))
+                {
+                    remoteSet.insert(Edge(u, dst));
+                }
+            }
+            Int dstStart = rowStarts_[v];
+            Int dstEnd = rowStarts_[v + 1];
+            for (Int dstOff = dstStart; dstOff < dstEnd; ++dstOff)
+            {
+                Int dst = nonZeros_[dstOff];
+                remoteSet.insert(Edge(v, dst));
+            }
+
+            // if we've reached the target number of edges,
+            // create a new graph
+            if (localSet.size() == targetNumNonZeros)
+            {
+                // If any edge in the remote set is also in the local set, remove it
+                for (const auto &e : localSet)
+                {
+                    if (remoteSet.count(e))
+                    {
+                        remoteSet.erase(e);
+                    }
+                }
+
+                LOG(debug, "local set with {} edges", localSet.size());
+                LOG(debug, "remote set with {} edges", remoteSet.size());
+                for (const auto &e : localSet)
+                {
+                    LOG(trace, "local edge {} -> {}", e.src_, e.dst_);
+                }
+                for (const auto &e : remoteSet)
+                {
+                    LOG(trace, "remote edge {} -> {}", e.src_, e.dst_);
+                }
+
+                graphs.push_back(ParGraph::from_edges(localSet, remoteSet));
+                localSet.clear();
+                remoteSet.clear();
+            }
+        }
+    }
+
+    // we've gone through all the edges, if there is something in the local set, we need to add it
+    if (!localSet.empty())
+    {
+        // If any edge in the remote set is also in the local set, remove it
+        for (const auto &e : localSet)
+        {
+            if (remoteSet.count(e))
+            {
+                remoteSet.erase(e);
+            }
+        }
+
+        LOG(debug, "local set with {} edges", localSet.size());
+        LOG(debug, "remote set with {} edges", remoteSet.size());
+        for (const auto &e : localSet)
+        {
+            LOG(trace, "local edge {} -> {}", e.src_, e.dst_);
+        }
+        for (const auto &e : remoteSet)
+        {
+            LOG(trace, "remote edge {} -> {}", e.src_, e.dst_);
+        }
+
+        graphs.push_back(ParGraph::from_edges(localSet, remoteSet));
+    }
+
+    assert(graphs.size() == numParts);
+    return graphs;
 }
 
 #undef __TRI_SANITY_CHECK

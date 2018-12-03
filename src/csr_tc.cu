@@ -188,7 +188,7 @@ __global__ static void kernel_tc2(
 }
 
 
-CSRTC::CSRTC(Config &c) : dimGrid_(1000) {
+CSRTC::CSRTC(Config &c) {
 
     gpus_ = c.gpus_;
 
@@ -197,13 +197,18 @@ CSRTC::CSRTC(Config &c) : dimGrid_(1000) {
         CUDA_RUNTIME(cudaSetDevice(i));
         CUDA_RUNTIME(cudaFree(0));
     }
+
+    triangleCounts_ = std::vector<Uint *>(gpus_.size(), nullptr);
+	rowStarts_d_.resize(gpus_.size());
+	nonZeros_d_.resize(gpus_.size());
+	isLocalNonZero_d_.resize(gpus_.size());
 }
 
 CSRTC::~CSRTC() {
-    CUDA_RUNTIME(cudaFree(rowStarts_d_));
-    CUDA_RUNTIME(cudaFree(nonZeros_d_));
-    CUDA_RUNTIME(cudaFree(isLocalNonZero_d_));
-    CUDA_RUNTIME(cudaFreeHost(triangleCounts_));
+
+    for (auto p : triangleCounts_) {
+        CUDA_RUNTIME(cudaFreeHost(p));
+    }
 }
 
 void CSRTC::read_data(const std::string &path) {
@@ -220,58 +225,102 @@ void CSRTC::read_data(const std::string &path) {
     }
 
     LOG(debug, "building DAG");
-    // remote is empty for now
-    graph_ = ParGraph::from_edges(filtered, EdgeList());
+    // for singe dag, no remote edges
+    auto graph = ParGraph::from_edges(filtered, EdgeList());
 
-    LOG(info, "{} edges", graph_.nnz());
-    LOG(info, "{} nodes", graph_.num_nodes());
-    LOG(info, "{} rows", graph_.rowStarts_.size() - 1);
+    LOG(info, "{} edges", graph.nnz());
+    LOG(info, "{} nodes", graph.num_rows());
+
+    if (gpus_.size() == 1) {
+        graphs_.push_back(graph);
+    } else {
+        graphs_ = graph.partition_nonzeros(gpus_.size());
+    }
+
+    size_t partNodes = 0;
+    size_t partEdges = 0;
+    for (const auto &graph : graphs_) {
+        partNodes += graph.num_rows();
+        partEdges += graph.nnz();
+    }
+    LOG(info, "node replication {}", partNodes / graph.num_rows());
+    LOG(info, "edge replication {}", partEdges / graph.nnz());
 }
 
 void CSRTC::setup_data() {
     assert(gpus_.size());
-    CUDA_RUNTIME(cudaSetDevice(gpus_[0]));
-    const size_t rowStartsSz = graph_.rowStarts_.size() * sizeof(Int);
-    const size_t nonZerosSz = graph_.nonZeros_.size() * sizeof(Int);
-    const size_t isLocalNonZeroSz = 0;
-    const size_t countSz = dimGrid_.x * sizeof(*triangleCounts_);
+    assert(graphs_.size() == gpus_.size());
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const auto &graph = graphs_[i];
+        const int dev = gpus_[i];
+        CUDA_RUNTIME(cudaSetDevice(dev));
 
-    CUDA_RUNTIME(cudaMalloc(&rowStarts_d_, rowStartsSz));
-    CUDA_RUNTIME(cudaMalloc(&nonZeros_d_, nonZerosSz));
-    isLocalNonZero_d_ = nullptr;
-    CUDA_RUNTIME(cudaHostAlloc(&triangleCounts_, countSz, cudaHostAllocMapped));
+        dimGrids_.push_back(graph.num_rows());
+        const dim3 &dimGrid = dimGrids_[i];
 
-    LOG(trace, "copy {} rowStarts_ bytes", rowStartsSz);
-    CUDA_RUNTIME(cudaMemcpy(rowStarts_d_, graph_.rowStarts_.data(), rowStartsSz, cudaMemcpyDefault));
-    CUDA_RUNTIME(cudaMemcpy(nonZeros_d_, graph_.nonZeros_.data(), nonZerosSz, cudaMemcpyDefault)); 
+        const size_t rowStartsSz = graph.rowStarts_.size() * sizeof(Int);
+        const size_t nonZerosSz = graph.nonZeros_.size() * sizeof(Int);
+        const size_t isLocalNonZeroSz = graph.isLocalNonZero_.size() * sizeof(graph.isLocalNonZero_[0]);
+        const size_t countSz = dimGrid.x * sizeof(*(triangleCounts_[0]));
 
+        auto &triangleCounts = triangleCounts_[i];
+        auto &rowStarts_d = rowStarts_d_[i];
+        auto &nonZeros_d = nonZeros_d_[i];
+        auto &isLocalNonZero_d = isLocalNonZero_d_[i];
+
+
+        CUDA_RUNTIME(cudaMalloc(&rowStarts_d, rowStartsSz));
+        CUDA_RUNTIME(cudaMalloc(&nonZeros_d, nonZerosSz));
+        CUDA_RUNTIME(cudaMalloc(&isLocalNonZero_d, isLocalNonZeroSz));
+        CUDA_RUNTIME(cudaHostAlloc(&triangleCounts, countSz, cudaHostAllocMapped));
+
+        LOG(trace, "copy {} rowStarts bytes", rowStartsSz);
+        CUDA_RUNTIME(cudaMemcpy(rowStarts_d, graph.rowStarts_.data(), rowStartsSz, cudaMemcpyDefault));
+        LOG(trace, "copy {} nonZeros bytes", nonZerosSz);
+        CUDA_RUNTIME(cudaMemcpy(nonZeros_d, graph.nonZeros_.data(), nonZerosSz, cudaMemcpyDefault)); 
+        LOG(trace, "copy {} isLocalNonZero bytes", isLocalNonZeroSz);
+        CUDA_RUNTIME(cudaMemcpy(isLocalNonZero_d, graph.isLocalNonZero_.data(), isLocalNonZeroSz, cudaMemcpyDefault)); 
+    }
 }
 
 size_t CSRTC::count() {
-    
 
-        CUDA_RUNTIME(cudaSetDevice(0));
-        const size_t numRows = graph_.num_rows();
-
-
-        // size_t edgeCount = std::min(edgesPerDevice, graph_.num_edges() - edgeOffset);
-        // LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
-
-
+    assert(graphs_.size() == gpus_.size());
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const auto &graph = graphs_[i];
+        const int dev = gpus_[i];
+        const dim3 &dimGrid = dimGrids_[i];
+        
+        const size_t numRows = graph.num_rows();
         dim3 dimBlock(BLOCK_DIM_X);
-    
-        LOG(debug, "kernel dims {} x {}", dimGrid_.x, dimBlock.x);
-        kernel_tc2<<<dimGrid_, dimBlock>>>(triangleCounts_, rowStarts_d_, nonZeros_d_, isLocalNonZero_d_, numRows);
+        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+        kernel_tc2<<<dimGrid, dimBlock>>>(triangleCounts_[i], rowStarts_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+    }
 
+
+    Uint total = 0;
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const int &dev = gpus_[i];
+        const dim3 &dimGrid = dimGrids_[i];
+        LOG(debug, "waiting for GPU {}", dev);
+        CUDA_RUNTIME(cudaSetDevice(dev));
         CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    auto start = std::chrono::system_clock::now();
-    size_t total = 0;
-    for(size_t i = 0; i < dimGrid_.x; ++i) {
-        total += triangleCounts_[i];
+        Uint partitionTotal = 0;
+        LOG(debug, "cpu reduction for GPU {}", dev);
+        for(size_t j = 0; j < dimGrid.x; ++j) {
+            partitionTotal += triangleCounts_[i][j];
+        }
+        LOG(debug, "partition had {} triangles", partitionTotal);
+        total += partitionTotal;
     }
-    auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-    LOG(debug, "CPU reduction {}s", elapsed);
+
+    // auto start = std::chrono::system_clock::now();
+    // for(size_t i = 0; i < dimGrid_.x; ++i) {
+    //     total += triangleCounts_[i];
+    // }
+    // auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+    // LOG(debug, "CPU reduction {}s", elapsed);
 
 
     return total;
