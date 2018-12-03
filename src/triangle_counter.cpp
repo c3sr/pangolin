@@ -16,7 +16,12 @@ void TriangleCounter::setup_data()
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
 {
-    if (c.type_ == "zc")
+    if (c.type_ == "")
+    {
+        LOG(critical, "no counting method provided. Use -m flag");
+        exit(-1);
+    }
+    else if (c.type_ == "zc")
     {
         return new ZeroCopyTriangleCounter();
     }

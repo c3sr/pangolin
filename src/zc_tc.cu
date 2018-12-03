@@ -112,7 +112,7 @@ void ZeroCopyTriangleCounter::setup_data() {
 
 }
 
-Uint ZeroCopyTriangleCounter::count() {
+size_t ZeroCopyTriangleCounter::count() {
     
     int numDev;
     CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
