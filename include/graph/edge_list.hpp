@@ -10,9 +10,22 @@ template <typename T>
 class EdgeBase
 {
 public:
+  EdgeBase() {}
   EdgeBase(const T &src, const T &dst) : src_(src), dst_(dst) {}
   T src_;
   T dst_;
+
+  inline bool operator<(const EdgeBase &rhs) const noexcept
+  {
+    if (src_ == rhs.src_)
+    {
+      return dst_ < rhs.dst_;
+    }
+    else
+    {
+      return src_ < rhs.src_;
+    }
+  }
 };
 
 typedef EdgeBase<Int> Edge;
@@ -58,6 +71,7 @@ public:
   // create edgelist from an istream, reading until end
   static EdgeList read_tsv(std::istream &is, std::istream::streampos end = -1);
 
-private:
   std::vector<Edge> edges_;
+
+private:
 };

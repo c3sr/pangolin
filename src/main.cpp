@@ -15,6 +15,7 @@ int main(int argc, char **argv)
 	bool help = false;
 	bool debug = false;
 	bool verbose = false;
+	bool seedSet = false;
 
 	clara::Parser cli;
 	cli = cli | clara::Help(help);
@@ -24,8 +25,14 @@ int main(int argc, char **argv)
 					["--verbose"]("print verbose messages to stderr");
 	cli = cli | clara::Opt(config.numCPUThreads_, "int")
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
-	cli = cli | clara::Opt(config.numGPUs_, "int")
-					["-g"]["--num_gpu"]("number of gpus");
+	cli = cli | clara::Opt(config.gpus_, "ids")
+					["-g"]("gpus to use");
+	cli = cli | clara::Opt([&](unsigned int seed) {
+			  seedSet = true;
+			  config.seed_ = seed;
+			  return clara::detail::ParserResult::ok(clara::detail::ParseResultType::Matched);
+		  },
+						   "int")["-s"]["--seed"]("random seed");
 	cli = cli | clara::Opt(config.type_, "cpu|cudamemcpy|nvgraph|um|zc")["-m"]["--method"]("method (default = um)").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
@@ -50,6 +57,17 @@ int main(int argc, char **argv)
 	{
 		logger::console->set_level(spdlog::level::debug);
 	}
+	if (seedSet)
+	{
+		LOG(debug, "using seed {}", config.seed_);
+		srand(config.seed_);
+	}
+	else
+	{
+		uint seed = time(NULL);
+		LOG(debug, "using seed {}", seed);
+		srand(time(NULL));
+	}
 
 #ifndef TRI_RELEASE
 	LOG(warn, "Not a release build");
@@ -60,12 +78,12 @@ int main(int argc, char **argv)
 	auto start = std::chrono::system_clock::now();
 	tc->read_data(adjacencyListPath);
 	double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-	LOG(debug, "read_data time {}s", elapsed);
+	LOG(info, "read_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
 	tc->setup_data();
 	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-	LOG(debug, "setup_data time {}s", elapsed);
+	LOG(info, "setup_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
 	const auto numTriangles = tc->count();

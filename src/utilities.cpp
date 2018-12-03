@@ -5,9 +5,9 @@ void checkCuda(cudaError_t result, const char *file, const int line)
 {
 	if (result != cudaSuccess)
 	{
-		fprintf(stderr, "CUDA Runtime Error %s@%i: %s\n", file, line,
-				cudaGetErrorString(result));
-		assert(result == cudaSuccess);
+		LOG(critical, "{}@{}: CUDA Runtime Error: {}\n", file, line,
+			cudaGetErrorString(result));
+		exit(-1);
 	}
 }
 
@@ -15,7 +15,7 @@ void checkNvgraph(nvgraphStatus_t result, const char *file, const int line)
 {
 	if (result != NVGRAPH_STATUS_SUCCESS)
 	{
-		printf("nvgraph Error: %d in %s : %d\n", result, file, line);
-		exit(0);
+		printf("nvgraph Error: %s in %s : %d\n", nvgraphStatusGetString(result), file, line);
+		exit(-1);
 	}
 }

@@ -1,7 +1,24 @@
-#include "graph/nvgraph_triangle_counter.hpp"
+#include <memory>
+#include <cmath>
+
 #include "graph/logger.hpp"
+#include "graph/nvgraph_triangle_counter.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/utilities.hpp"
+
+NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
+{
+    if (c.gpus_.size() > 1)
+    {
+        gpu_ = c.gpus_[0];
+        LOG(warn, "NvGraphTriangleCounter requires exactly 1 GPU. Selected GPU {}", gpu_);
+    }
+    else if (c.gpus_.size() == 0)
+    {
+        LOG(critical, "NvGraphTriangleCounter requires 1 GPU");
+        exit(-1);
+    }
+}
 
 void NvGraphTriangleCounter::read_data(const std::string &path)
 {
@@ -15,31 +32,43 @@ void NvGraphTriangleCounter::read_data(const std::string &path)
 
     LOG(debug, "{} nodes", dag_.num_nodes());
     LOG(debug, "{} edges", dag_.num_edges());
+
+    csr_ = new struct nvgraphCSRTopology32I_st;
+    csr_->nvertices = dag_.num_nodes();
+    csr_->nedges = dag_.num_edges();
 }
 
 void NvGraphTriangleCounter::setup_data()
 {
     assert(sizeof(Int) == sizeof(int));
-    csr_ = new struct nvgraphCSRTopology32I_st;
-    csr_->nvertices = dag_.num_nodes();
-    csr_->nedges = dag_.num_edges();
-
-    Int *sourceOffsets;
-    Int *destinationIndices;
 
     const size_t srcBytes = dag_.sourceOffsets_.size() * sizeof(Int);
     const size_t dstBytes = dag_.destinationIndices_.size() * sizeof(Int);
-    CUDA_RUNTIME(cudaMalloc((void **)&sourceOffsets, srcBytes));
-    CUDA_RUNTIME(cudaMalloc((void **)&destinationIndices, dstBytes));
-    CUDA_RUNTIME(cudaMemcpy(sourceOffsets, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
-    CUDA_RUNTIME(cudaMemcpy(destinationIndices, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
+    CUDA_RUNTIME(cudaMalloc((void **)&(csr_->source_offsets), srcBytes));
+    CUDA_RUNTIME(cudaMalloc((void **)&(csr_->destination_indices), dstBytes));
+    CUDA_RUNTIME(cudaMemcpy(csr_->source_offsets, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
+    CUDA_RUNTIME(cudaMemcpy(csr_->destination_indices, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
 
-    csr_->source_offsets = reinterpret_cast<int *>(sourceOffsets);
-    csr_->destination_indices = reinterpret_cast<int *>(destinationIndices);
+    LOG(trace, "dag with {} edges and {} nodes", csr_->nedges, csr_->nvertices);
+    for (int i = 0; i < dag_.num_nodes(); ++i)
+    {
+        Int rowStart = dag_.sourceOffsets_[i];
+        Int rowEnd = dag_.sourceOffsets_[i + 1];
+        for (size_t o = rowStart; o < rowEnd; ++o)
+        {
+            LOG(trace, "node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
+        }
+    }
 }
 
 size_t NvGraphTriangleCounter::count()
 {
+
+    if (csr_->nvertices == 0)
+    {
+        return 0;
+    }
+    uint64_t trcount = 0;
 
     nvgraphHandle_t handle;
     nvgraphGraphDescr_t graphDes;
@@ -49,7 +78,6 @@ size_t NvGraphTriangleCounter::count()
 
     NVGRAPH(nvgraphSetGraphStructure(handle, graphDes, (void *)csr_, NVGRAPH_CSR_32));
 
-    uint64_t trcount = 0;
     NVGRAPH(nvgraphTriangleCount(handle, graphDes, &trcount));
 
     NVGRAPH(nvgraphDestroyGraphDescr(handle, graphDes));

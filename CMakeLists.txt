@@ -47,6 +47,9 @@ endmacro()
 hunter_add_package(spdlog)
 find_package(spdlog CONFIG REQUIRED)
 
+hunter_add_package(cub)
+find_package(cub CONFIG REQUIRED)
+
 find_package(OpenMP REQUIRED)
 IF(OPENMP_FOUND)
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -106,6 +109,7 @@ set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
+  src/config.cpp
   src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
   src/edge_list.cpp
@@ -113,19 +117,24 @@ set(TRI_CPP_SOURCES
   src/main.cpp
   src/cpu_triangle_counter.cpp
   src/nvgraph_triangle_counter.cpp
+  src/par_graph.cpp
   src/triangle_counter.cpp
   src/utilities.cpp
   src/reader/gc_tsv_reader.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
+    include/graph/allocator/cuda_managed.hpp
+    include/graph/config.hpp
     include/graph/cpu_triangle_counter.hpp
+    include/graph/csr_tc.hpp
     include/graph/cudamemcpy_tc.hpp
     include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
     include/graph/nvgraph_triangle_counter.hpp
+    include/graph/par_graph.hpp
     include/graph/triangle_counter.hpp
     include/graph/um_tc.hpp
     include/graph/utilities.hpp
@@ -134,6 +143,7 @@ set(TRI_CPP_HEADERS
     include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES
+  src/csr_tc.cu
   src/cudamemcpy_tc.cu
   src/um_tc.cu
   src/vertex_tc.cu
@@ -167,9 +177,12 @@ set_tri_properties(PROPERTIES
 
 
 tri_link_libraries(spdlog::spdlog)
-tri_link_libraries(${CUDA_LIBRARIES} -lnvgraph)
 tri_link_libraries(${OpenMP_LIBRARIES})
-# tri_link_libraries(nvToolsExt)
+if(CUDA_FOUND)
+  tri_link_libraries(${CUDA_LIBRARIES} -lnvgraph)
+  tri_link_libraries(cub::cub)
+  # tri_link_libraries(nvToolsExt)
+endif()
 
 # Request that scope be built with -std=c++11
 # As this is a public compile feature anything that links to

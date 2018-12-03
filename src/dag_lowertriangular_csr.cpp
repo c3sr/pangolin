@@ -1,5 +1,8 @@
 #include "graph/dag_lowertriangular_csr.hpp"
 
+#include <map>
+#include <set>
+
 DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
 {
     DAGLowerTriangularCSR dag;
@@ -50,8 +53,6 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
         }
     }
     dag.sourceOffsets_.push_back(dag.destinationIndices_.size());
-
-    LOG(debug, "{}", dag.destinationIndices_.back());
 
     return dag;
 }
