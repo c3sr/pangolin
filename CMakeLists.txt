@@ -109,6 +109,7 @@ set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
+  src/config.cpp
   src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
   src/edge_list.cpp
@@ -124,6 +125,7 @@ set(TRI_CPP_SOURCES
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/allocator/cuda_managed.hpp
+    include/graph/config.hpp
     include/graph/cpu_triangle_counter.hpp
     include/graph/csr_tc.hpp
     include/graph/cudamemcpy_tc.hpp

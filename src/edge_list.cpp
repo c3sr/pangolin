@@ -58,8 +58,8 @@ EdgeList EdgeList::read_tsv(std::istream &is, std::istream::streampos end)
     if (l.size())
     {
         LOG(debug, "first edge {} -> {}", l.begin()->src_, l.begin()->dst_);
-        LOG(debug, "2nd last  edge {} -> {}", (l.end() - 2)->src_, (l.end() - 2)->dst_);
-        LOG(debug, "last  edge {} -> {}", (l.end() - 1)->src_, (l.end() - 1)->dst_);
+        LOG(debug, "2nd last edge {} -> {}", (l.end() - 2)->src_, (l.end() - 2)->dst_);
+        LOG(debug, "last edge {} -> {}", (l.end() - 1)->src_, (l.end() - 1)->dst_);
     }
     return l;
 }

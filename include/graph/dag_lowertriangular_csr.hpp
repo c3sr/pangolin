@@ -8,29 +8,6 @@
 #include "graph/edge_list.hpp"
 #include "graph/logger.hpp"
 
-// struct VertexGroup
-// {
-//     virtual size_t count(const Int &e) const = 0;
-//     virtual ~VertexGroup() {}
-//     virtual std::iterator<std::bidirectional_iterator_tag, Int> begin() = 0;
-//     virtual std::iterator<std::bidirectional_iterator_tag, Int> end() = 0;
-// };
-
-// struct VertexRange : public VertexGroup
-// {
-//     Int min_;
-//     Int max_;
-
-//     VertexRange(Int min, Int max) : min_(min), max_(max) {}
-
-//     size_t count(const Int &e) const override
-//     {
-//         return (e >= min_ && e < max_) ? 1 : 0;
-//     }
-//     virtual Int begin() const override { return min_; }
-//     virtual Int end() const override { return max_; }
-// };
-
 struct VertexSet
 {
     typedef std::set<Int> container_t;
@@ -92,9 +69,4 @@ class DAGLowerTriangularCSR
     }
 
     static DAGLowerTriangularCSR from_edgelist(EdgeList &l);
-
-    // get all edges that nodes along edges from srcGroup -> dstGroup participat in.
-    // this is more than just srcGroup -> dstGroup edges
-    EdgeList get_node_edges(const VertexSet &srcGroup, const VertexSet &dstGroup) const;
-    std::vector<DAGLowerTriangularCSR> partition(const std::vector<VertexSet> &vertexGroups);
 };

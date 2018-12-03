@@ -8,97 +8,6 @@
 
 const int BLOCK_DIM_X = 128;
 
-__global__ static void kernel_tc(
-    Uint * __restrict__ triangleCounts, // per block triangle count
-    const Int *rowStarts,
-    const Int *nonZeros,
-    const bool *isLocalNonZero,
-    const size_t numRows) {
-     
-
-    // Specialize BlockReduce for a 1D block of 128 threads on type int
-    typedef cub::BlockReduce<Uint, BLOCK_DIM_X> BlockReduce;
-    // Allocate shared memory for BlockReduce
-    __shared__ typename BlockReduce::TempStorage temp_storage;
-
-    // Compute the block-wide sum for thread0
-
-
-
-    const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
-    
-    Uint count = 0;
-    for (Int row = gx; row < numRows; row += BLOCK_DIM_X * gridDim.x) {
-
-        // offsets for head of edge
-        const Int head = row;
-
-        // offsets for tail of edge
-        const Int tailStart = rowStarts[head];
-        const Int tailEnd = rowStarts[head+1];
-
-        for (Int tailOff = tailStart; tailOff < tailEnd; ++tailOff) {
-
-            // only count local edges
-            if (!isLocalNonZero || isLocalNonZero[tailOff]) {
-                const Int tail = nonZeros[tailOff];
-
-                // edges from the head
-                Int headEdge = tailStart;
-                const Int headEdgeEnd = tailEnd;
-        
-                // edge from the tail
-                Int tailEdge = rowStarts[tail];
-                const Int tailEdgeEnd = rowStarts[tail + 1];
-        
-                bool readHead = true;
-                bool readTail = true;
-                while (headEdge < headEdgeEnd && tailEdge < tailEdgeEnd){
-        
-                    Int u, v;
-                    if (readHead) {
-                        u = nonZeros[headEdge];
-                        readHead = false;
-                    }
-                    if (readTail) {
-                        v = nonZeros[tailEdge];
-                        readTail = false;
-                    }
-
-        
-                    // the two nodes that make up this edge both have a common dst
-                    if (u == v) {
-                        ++count;
-                        ++headEdge;
-                        ++tailEdge;
-                        readHead = true;
-                        readTail = true;
-                    }
-                    else if (u < v){
-                        ++headEdge;
-                        readHead = true;
-                    }
-                    else {
-                        ++tailEdge;
-                        readTail = true;
-                    }
-                }
-            } 
-        }          
-    }
-
-    // if (threadIdx.x == 0) {
-    //     triangleCounts[blockIdx.x] = 0;
-    // }
-    // __syncthreads();
-    // atomicAdd(&triangleCounts[blockIdx.x], count);
-    Uint aggregate = BlockReduce(temp_storage).Sum(count);
-    if (threadIdx.x == 0) {
-        triangleCounts[blockIdx.x] = aggregate;
-    }
-    
-}
-
 __global__ static void kernel_tc2(
     Uint * __restrict__ triangleCounts, // per block triangle count
     const Int *rowStarts,
@@ -237,14 +146,16 @@ void CSRTC::read_data(const std::string &path) {
         graphs_ = graph.partition_nonzeros(gpus_.size());
     }
 
-    size_t partNodes = 0;
-    size_t partEdges = 0;
-    for (const auto &graph : graphs_) {
-        partNodes += graph.num_rows();
-        partEdges += graph.nnz();
+    if (graphs_.size() > 1) {
+        size_t partNodes = 0;
+        size_t partEdges = 0;
+        for (const auto &graph : graphs_) {
+            partNodes += graph.num_rows();
+            partEdges += graph.nnz();
+        }
+        LOG(info, "node replication {}", partNodes / graph.num_rows());
+        LOG(info, "edge replication {}", partEdges / graph.nnz());
     }
-    LOG(info, "node replication {}", partNodes / graph.num_rows());
-    LOG(info, "edge replication {}", partEdges / graph.nnz());
 }
 
 void CSRTC::setup_data() {

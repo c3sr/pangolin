@@ -8,9 +8,9 @@
 class NvGraphTriangleCounter : public TriangleCounter
 {
 private:
-  int numGPUs_;
-  std::vector<DAGLowerTriangularCSR> dags_;
-  std::vector<nvgraphCSRTopology32I_t> csrs_;
+  int gpu_;
+  DAGLowerTriangularCSR dag_;
+  nvgraphCSRTopology32I_t csr_;
 
 public:
   NvGraphTriangleCounter(Config &c);

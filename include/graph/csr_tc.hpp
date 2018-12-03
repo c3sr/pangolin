@@ -9,9 +9,9 @@
 
 class CSRTC : public TriangleCounter
 {
-private:
+  private:
 	std::vector<int> gpus_; // which GPUs to use
-	size_t numCPUThreads_;	// how many threads to use
+	size_t numCPUThreads_;  // how many threads to use
 
 	// partitioned data structures
 	std::vector<ParGraph> graphs_;
@@ -23,7 +23,7 @@ private:
 	std::vector<bool *> isLocalNonZero_d_;
 	std::vector<dim3> dimGrids_;
 
-public:
+  public:
 	CSRTC(Config &c);
 	virtual ~CSRTC();
 	virtual void read_data(const std::string &path) override;
