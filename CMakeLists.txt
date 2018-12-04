@@ -181,7 +181,7 @@ tri_link_libraries(${OpenMP_LIBRARIES})
 if(CUDA_FOUND)
   tri_link_libraries(${CUDA_LIBRARIES} -lnvgraph)
   tri_link_libraries(cub::cub)
-  # tri_link_libraries(nvToolsExt)
+  tri_link_libraries(nvToolsExt)
 endif()
 
 # Request that scope be built with -std=c++11
