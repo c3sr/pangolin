@@ -7,6 +7,43 @@
 #include <set>
 #include <nvToolsExt.h>
 
+__device__ static bool binary_search(Int* array, Int left, Int right, const Int search_val) {
+    while(left <= right) {
+        int mid = (left + right)/2;
+        int val = array[mid];
+        if(val < search_val) {
+            left = mid + 1;
+        } else if(val > search_val) {
+            right = mid - 1;
+        } else { // val == search_val
+            return 1;
+        }
+    }
+    return 0;
+}
+
+__device__ static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd) {
+    size_t count = 0;
+    const Int *ap = aBegin;
+    const Int *bp = bBegin;
+
+    while (ap < aEnd && bp < bEnd) {
+
+        if (*ap == *bp) {
+            ++count;
+            ++ap;
+            ++bp;
+        }
+        else if (*ap < *bp){
+            ++ap;
+        }
+        else {
+            ++bp;
+        }
+    }
+    return count;
+}
+
 __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -28,7 +65,10 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
         bool readSrc = true;
         bool readDst = true;
 
-        while (src_edge < src_edge_end && dst_edge < dst_edge_end){
+        count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+
+        /*
+        while (src_edge < src_edge_end && dst_edge < dst_edge_end) {
 
             Int u, v;
 
@@ -59,12 +99,11 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
                 readDst = true;
             }
         }
+        */
 
         triangleCounts[i] = count;
     }
 }
-
-
 
 UMTC::UMTC(Config &c) {
     nvtxRangePush(__PRETTY_FUNCTION__);
