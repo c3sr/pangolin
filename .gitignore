@@ -58,5 +58,6 @@ CTestTestfile.cmake
 # End of https://www.gitignore.io/api/c++,cuda,cmake
 
 build
-data/*.tsv
+data/tsv/*.tsv
+data/tsv/*.gz
 .vscode
