@@ -77,6 +77,7 @@ int main(int argc, char **argv)
 
 	auto start = std::chrono::system_clock::now();
 	tc->read_data(adjacencyListPath);
+	const size_t numEdges = tc->num_edges();
 	double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(info, "read_data time {}s", elapsed);
 
@@ -90,7 +91,7 @@ int main(int argc, char **argv)
 	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(info, "count time {}s", elapsed);
 
-	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numTriangles / elapsed);
+	fmt::print("{} {} {} {}\n", adjacencyListPath, numTriangles, elapsed, numEdges / elapsed);
 
 	delete tc;
 	return 0;

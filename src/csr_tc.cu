@@ -140,6 +140,7 @@ void CSRTC::read_data(const std::string &path) {
     // for singe dag, no remote edges
     auto graph = ParGraph::from_edges(filtered, EdgeList());
 
+    numEdges_ = graph.nnz();
     LOG(info, "{} edges", graph.nnz());
     LOG(info, "{} nodes", graph.num_rows());
 
