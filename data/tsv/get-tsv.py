@@ -4,6 +4,8 @@ from __future__ import print_function
 import urllib, os
 import gzip
 from subprocess import call, check_output
+import tempfile
+import shutil
 
 URLS = [
 "https://graphchallenge.s3.amazonaws.com/synthetic/gc3/Theory-16-25-81-Bk.tsv",
@@ -43,6 +45,20 @@ def get_extracted_size(path):
     sz = int(lines[1].split()[1])
     return sz
 
+def gunzip_and_keep(path):
+  # if gunzip supports -k, use that
+  code = call(["gunzip", "-k", "-f", path])
+  if code != 0:
+    # copy to tmp
+    _, tmp = tempfile.mkstemp()
+    shutil.copyfile(path, tmp)
+
+    # extract original
+    call(["gunzip", "-f", path])
+
+    # mv tmp to original
+    shutil.move(tmp, path)
+
 for url in URLS + SNAP_URLS:
   remoteSize = get_remote_size(url)
   localFile = os.path.basename(url)
@@ -59,9 +75,7 @@ for url in URLS + SNAP_URLS:
     expectSz = get_extracted_size(localFile)
     actualSz = get_local_size(extractedName)
     if expectSz != actualSz:
-      cmd = ['gunzip', "-k", "-f", localFile]
-      print("running", " ".join(cmd))
-      call(cmd)
+      gunzip_and_keep(localFile)
     else:
       print(extractedName, "already exists and is the expected size (", expectSz, ")")
 
