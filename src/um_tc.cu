@@ -7,7 +7,7 @@
 #include <set>
 #include <nvToolsExt.h>
 
-__device__ static bool binary_search(Int* array, Int left, Int right, const Int search_val) {
+__device__ static bool binary_search(const Int* const array, Int left, Int right, const Int search_val) {
     while(left <= right) {
         int mid = (left + right)/2;
         int val = array[mid];
@@ -62,12 +62,14 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
 
         size_t count = 0;
 
-        bool readSrc = true;
-        bool readDst = true;
-
         count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+        // for (const Int *u = &edgeDst[src_edge]; u != &edgeDst[src_edge_end]; ++u) {
+        //     count += binary_search(edgeDst, dst_edge, dst_edge_end-1, *u);
+        // }
 
         /*
+        bool readSrc = true;
+        bool readDst = true;
         while (src_edge < src_edge_end && dst_edge < dst_edge_end) {
 
             Int u, v;
