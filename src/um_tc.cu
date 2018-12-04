@@ -81,6 +81,10 @@ UMTC::UMTC(Config &c) {
         LOG(info, "Initializing CUDA device {}", dev);
         CUDA_RUNTIME(cudaSetDevice(dev));
         CUDA_RUNTIME(cudaFree(0));
+        if (0 == cudaDeviceProps_.count(dev)) {
+            LOG(debug, "getting properties for device {}", dev);
+            CUDA_RUNTIME(cudaGetDeviceProperties(&cudaDeviceProps_[dev], dev));
+        }
     }
     nvtxRangePop();
 }
@@ -123,6 +127,15 @@ void UMTC::setup_data() {
     CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
     CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault)); 
     CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
+
+    for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
+      CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetReadMostly, i));
+      if (cudaDeviceProps_[i].concurrentManagedAccess) {
+        CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetAccessedBy, i));
+      } else {
+          LOG(warn, "skipping cudaMemAdviseSetAccessedBy for device {}: cudaDeviceProp.concurrentManagedAccess = 0", i);
+      }
+    }
     nvtxRangePop();
 }
 

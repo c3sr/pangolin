@@ -5,12 +5,14 @@
 
 #include <vector>
 #include <iostream>
+#include <map>
 
 class UMTC : public TriangleCounter
 {
 private:
 	DAG2019 hostDAG_;
 	std::vector<int> gpus_;
+	std::map<int, cudaDeviceProp> cudaDeviceProps_;
 	size_t *triangleCounts_; // per-edge triangle counts
 	Int *edgeSrc_d_;
 	Int *edgeDst_d_;
