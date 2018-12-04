@@ -3,7 +3,7 @@
 from __future__ import print_function
 import urllib, os
 import gzip
-from subprocess import call, check_output
+from subprocess import call, check_output, CalledProcessError
 import tempfile
 import shutil
 
@@ -47,8 +47,12 @@ def get_extracted_size(path):
 
 def gunzip_and_keep(path):
   # if gunzip supports -k, use that
-  code = call(["gunzip", "-k", "-f", path])
-  if code != 0:
+  cmd = ["gunzip", "-k", "-f", path]
+  print("trying", " ".join(cmd))
+  try:
+    output = check_output(cmd)
+  except CalledProcessError as e:
+    print("failed. Assuming no support for gunzip -k")
     # copy to tmp
     _, tmp = tempfile.mkstemp()
     shutil.copyfile(path, tmp)
