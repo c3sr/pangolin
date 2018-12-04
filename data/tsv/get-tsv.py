@@ -9,10 +9,15 @@ URLS = [
 "https://graphchallenge.s3.amazonaws.com/synthetic/gc3/Theory-16-25-81-Bk.tsv",
 "https://graphchallenge.s3.amazonaws.com/synthetic/gc3/Theory-16-25-81-B1k.tsv",
 "https://graphchallenge.s3.amazonaws.com/synthetic/gc3/Theory-16-25-81-B2k.tsv",
-"https://graphchallenge.s3.amazonaws.com/snap/soc-Epinions1/soc-Epinions1_adj.tsv",
-"https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz",
+"https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale20-ef16/graph500-scale20-ef16_adj.tsv.gz",
 "https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale21-ef16/graph500-scale21-ef16_adj.tsv.gz",
-"https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale20-ef16/graph500-scale20-ef16_adj.tsv.gz"
+"https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz",
+]
+
+SNAP_URLS = [
+  "https://graphchallenge.s3.amazonaws.com/snap/soc-Epinions1/soc-Epinions1_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/amazon0302/amazon0302_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/roadNet-CA/roadNet-CA_adj.tsv",
 ]
 
 def get_remote_size(url):
@@ -27,7 +32,6 @@ def get_local_size(path):
     return 0
 
 def download(url, dst):
-  print(url, "->", dst)
   urllib.urlretrieve(url, dst)
 
 def get_extracted_size(path):
@@ -39,7 +43,7 @@ def get_extracted_size(path):
     sz = int(lines[1].split()[1])
     return sz
 
-for url in URLS:
+for url in URLS + SNAP_URLS:
   remoteSize = get_remote_size(url)
   localFile = os.path.basename(url)
   localSize = get_local_size(localFile)
