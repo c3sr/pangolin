@@ -31,7 +31,7 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     }
     else if (c.type_ == "um")
     {
-        return new UMTC();
+        return new UMTC(c);
     }
     else if (c.type_ == "nvgraph")
     {

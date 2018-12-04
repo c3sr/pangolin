@@ -8,15 +8,16 @@
 
 class UMTC : public TriangleCounter
 {
-private:
+  private:
 	DAG2019 hostDAG_;
+	std::vector<int> gpus_;
 	size_t *triangleCounts_; // per-edge triangle counts
 	Int *edgeSrc_d_;
 	Int *edgeDst_d_;
 	Int *nodes_d_;
 
-public:
-	UMTC();
+  public:
+	UMTC(Config &c);
 	virtual ~UMTC();
 	virtual void read_data(const std::string &path) override;
 	virtual void setup_data() override;
