@@ -44,11 +44,12 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
     return count;
 }
 
+template <size_t BLOCK_DIM_X>
 __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
-    const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
+    const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
     
-    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += blockDim.x * gridDim.x) {
+    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += BLOCK_DIM_X * gridDim.x) {
 
         // get the src and dst node for this edge
         const Int src = edgeSrc[i];
@@ -62,10 +63,26 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
 
         size_t count = 0;
 
-        count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
-        // for (const Int *u = &edgeDst[src_edge]; u != &edgeDst[src_edge_end]; ++u) {
-        //     count += binary_search(edgeDst, dst_edge, dst_edge_end-1, *u);
-        // }
+        // const size_t linearLoads = (dst_edge_end - dst_edge) + (src_edge_end - src_edge);
+        // const size_t binaryLoads = (src_edge_end - src_edge) * (8 * sizeof(Int) -__clz(dst_edge_end - dst_edge));
+        const size_t linearLoads = 0;
+        const size_t binaryLoads = 1;
+
+        if (linearLoads < 2 * binaryLoads) { // prefer linear by factor of 2
+            count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+
+        } else {
+            // binary search of larger list
+            if (src_edge_end - src_edge < dst_edge_end - dst_edge) {
+                for (const Int *u = &edgeDst[src_edge]; u != &edgeDst[src_edge_end]; ++u) {
+                    count += binary_search(edgeDst, dst_edge, dst_edge_end-1, *u);
+                }
+            } else {
+                for (const Int *u = &edgeDst[dst_edge]; u != &edgeDst[dst_edge_end]; ++u) {
+                    count += binary_search(edgeDst, src_edge, src_edge_end-1, *u);
+                }                
+            }
+        }
 
         /*
         bool readSrc = true;
@@ -106,6 +123,7 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
         triangleCounts[i] = count;
     }
 }
+
 
 UMTC::UMTC(Config &c) {
     nvtxRangePush(__PRETTY_FUNCTION__);
@@ -199,12 +217,12 @@ size_t UMTC::count() {
         size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
         LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
-
-        dim3 dimBlock(512);
+        const size_t BLOCK_SIZE = 128;
+        dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid((edgeCount + dimBlock.x - 1) / dimBlock.x);
     
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
+        kernel_tc<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     
