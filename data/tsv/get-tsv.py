@@ -22,6 +22,18 @@ SNAP_URLS = [
   "https://graphchallenge.s3.amazonaws.com/snap/soc-Epinions1/soc-Epinions1_adj.tsv",
   "https://graphchallenge.s3.amazonaws.com/snap/amazon0302/amazon0302_adj.tsv",
   "https://graphchallenge.s3.amazonaws.com/snap/roadNet-CA/roadNet-CA_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/cit-Patents/cit-Patents_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/email-EuAll/email-EuAll_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/flickrEdges/flickrEdges_adj.tsv",
+]
+
+HU2017_URLS = [
+  "https://graphchallenge.s3.amazonaws.com/snap/cit-Patents/cit-Patents_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/email-EuAll/email-EuAll_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/flickrEdges/flickrEdges_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/synthetic/graph500-scale18-ef16/graph500-scale18-ef16_adj.tsv.gz",
+  "https://graphchallenge.s3.amazonaws.com/snap/soc-Epinions1/soc-Epinions1_adj.tsv",
+  "https://graphchallenge.s3.amazonaws.com/snap/roadNet-CA/roadNet-CA_adj.tsv",
 ]
 
 def get_remote_size(url):
@@ -65,7 +77,7 @@ def gunzip_and_keep(path):
     # mv tmp to original
     shutil.move(tmp, path)
 
-for url in URLS + SNAP_URLS:
+for url in set(URLS + SNAP_URLS + HU2017_URLS):
   remoteSize = get_remote_size(url)
   localFile = os.path.basename(url)
   localSize = get_local_size(localFile)
