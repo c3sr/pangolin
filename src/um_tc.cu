@@ -6,6 +6,7 @@
 
 #include <set>
 #include <nvToolsExt.h>
+#include <cub/cub.cuh>
 
 __device__ static bool binary_search(const Int* const array, Int left, Int right, const Int search_val) {
     while(left <= right) {
@@ -45,7 +46,7 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
      
     const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
     
@@ -63,26 +64,11 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
 
         size_t count = 0;
 
-        // const size_t linearLoads = (dst_edge_end - dst_edge) + (src_edge_end - src_edge);
-        // const size_t binaryLoads = (src_edge_end - src_edge) * (8 * sizeof(Int) -__clz(dst_edge_end - dst_edge));
-        const size_t linearLoads = 0;
-        const size_t binaryLoads = 1;
 
-        if (linearLoads < 2 * binaryLoads) { // prefer linear by factor of 2
+
             count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
 
-        } else {
-            // binary search of larger list
-            if (src_edge_end - src_edge < dst_edge_end - dst_edge) {
-                for (const Int *u = &edgeDst[src_edge]; u != &edgeDst[src_edge_end]; ++u) {
-                    count += binary_search(edgeDst, dst_edge, dst_edge_end-1, *u);
-                }
-            } else {
-                for (const Int *u = &edgeDst[dst_edge]; u != &edgeDst[dst_edge_end]; ++u) {
-                    count += binary_search(edgeDst, src_edge, src_edge_end-1, *u);
-                }                
-            }
-        }
+
 
         /*
         bool readSrc = true;
@@ -121,6 +107,76 @@ __global__ static void kernel_tc(size_t *triangleCounts, const Int *edgeSrc, con
         */
 
         triangleCounts[i] = count;
+    }
+}
+
+
+template <size_t BLOCK_DIM_X>
+__global__ static void kernel_tc2(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
+
+    static_assert(BLOCK_DIM_X > 0, "threadblock should have at least 1 thread");
+    static_assert(BLOCK_DIM_X % 32 == 0, "require BLOCK_DIM_X to be an integer number of warps");
+    const Int WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
+
+    const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
+    const Int gwx = gx / 32;
+    const Int lx = gx % 32;
+    
+    typedef cub::WarpReduce<size_t> WarpReduce;
+    __shared__ typename WarpReduce::TempStorage temp_storage[WARPS_PER_BLOCK];
+
+    // each edge gets a warp
+    for (Int i = gwx + edgeOffset; i < edgeOffset + numEdges; i += WARPS_PER_BLOCK * gridDim.x) {
+
+        // get the src and dst node for this edge
+        #if 0
+        Int src_edge, src_edge_end, dst_edge, dst_edge_end;
+        if (lx == 0) {
+            Int src = edgeSrc[i];
+            Int dst = edgeDst[i];
+            src_edge = nodes[src];
+            src_edge_end = nodes[src + 1];
+            dst_edge = nodes[dst];
+            dst_edge_end = nodes[dst + 1];
+        }
+        src_edge = cub::ShuffleIndex<Int>(src_edge, 0, 32, 0xffffffff);
+        dst_edge = cub::ShuffleIndex<Int>(dst_edge, 0, 32, 0xffffffff);
+        src_edge_end = cub::ShuffleIndex<Int>(src_edge_end, 0, 32, 0xffffffff);
+        dst_edge_end = cub::ShuffleIndex<Int>(dst_edge_end, 0, 32, 0xffffffff);
+        #else
+
+        // get the src and dst node for this edge
+        const Int src = edgeSrc[i];
+        const Int dst = edgeDst[i];
+        const Int src_edge = nodes[src];
+        const Int src_edge_end = nodes[src + 1];
+        const Int dst_edge = nodes[dst];
+        const Int dst_edge_end = nodes[dst + 1];
+        #endif
+
+
+        size_t count = 0;
+
+        // binary search of larger list
+        if (src_edge_end - src_edge < dst_edge_end - dst_edge) {
+            for (const Int *u = &edgeDst[src_edge] + lx; u < &edgeDst[src_edge_end]; u += 32) {
+                count += binary_search(edgeDst, dst_edge, dst_edge_end-1, *u);
+            }
+        } else {
+            for (const Int *u = &edgeDst[dst_edge] + lx; u < &edgeDst[dst_edge_end]; u += 32) {
+                count += binary_search(edgeDst, src_edge, src_edge_end-1, *u);
+            }                
+        }
+
+
+        // Obtain one input item per thread
+        // Return the warp-wide sums to each lane0 (threads 0, 32, 64, and 96)
+        int warp_id = threadIdx.x / 32;
+        size_t aggregate = WarpReduce(temp_storage[warp_id]).Sum(count);
+
+        if (lx == 0) {
+            triangleCounts[i] = aggregate;
+        }
     }
 }
 
@@ -222,7 +278,7 @@ size_t UMTC::count() {
         dim3 dimGrid((edgeCount + dimBlock.x - 1) / dimBlock.x);
     
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
+        kernel_tc2<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     
