@@ -1,10 +1,9 @@
-#include "graph/um_tc.hpp"
+#include "graph/hu_tc.hpp"
 #include "graph/logger.hpp"
 #include "graph/utilities.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/dag2019.hpp"
 
-#include <set>
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
 
@@ -45,74 +44,9 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
     return count;
 }
 
+
 template <size_t BLOCK_DIM_X>
 __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
-     
-    const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
-    
-    for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += BLOCK_DIM_X * gridDim.x) {
-
-        // get the src and dst node for this edge
-        const Int src = edgeSrc[i];
-        const Int dst = edgeDst[i];
-
-        Int src_edge = nodes[src];
-        const Int src_edge_end = nodes[src + 1];
-
-        Int dst_edge = nodes[dst];
-        const Int dst_edge_end = nodes[dst + 1];
-
-        size_t count = 0;
-
-
-
-            count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
-
-
-
-        /*
-        bool readSrc = true;
-        bool readDst = true;
-        while (src_edge < src_edge_end && dst_edge < dst_edge_end) {
-
-            Int u, v;
-
-            if (readSrc) {
-                u = edgeDst[src_edge];
-                readSrc = false;
-            }
-
-            if (readDst) {
-                v = edgeDst[dst_edge];
-                readDst = false;
-            }
-
-            // the two nodes that make up this edge both have a common dst
-            if (u == v) {
-                ++count;
-                ++src_edge;
-                ++dst_edge;
-                readSrc = true;
-                readDst = true;
-            }
-            else if (u < v){
-                ++src_edge;
-                readSrc = true;
-            }
-            else {
-                ++dst_edge;
-                readDst = true;
-            }
-        }
-        */
-
-        triangleCounts[i] = count;
-    }
-}
-
-
-template <size_t BLOCK_DIM_X>
-__global__ static void kernel_tc2(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
 
     static_assert(BLOCK_DIM_X > 0, "threadblock should have at least 1 thread");
     static_assert(BLOCK_DIM_X % 32 == 0, "require BLOCK_DIM_X to be an integer number of warps");
@@ -129,30 +63,12 @@ __global__ static void kernel_tc2(size_t * __restrict__ triangleCounts, const In
     for (Int i = gwx + edgeOffset; i < edgeOffset + numEdges; i += WARPS_PER_BLOCK * gridDim.x) {
 
         // get the src and dst node for this edge
-        #if 0
-        Int src_edge, src_edge_end, dst_edge, dst_edge_end;
-        if (lx == 0) {
-            Int src = edgeSrc[i];
-            Int dst = edgeDst[i];
-            src_edge = nodes[src];
-            src_edge_end = nodes[src + 1];
-            dst_edge = nodes[dst];
-            dst_edge_end = nodes[dst + 1];
-        }
-        src_edge = cub::ShuffleIndex<Int>(src_edge, 0, 32, 0xffffffff);
-        dst_edge = cub::ShuffleIndex<Int>(dst_edge, 0, 32, 0xffffffff);
-        src_edge_end = cub::ShuffleIndex<Int>(src_edge_end, 0, 32, 0xffffffff);
-        dst_edge_end = cub::ShuffleIndex<Int>(dst_edge_end, 0, 32, 0xffffffff);
-        #else
-
-        // get the src and dst node for this edge
         const Int src = edgeSrc[i];
         const Int dst = edgeDst[i];
         const Int src_edge = nodes[src];
         const Int src_edge_end = nodes[src + 1];
         const Int dst_edge = nodes[dst];
         const Int dst_edge_end = nodes[dst + 1];
-        #endif
 
 
         size_t count = 0;
@@ -181,29 +97,12 @@ __global__ static void kernel_tc2(size_t * __restrict__ triangleCounts, const In
 }
 
 
-UMTC::UMTC(Config &c) {
+Hu2018TC::Hu2018TC(Config &c) : CUDATriangleCounter(c) {
     nvtxRangePush(__PRETTY_FUNCTION__);
-    LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
-
-    gpus_ = c.gpus_;
-
-    if (gpus_.empty()) {
-        LOG(critical, "Unified-memory edge-set intersection triangle counter requires >= 1 GPU");
-        exit(-1);
-    }
-
-    for (int dev : std::set<int>(gpus_.begin(), gpus_.end())) {
-        LOG(info, "Initializing CUDA device {}", dev);
-        CUDA_RUNTIME(cudaSetDevice(dev));
-        CUDA_RUNTIME(cudaFree(0));
-        if (0 == cudaDeviceProps_.count(dev)) {
-            CUDA_RUNTIME(cudaGetDeviceProperties(&cudaDeviceProps_[dev], dev));
-        }
-    }
     nvtxRangePop();
 }
 
-UMTC::~UMTC() {
+Hu2018TC::~Hu2018TC() {
     nvtxRangePush(__PRETTY_FUNCTION__);
     CUDA_RUNTIME(cudaFree(edgeSrc_d_));
     CUDA_RUNTIME(cudaFree(edgeDst_d_));
@@ -212,7 +111,7 @@ UMTC::~UMTC() {
     nvtxRangePop();
 }
 
-void UMTC::read_data(const std::string &path) {
+void Hu2018TC::read_data(const std::string &path) {
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
     GraphChallengeTSVReader reader(path);
@@ -225,7 +124,7 @@ void UMTC::read_data(const std::string &path) {
     nvtxRangePop();
 }
 
-void UMTC::setup_data() {
+void Hu2018TC::setup_data() {
     nvtxRangePush(__PRETTY_FUNCTION__);
     const size_t edgeBytes = hostDAG_.edgeSrc_.size() * sizeof(Int);
     const size_t nodeBytes = hostDAG_.nodes_.size() * sizeof(Int);
@@ -258,7 +157,7 @@ void UMTC::setup_data() {
     nvtxRangePop();
 }
 
-size_t UMTC::count() {
+size_t Hu2018TC::count() {
     nvtxRangePush(__PRETTY_FUNCTION__);
     const size_t numDev = gpus_.size();
 
@@ -278,7 +177,7 @@ size_t UMTC::count() {
         dim3 dimGrid((edgeCount + dimBlock.x - 1) / dimBlock.x);
     
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc2<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
+        kernel_tc<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     

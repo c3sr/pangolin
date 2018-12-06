@@ -4,7 +4,7 @@
 #include "graph/cudamemcpy_tc.hpp"
 #include "graph/impact_2018_tc.hpp"
 #include "graph/nvgraph_triangle_counter.hpp"
-#include "graph/um_tc.hpp"
+#include "graph/hu_tc.hpp"
 #include "graph/vertex_tc.hpp"
 
 TriangleCounter::~TriangleCounter() {}
@@ -24,6 +24,10 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     else if (c.type_ == "impact")
     {
         return new IMPACT2018TC(c);
+    }
+    else if (c.type_ == "hu")
+    {
+        return new Hu2018TC(c);
     }
     else if (c.type_ == "cudamemcpy")
     {

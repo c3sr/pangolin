@@ -134,11 +134,11 @@ set(TRI_CPP_HEADERS
     include/graph/edge.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
+    include/graph/hu_tc.hpp
     include/graph/impact_2018_tc.hpp
     include/graph/nvgraph_triangle_counter.hpp
     include/graph/par_graph.hpp
     include/graph/triangle_counter.hpp
-    include/graph/um_tc.hpp
     include/graph/utilities.hpp
     include/graph/vertex_tc.hpp
     include/graph/allocator/cuda_managed.hpp
@@ -147,8 +147,8 @@ set(TRI_CPP_HEADERS
 set(TRI_CUDA_SOURCES
   src/csr_tc.cu
   src/cudamemcpy_tc.cu
+  src/hu_tc.cu
   src/impact_2018_tc.cu
-  src/um_tc.cu
   src/vertex_tc.cu
 )
 
