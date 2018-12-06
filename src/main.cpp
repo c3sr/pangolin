@@ -27,6 +27,8 @@ int main(int argc, char **argv)
 					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
 	cli = cli | clara::Opt(config.gpus_, "ids")
 					["-g"]("gpus to use");
+	cli = cli | clara::Opt(config.storage_, "zc|um")
+					["-s"]("GPU Memory Kind");
 	cli = cli | clara::Opt([&](unsigned int seed) {
 			  seedSet = true;
 			  config.seed_ = seed;

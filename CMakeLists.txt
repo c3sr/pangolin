@@ -110,6 +110,7 @@ set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
   src/config.cpp
+  src/cuda_triangle_counter.cpp
   src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
   src/logger.cpp
@@ -126,12 +127,14 @@ set(TRI_CPP_HEADERS
     include/graph/config.hpp
     include/graph/cpu_triangle_counter.hpp
     include/graph/csr_tc.hpp
+    include/graph/cuda_triangle_counter.hpp
     include/graph/cudamemcpy_tc.hpp
     include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
     include/graph/edge.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
+    include/graph/impact_2018_tc.hpp
     include/graph/nvgraph_triangle_counter.hpp
     include/graph/par_graph.hpp
     include/graph/triangle_counter.hpp
@@ -145,6 +148,7 @@ set(TRI_CPP_HEADERS
 set(TRI_CUDA_SOURCES
   src/csr_tc.cu
   src/cudamemcpy_tc.cu
+  src/impact_2018_tc.cu
   src/um_tc.cu
   src/vertex_tc.cu
   src/zc_tc.cu
