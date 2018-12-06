@@ -145,7 +145,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
     }
     LOG(trace, "found edge end after {} at {}", end, edgeEnd);
 
-    fs = std::ifstream(path_);
+    fs.clear(); // clear fail and eof bits
     fs.seekg(edgeStart);
     EdgeList l = read_stream(fs, edgeEnd);
     return l;
