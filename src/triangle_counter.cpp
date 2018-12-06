@@ -6,7 +6,6 @@
 #include "graph/nvgraph_triangle_counter.hpp"
 #include "graph/um_tc.hpp"
 #include "graph/vertex_tc.hpp"
-#include "graph/zc_tc.hpp"
 
 TriangleCounter::~TriangleCounter() {}
 

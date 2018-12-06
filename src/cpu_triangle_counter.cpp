@@ -7,6 +7,33 @@
 #include "graph/logger.hpp"
 #include "graph/dag2019.hpp"
 
+static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd)
+{
+    size_t count = 0;
+    const Int *ap = aBegin;
+    const Int *bp = bBegin;
+
+    while (ap < aEnd && bp < bEnd)
+    {
+
+        if (*ap == *bp)
+        {
+            ++count;
+            ++ap;
+            ++bp;
+        }
+        else if (*ap < *bp)
+        {
+            ++ap;
+        }
+        else
+        {
+            ++bp;
+        }
+    }
+    return count;
+}
+
 CPUTriangleCounter::CPUTriangleCounter(const Config &c)
 {
     numThreads_ = c.numCPUThreads_;
@@ -57,8 +84,6 @@ size_t CPUTriangleCounter::count()
     for (size_t i = 0; i < dag_.num_edges(); ++i)
     {
 
-        size_t count = 0;
-
         Int u = dag_.edgeSrc_[i];
         Int v = dag_.edgeDst_[i];
 
@@ -68,29 +93,10 @@ size_t CPUTriangleCounter::count()
         Int v_ptr = dag_.nodes_[v];
         Int v_end = dag_.nodes_[v + 1];
 
-        Int v_u, v_v;
-
-        while ((u_ptr < u_end) && (v_ptr < v_end))
-        {
-
-            v_u = dag_.edgeDst_[u_ptr];
-            v_v = dag_.edgeDst_[v_ptr];
-
-            if (v_u == v_v)
-            {
-                ++count;
-                ++u_ptr;
-                ++v_ptr;
-            }
-            else if (v_u < v_v)
-            {
-                ++u_ptr;
-            }
-            else
-            {
-                ++v_ptr;
-            }
-        }
+        size_t count = intersection_count(&dag_.edgeDst_[u_ptr],
+                                          &dag_.edgeDst_[u_end],
+                                          &dag_.edgeDst_[v_ptr],
+                                          &dag_.edgeDst_[v_end]);
 
 #pragma omp atomic
         total += count;

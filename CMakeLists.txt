@@ -141,7 +141,6 @@ set(TRI_CPP_HEADERS
     include/graph/um_tc.hpp
     include/graph/utilities.hpp
     include/graph/vertex_tc.hpp
-    include/graph/zc_tc.hpp
     include/graph/allocator/cuda_managed.hpp
     include/graph/reader/gc_tsv_reader.hpp
 )
@@ -151,7 +150,6 @@ set(TRI_CUDA_SOURCES
   src/impact_2018_tc.cu
   src/um_tc.cu
   src/vertex_tc.cu
-  src/zc_tc.cu
 )
 
 

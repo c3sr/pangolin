@@ -24,18 +24,18 @@ int main(int argc, char **argv)
 	cli = cli | clara::Opt(verbose)
 					["--verbose"]("print verbose messages to stderr");
 	cli = cli | clara::Opt(config.numCPUThreads_, "int")
-					["-c"]["--num_cpu"]("number of cpu threads (default = automatic)");
+					["-c"]["--num_cpu"]("number of cpu threads");
 	cli = cli | clara::Opt(config.gpus_, "ids")
 					["-g"]("gpus to use");
 	cli = cli | clara::Opt(config.storage_, "zc|um")
-					["-s"]("GPU Memory Kind");
+					["-s"]("GPU memory kind");
 	cli = cli | clara::Opt([&](unsigned int seed) {
 			  seedSet = true;
 			  config.seed_ = seed;
 			  return clara::detail::ParserResult::ok(clara::detail::ParseResultType::Matched);
 		  },
 						   "int")["-s"]["--seed"]("random seed");
-	cli = cli | clara::Opt(config.type_, "cpu|csr|cudamemcpy|nvgraph|um|zc")["-m"]["--method"]("method (default = um)").required();
+	cli = cli | clara::Opt(config.type_, "cpu|csr|cudamemcpy|impact|nvgraph|um")["-m"]["--method"]("method").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
