@@ -121,6 +121,7 @@ set(TRI_CPP_SOURCES
   src/triangle_counter.cpp
   src/utilities.cpp
   src/reader/gc_tsv_reader.cpp
+  src/sparse/unified_memory_csr.cpp
 )
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
@@ -142,6 +143,7 @@ set(TRI_CPP_HEADERS
     include/graph/utilities.hpp
     include/graph/vertex_tc.hpp
     include/graph/allocator/cuda_managed.hpp
+    include/graph/dense/cuda_managed_vector.hpp
     include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES

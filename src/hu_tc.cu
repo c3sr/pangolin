@@ -3,6 +3,7 @@
 #include "graph/utilities.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/dag2019.hpp"
+#include "graph/sparse/unified_memory_csr.hpp"
 
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
@@ -44,6 +45,8 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
     return count;
 }
 
+
+typedef std::tuple<size_t, size_t, size_t> Task;
 
 template <size_t BLOCK_DIM_X>
 __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst, const Int *nodes, const size_t edgeOffset, const size_t numEdges){
@@ -121,6 +124,11 @@ void Hu2018TC::read_data(const std::string &path) {
 
     LOG(info, "{} nodes", hostDAG_.num_nodes());
     LOG(info, "{} edges", hostDAG_.num_edges());
+
+
+    std::vector<EdgeList> edgeListPartitions;
+    std::vector<UnifiedMemoryCSR> CSRPartitions;
+
     nvtxRangePop();
 }
 
