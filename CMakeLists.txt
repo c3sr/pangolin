@@ -127,7 +127,6 @@ set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/config.hpp
     include/graph/cpu_triangle_counter.hpp
-    include/graph/csr_tc.hpp
     include/graph/cuda_triangle_counter.hpp
     include/graph/cudamemcpy_tc.hpp
     include/graph/dag_lowertriangular_csr.hpp
@@ -147,7 +146,6 @@ set(TRI_CPP_HEADERS
     include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES
-  src/csr_tc.cu
   src/cudamemcpy_tc.cu
   src/hu_tc.cu
   src/impact_2018_tc.cu

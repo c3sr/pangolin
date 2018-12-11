@@ -1,194 +1,235 @@
 #include "graph/vertex_tc.hpp"
 #include "graph/logger.hpp"
 #include "graph/utilities.hpp"
-#include "graph/dag_lowertriangular_csr.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
+#include "graph/par_graph.hpp"
 
+#include <cub/cub.cuh>
 
-__device__ size_t intersections(const Int *a_b, const Int *a_e, const Int *b_b, const Int *b_e) {
+const int BLOCK_DIM_X = 128;
+
+__global__ static void kernel_tc2(
+    size_t * __restrict__ triangleCounts, // per block triangle count
+    const Int *rowStarts,
+    const Int *nonZeros,
+    const bool *isLocalNonZero,
+    const size_t numRows) {
+     
+
+    // Specialize BlockReduce for a 1D block of 128 threads on type int
+    typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
+    // Allocate shared memory for BlockReduce
+    __shared__ typename BlockReduce::TempStorage temp_storage;
+   
     size_t count = 0;
-    for (const Int *a = a_b; a != a_e; ++a) {
-        if (*a == -1) {
-            break;
-        }
-        for (const Int *b = b_b; b != b_e; ++b) {
-            if (*b == -1) {
-                break;
-            }
-            if (*a == *b) {
-                // printf("%d\n", *a);
-                ++count;
-            }
-        }
-    }
-    return count;
-}
+    // one row per block
+    for (Int row = blockIdx.x; row < numRows; row += gridDim.x) {
 
-// cols: nonzeros in each row
-// roff: starting offset of each row
-const size_t BLOCK_DIM = 128;
-__global__ static void kernel_tc(int * __restrict__ blockTriangleCounts, const Int *cols, const Int *roff, const size_t numRows){
-     
-    int count = 0;
+        // offsets for head of edge
+        const Int head = row;
 
-    // one block per vertex (u)
-    for (size_t u = blockIdx.x; u < numRows; u += gridDim.x) {
+        // offsets for tail of edge
+        const Int tailStart = rowStarts[head];
+        const Int tailEnd = rowStarts[head+1];
+
+        // one thread per edge
+        for (Int tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
+
+            // only count local edges
+            if (!isLocalNonZero || isLocalNonZero[tailOff]) {
+                const Int tail = nonZeros[tailOff];
+
+                // edges from the head
+                Int headEdge = tailStart;
+                const Int headEdgeEnd = tailEnd;
         
-        const size_t uRowStart = roff[u];
-        const size_t uRowEnd = roff[u+1];
-
-
-        // each thread follows edge u -> v from that vertex
-        for (size_t uRowOff = uRowStart; uRowOff < uRowEnd; uRowOff += BLOCK_DIM) {
-            size_t vIdx = uRowOff + threadIdx.x;
-            int64_t v = vIdx < uRowEnd ? cols[vIdx] : -1; // -1 is sentinel for more threads than nodes adjacent to u
-
-            if (v != -1) {
-                const size_t vRowStart = roff[v];
-                const size_t vRowEnd = roff[v+1];
-
-                int local_counts = 0;
-                local_counts = intersections(
-                    &cols[uRowStart],
-                    &cols[uRowEnd],
-                    &cols[vRowStart],
-                    &cols[vRowEnd]);
-                if (local_counts) {
-                    // printf("...in %lu -> %lu\n", u, v);
-                }
-                count += local_counts;
-            }
-
-        }
-    }
-
-    if (threadIdx.x == 0) {
-        blockTriangleCounts[blockIdx.x] = 0;
-    }
-    __syncthreads();
-    // block reduce
-    atomicAdd(&blockTriangleCounts[blockIdx.x], count);
-
-}
-
-__global__ static void kernel_tc2(int * __restrict__ blockTriangleCounts, const Int *cols, const Int *roff, const size_t numRows){
-     
-    int count = 0;
-    const size_t U_DST_BS = 32;
-    __shared__ Int uDsts[U_DST_BS];
-
-    // one block per vertex (u)
-    for (size_t u = blockIdx.x; u < numRows; u += gridDim.x) {
+                // edge from the tail
+                Int tailEdge = rowStarts[tail];
+                // printf("tid=%d edge %d-%d reading nodes %d %d\n", threadIdx.x, head, tail, tail, tail+1);
+                const Int tailEdgeEnd = rowStarts[tail + 1];
         
-        const size_t uRowStart = roff[u];
-        const size_t uRowEnd = roff[u+1];
-
-        // loop over chunks of vs in shared memory for the v's destinations to compare against i
-        for (size_t uRowChunkOff = uRowStart; uRowChunkOff < uRowEnd; uRowChunkOff += U_DST_BS) {
-            for (size_t i = threadIdx.x; i < U_DST_BS; i += BLOCK_DIM) {
-                size_t idx = uRowChunkOff + i;
-                if (idx < uRowEnd) {
-                    uDsts[threadIdx.x] = cols[uRowChunkOff + i];
-                } else {
-                    uDsts[threadIdx.x] = -1;
-                }
-            }
-            __syncthreads();
-
-
-            // in each chunk of v's, follow all u-> edges in groups of BLOCK_DIM and compare against that chunk of v's
-            // follow BLOCK_DIM u -> v edges at a time
-            for (size_t uRowOff = uRowStart; uRowOff < uRowEnd; uRowOff += BLOCK_DIM) {
-
-                size_t vIdx = uRowOff + threadIdx.x;
-                int64_t v = vIdx < uRowEnd ? cols[vIdx] : -1; // -1 is sentinel for more threads than nodes adjacent to u
-
-                if (v != -1) {
-                    const size_t vRowStart = roff[v];
-                    const size_t vRowEnd = roff[v+1];
-
-                    int local_counts = 0;
-                    local_counts = intersections(
-                        &cols[vRowStart],
-                        &cols[vRowEnd],
-                        &uDsts[0],
-                        &uDsts[U_DST_BS]);
-                    if (local_counts) {
-                        // printf("...in %lu -> %lu\n", u, v);
+                bool readHead = true;
+                bool readTail = true;
+                while (headEdge < headEdgeEnd && tailEdge < tailEdgeEnd){
+        
+                    Int u, v;
+                    if (readHead) {
+                        u = nonZeros[headEdge];
+                        readHead = false;
                     }
-                    count += local_counts;
+                    if (readTail) {
+                        v = nonZeros[tailEdge];
+                        readTail = false;
+                    }
+
+        
+                    // the two nodes that make up this edge both have a common dst
+                    if (u == v) {
+                        ++count;
+                        ++headEdge;
+                        ++tailEdge;
+                        readHead = true;
+                        readTail = true;
+                    }
+                    else if (u < v){
+                        ++headEdge;
+                        readHead = true;
+                    }
+                    else {
+                        ++tailEdge;
+                        readTail = true;
+                    }
                 }
-
-            }
-
-
-        }
-
+            } 
+        }          
     }
 
+    // if (threadIdx.x == 0) {
+    //     triangleCounts[blockIdx.x] = 0;
+    // }
+    // __syncthreads();
+    // atomicAdd(&triangleCounts[blockIdx.x], count);
+    size_t aggregate = BlockReduce(temp_storage).Sum(count);
     if (threadIdx.x == 0) {
-        blockTriangleCounts[blockIdx.x] = 0;
+        triangleCounts[blockIdx.x] = aggregate;
     }
-    __syncthreads();
-    // block reduce
-    atomicAdd(&blockTriangleCounts[blockIdx.x], count);
-
+    
 }
 
-VertexTC::VertexTC() {
 
-    int numDev;
-    CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
-    for (int i = 0; i < numDev; ++i) {
-        LOG(info, "Initializing CUDA device {}", i);
-        CUDA_RUNTIME(cudaSetDevice(i));
-        CUDA_RUNTIME(cudaFree(0));
-    }
+VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
 
-
-    }
+    triangleCounts_ = std::vector<size_t *>(gpus_.size(), nullptr);
+	rowStarts_d_.resize(gpus_.size());
+	nonZeros_d_.resize(gpus_.size());
+	isLocalNonZero_d_.resize(gpus_.size());
+}
 
 VertexTC::~VertexTC() {
+
+    for (auto p : triangleCounts_) {
+        CUDA_RUNTIME(cudaFreeHost(p));
+    }
 }
 
 void VertexTC::read_data(const std::string &path) {
-        LOG(info, "reading {}", path);
-        auto r = GraphChallengeTSVReader(path);
-        const auto sz = r.size();
-    
-        auto edgeList = r.read_edges(0, sz);
-        LOG(debug, "building DAG");
-        dag_ = DAGLowerTriangularCSR::from_edgelist(edgeList);
-    
-        LOG(debug, "{} nodes", dag_.num_nodes());
-        LOG(debug, "{} edges", dag_.num_edges());
+
+    LOG(info, "reading {}", path);
+
+    GraphChallengeTSVReader reader(path);
+
+    auto edgeList = reader.read_edges();
+
+    // convert edge list to DAG by src < dst
+    EdgeList filtered;
+    for (const auto &e : edgeList) {
+        if (e.first < e.second) {
+            filtered.push_back(e);
+        }
     }
 
-void VertexTC::setup_data() 
-{
+    LOG(debug, "building DAG");
+    // for singe dag, no remote edges
+    auto graph = ParGraph::from_edges(filtered, EdgeList());
 
-    const size_t srcBytes = dag_.sourceOffsets_.size() * sizeof(Int);
-    const size_t dstBytes = dag_.destinationIndices_.size() * sizeof(Int);
-    CUDA_RUNTIME(cudaMalloc((void **)&sourceOffsets_, srcBytes));
-    CUDA_RUNTIME(cudaMalloc((void **)&destinationIndices_, dstBytes));
-    CUDA_RUNTIME(cudaHostAlloc((void**)&blockTriangleCounts_, BLOCK_DIM * sizeof(int), cudaHostAllocMapped));
-    CUDA_RUNTIME(cudaMemcpy(sourceOffsets_, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
-    CUDA_RUNTIME(cudaMemcpy(destinationIndices_, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
+    numEdges_ = graph.nnz();
+    numNodes_ = graph.num_rows();
+    LOG(info, "{} edges", numEdges_);
+    LOG(info, "{} nodes", numNodes_);
+
+    if (gpus_.size() == 1) {
+        graphs_.push_back(graph);
+    } else {
+        graphs_ = graph.partition_nonzeros(gpus_.size());
+    }
+
+    if (graphs_.size() > 1) {
+        size_t partNodes = 0;
+        size_t partEdges = 0;
+        for (const auto &graph : graphs_) {
+            partNodes += graph.num_rows();
+            partEdges += graph.nnz();
+        }
+        LOG(info, "node replication {}", partNodes / graph.num_rows());
+        LOG(info, "edge replication {}", partEdges / graph.nnz());
+    }
+}
+
+void VertexTC::setup_data() {
+    assert(gpus_.size());
+    assert(graphs_.size() == gpus_.size());
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const auto &graph = graphs_[i];
+        const int dev = gpus_[i];
+        CUDA_RUNTIME(cudaSetDevice(dev));
+
+        dimGrids_.push_back(graph.num_rows());
+        const dim3 &dimGrid = dimGrids_[i];
+
+        const size_t rowStartsSz = graph.rowStarts_.size() * sizeof(Int);
+        const size_t nonZerosSz = graph.nonZeros_.size() * sizeof(Int);
+        const size_t isLocalNonZeroSz = graph.isLocalNonZero_.size() * sizeof(graph.isLocalNonZero_[0]);
+        const size_t countSz = dimGrid.x * sizeof(*(triangleCounts_[0]));
+
+        auto &triangleCounts = triangleCounts_[i];
+        auto &rowStarts_d = rowStarts_d_[i];
+        auto &nonZeros_d = nonZeros_d_[i];
+        auto &isLocalNonZero_d = isLocalNonZero_d_[i];
+
+
+        CUDA_RUNTIME(cudaMalloc(&rowStarts_d, rowStartsSz));
+        CUDA_RUNTIME(cudaMalloc(&nonZeros_d, nonZerosSz));
+        CUDA_RUNTIME(cudaMalloc(&isLocalNonZero_d, isLocalNonZeroSz));
+        CUDA_RUNTIME(cudaHostAlloc(&triangleCounts, countSz, cudaHostAllocMapped));
+
+        LOG(trace, "copy {} rowStarts bytes", rowStartsSz);
+        CUDA_RUNTIME(cudaMemcpy(rowStarts_d, graph.rowStarts_.data(), rowStartsSz, cudaMemcpyDefault));
+        LOG(trace, "copy {} nonZeros bytes", nonZerosSz);
+        CUDA_RUNTIME(cudaMemcpy(nonZeros_d, graph.nonZeros_.data(), nonZerosSz, cudaMemcpyDefault)); 
+        LOG(trace, "copy {} isLocalNonZero bytes", isLocalNonZeroSz);
+        CUDA_RUNTIME(cudaMemcpy(isLocalNonZero_d, graph.isLocalNonZero_.data(), isLocalNonZeroSz, cudaMemcpyDefault)); 
+    }
 }
 
 size_t VertexTC::count() {
-    // LOG(warn, "incorrect results");
-    uint64_t trcount = 0;
 
-    dim3 dimBlock(BLOCK_DIM);
-    dim3 dimGrid(160);
-
-    kernel_tc2<<<dimGrid, dimBlock>>>(blockTriangleCounts_, destinationIndices_, sourceOffsets_, dag_.num_nodes());
-    CUDA_RUNTIME(cudaDeviceSynchronize());
-
-    for (int i = 0; i < dimGrid.x; ++i) {
-        trcount += blockTriangleCounts_[i];
+    assert(graphs_.size() == gpus_.size());
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const auto &graph = graphs_[i];
+        const int dev = gpus_[i];
+        const dim3 &dimGrid = dimGrids_[i];
+        
+        const size_t numRows = graph.num_rows();
+        dim3 dimBlock(BLOCK_DIM_X);
+        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+        kernel_tc2<<<dimGrid, dimBlock>>>(triangleCounts_[i], rowStarts_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
     }
 
-    return trcount;
+
+    Uint total = 0;
+    for (size_t i = 0; i < graphs_.size(); ++i) {
+        const int &dev = gpus_[i];
+        const dim3 &dimGrid = dimGrids_[i];
+        LOG(debug, "waiting for GPU {}", dev);
+        CUDA_RUNTIME(cudaSetDevice(dev));
+        CUDA_RUNTIME(cudaDeviceSynchronize());
+
+        Uint partitionTotal = 0;
+        LOG(debug, "cpu reduction for GPU {}", dev);
+        for(size_t j = 0; j < dimGrid.x; ++j) {
+            partitionTotal += triangleCounts_[i][j];
+        }
+        LOG(debug, "partition had {} triangles", partitionTotal);
+        total += partitionTotal;
+    }
+
+    // auto start = std::chrono::system_clock::now();
+    // for(size_t i = 0; i < dimGrid_.x; ++i) {
+    //     total += triangleCounts_[i];
+    // }
+    // auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+    // LOG(debug, "CPU reduction {}s", elapsed);
+
+
+    return total;
 }

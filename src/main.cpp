@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 			  return clara::detail::ParserResult::ok(clara::detail::ParseResultType::Matched);
 		  },
 						   "int")["-s"]["--seed"]("random seed");
-	cli = cli | clara::Opt(config.type_, "cpu|csr|cudamemcpy|impact|nvgraph|um")["-m"]["--method"]("method").required();
+	cli = cli | clara::Opt(config.type_, "cpu|csr|cudamemcpy|hu|impact|nvgraph")["-m"]["--method"]("method").required();
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));

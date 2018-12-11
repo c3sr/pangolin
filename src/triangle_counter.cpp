@@ -1,6 +1,5 @@
 #include "graph/triangle_counter.hpp"
 #include "graph/cpu_triangle_counter.hpp"
-#include "graph/csr_tc.hpp"
 #include "graph/cudamemcpy_tc.hpp"
 #include "graph/impact_2018_tc.hpp"
 #include "graph/nvgraph_triangle_counter.hpp"
@@ -44,11 +43,7 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     }
     else if (c.type_ == "vertex")
     {
-        return new VertexTC();
-    }
-    else if (c.type_ == "csr")
-    {
-        return new CSRTC(c);
+        return new VertexTC(c);
     }
     else if (c.type_ == "cpu")
     {
