@@ -139,10 +139,13 @@ set(TRI_CPP_HEADERS
     include/graph/nvgraph_triangle_counter.hpp
     include/graph/par_graph.hpp
     include/graph/triangle_counter.hpp
+    include/graph/types.hpp
     include/graph/utilities.hpp
     include/graph/vertex_tc.hpp
     include/graph/allocator/cuda_managed.hpp
+    include/graph/allocator/cuda_zero_copy.hpp
     include/graph/dense/cuda_managed_vector.hpp
+    include/graph/dense/cuda_zero_copy_vector.hpp
     include/graph/reader/gc_tsv_reader.hpp
 )
 set(TRI_CUDA_SOURCES

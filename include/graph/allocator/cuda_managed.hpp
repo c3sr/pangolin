@@ -3,13 +3,15 @@
 #include <cstdlib>
 #include <new>
 
+#include <cuda_runtime.h>
+
 template <class T>
-struct CudaManagedAllocator
+struct CUDAManagedAllocator
 {
     typedef T value_type;
-    Mallocator() = default;
+    CUDAManagedAllocator() = default;
     template <class U>
-    constexpr Mallocator(const Mallocator<U> &) noexcept {}
+    constexpr CUDAManagedAllocator(const CUDAManagedAllocator<U> &) noexcept {}
     T *allocate(std::size_t n)
     {
         if (n > std::size_t(-1) / sizeof(T))
@@ -25,6 +27,6 @@ struct CudaManagedAllocator
     void deallocate(T *p, std::size_t) noexcept { cudaFree(p); }
 };
 template <class T, class U>
-bool operator==(const Mallocator<T> &, const Mallocator<U> &) { return true; }
+bool operator==(const CUDAManagedAllocator<T> &, const CUDAManagedAllocator<U> &) { return true; }
 template <class T, class U>
-bool operator!=(const Mallocator<T> &, const Mallocator<U> &) { return false; }
+bool operator!=(const CUDAManagedAllocator<T> &, const CUDAManagedAllocator<U> &) { return false; }
