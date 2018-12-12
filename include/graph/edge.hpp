@@ -4,4 +4,4 @@
 
 #include "graph/types.hpp"
 
-typedef std::pair<Int, Int> Edge;
+typedef std::pair<Uint, Uint> Edge;

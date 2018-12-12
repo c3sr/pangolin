@@ -9,14 +9,14 @@
 const int BLOCK_DIM_X = 128;
 
 __global__ static void kernel_tc2(
-    size_t * __restrict__ triangleCounts, // per block triangle count
-    const Int *rowStarts,
-    const Int *nonZeros,
-    const bool *isLocalNonZero,
+    uint64_t * __restrict__ triangleCounts, // per block triangle count
+    const Uint *rowStarts,
+    const Uint *nonZeros,
+    const char *isLocalNonZero,
     const size_t numRows) {
      
 
-    // Specialize BlockReduce for a 1D block of 128 threads on type int
+    // Specialize BlockReduce for a 1D block
     typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
     // Allocate shared memory for BlockReduce
     __shared__ typename BlockReduce::TempStorage temp_storage;
@@ -98,18 +98,13 @@ __global__ static void kernel_tc2(
 
 
 VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
-
-    triangleCounts_ = std::vector<size_t *>(gpus_.size(), nullptr);
-	rowStarts_d_.resize(gpus_.size());
+    triangleCounts_d_ = std::vector<uint64_t*>(gpus_.size(), nullptr);
+	rowOffsets_d_.resize(gpus_.size());
 	nonZeros_d_.resize(gpus_.size());
 	isLocalNonZero_d_.resize(gpus_.size());
 }
 
 VertexTC::~VertexTC() {
-
-    for (auto p : triangleCounts_) {
-        CUDA_RUNTIME(cudaFreeHost(p));
-    }
 }
 
 void VertexTC::read_data(const std::string &path) {
@@ -128,9 +123,17 @@ void VertexTC::read_data(const std::string &path) {
         }
     }
 
+    // subtract 1 from edges
+    // for (auto &e : filtered) {
+    //     e.first -= 1;
+    //     e.second -= 1;
+    // }
+
+    LOG(trace, "filtered edge list has {} entries", filtered.size());
+
     LOG(debug, "building DAG");
     // for singe dag, no remote edges
-    auto graph = ParGraph::from_edges(filtered, EdgeList());
+    auto graph = UnifiedMemoryCSR::from_sorted_edgelist(filtered);
 
     numEdges_ = graph.nnz();
     numNodes_ = graph.num_rows();
@@ -158,6 +161,10 @@ void VertexTC::read_data(const std::string &path) {
 void VertexTC::setup_data() {
     assert(gpus_.size());
     assert(graphs_.size() == gpus_.size());
+
+    // one set of triangle counts per partition
+    triangleCounts_.resize(gpus_.size());
+
     for (size_t i = 0; i < graphs_.size(); ++i) {
         const auto &graph = graphs_[i];
         const int dev = gpus_[i];
@@ -166,33 +173,26 @@ void VertexTC::setup_data() {
         dimGrids_.push_back(graph.num_rows());
         const dim3 &dimGrid = dimGrids_[i];
 
-        const size_t rowStartsSz = graph.rowStarts_.size() * sizeof(Int);
-        const size_t nonZerosSz = graph.nonZeros_.size() * sizeof(Int);
-        const size_t isLocalNonZeroSz = graph.isLocalNonZero_.size() * sizeof(graph.isLocalNonZero_[0]);
-        const size_t countSz = dimGrid.x * sizeof(*(triangleCounts_[0]));
+        // create space for one triangle count per block
+        
+        triangleCounts_[i].resize(dimGrid.x, 0);
 
-        auto &triangleCounts = triangleCounts_[i];
-        auto &rowStarts_d = rowStarts_d_[i];
-        auto &nonZeros_d = nonZeros_d_[i];
-        auto &isLocalNonZero_d = isLocalNonZero_d_[i];
-
-
-        CUDA_RUNTIME(cudaMalloc(&rowStarts_d, rowStartsSz));
-        CUDA_RUNTIME(cudaMalloc(&nonZeros_d, nonZerosSz));
-        CUDA_RUNTIME(cudaMalloc(&isLocalNonZero_d, isLocalNonZeroSz));
-        CUDA_RUNTIME(cudaHostAlloc(&triangleCounts, countSz, cudaHostAllocMapped));
-
-        LOG(trace, "copy {} rowStarts bytes", rowStartsSz);
-        CUDA_RUNTIME(cudaMemcpy(rowStarts_d, graph.rowStarts_.data(), rowStartsSz, cudaMemcpyDefault));
-        LOG(trace, "copy {} nonZeros bytes", nonZerosSz);
-        CUDA_RUNTIME(cudaMemcpy(nonZeros_d, graph.nonZeros_.data(), nonZerosSz, cudaMemcpyDefault)); 
-        LOG(trace, "copy {} isLocalNonZero bytes", isLocalNonZeroSz);
-        CUDA_RUNTIME(cudaMemcpy(isLocalNonZero_d, graph.isLocalNonZero_.data(), isLocalNonZeroSz, cudaMemcpyDefault)); 
+        // device pointers are directly the managed memory pointers
+        triangleCounts_d_[i] = triangleCounts_[i].data();
+        rowOffsets_d_[i] = graph.row_offsets();
+        nonZeros_d_[i] = graph.cols();
+        isLocalNonZero_d_[i] = graph.is_local_cols();
     }
+
+    for (const auto i : gpus_) {
+        LOG(trace, "synchronizing GPU {}", i);
+        CUDA_RUNTIME(cudaSetDevice(i));
+        CUDA_RUNTIME(cudaDeviceSynchronize());
+    }
+    LOG(trace, "here");
 }
 
 size_t VertexTC::count() {
-
     assert(graphs_.size() == gpus_.size());
     for (size_t i = 0; i < graphs_.size(); ++i) {
         const auto &graph = graphs_[i];
@@ -202,7 +202,8 @@ size_t VertexTC::count() {
         const size_t numRows = graph.num_rows();
         dim3 dimBlock(BLOCK_DIM_X);
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc2<<<dimGrid, dimBlock>>>(triangleCounts_[i], rowStarts_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+        kernel_tc2<<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+        CUDA_RUNTIME(cudaGetLastError());
     }
 
 

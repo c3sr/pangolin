@@ -97,7 +97,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     auto ri = sortedRemote.begin();
     const auto le = sortedLocal.end();
     const auto re = sortedRemote.end();
-    Int maxDst = -1; // there may be nodes that have no outgoing edges, so we have to track them to fill out the row
+    Uint maxDst = 0; // there may be nodes that have no outgoing edges, so we have to track them to fill out the row
     while ((li != le) || (ri != re))
     {
         bool edgeIsLocal;

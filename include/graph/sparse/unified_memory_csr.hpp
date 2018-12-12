@@ -6,39 +6,55 @@
 #include "graph/dense/cuda_managed_vector.hpp"
 #include "graph/edge_list.hpp"
 
-class UnifiedMemoryCSR : public CSR<Int, Int>
+class UnifiedMemoryCSR : public CSR<Uint>
 {
   private:
-    size_t startingRow_; // rowOffsets_[0] is actually this row
-    CUDAManagedVector<index_type> rowOffsets_;
-    CUDAManagedVector<scalar_type> data_;
+    CUDAManagedVector<index_type> rowOffsets_; // offset that each row starts in data_ (num rows)
+    CUDAManagedVector<index_type> data_;       // the non-zero columns (nnz)
+    CUDAManagedVector<char> dataIsLocal_;      // whether we own this column
 
   public:
-    virtual index_type *
-    row_offsets()
+    virtual const index_type *
+    row_offsets() const override
     {
         return rowOffsets_.data();
     }
 
-    virtual scalar_type *data()
+    virtual const index_type *cols() const override
     {
         return data_.data();
     }
 
-    virtual size_t num_nodes() const
+    virtual const char *is_local_cols() const
+    {
+        return dataIsLocal_.data();
+    }
+
+    virtual size_t num_rows() const
     {
         return rowOffsets_.empty() ? 0 : rowOffsets_.size() - 1;
     }
 
-    virtual size_t num_edges() const
+    virtual size_t num_nonzero_rows() const
+    {
+        size_t count;
+        for (size_t i = 0; i < rowOffsets_.size() - 1; ++i)
+        {
+            count += rowOffsets_[i + 1] - rowOffsets_[i];
+        }
+        return count;
+    }
+
+    virtual size_t nnz() const
     {
         return data_.size();
     }
 
     inline std::pair<index_type, index_type> row(const size_t i) const
     {
-        return std::make_pair(rowOffsets_[i - startingRow_], rowOffsets_[i - startingRow_ + 1]);
+        return std::make_pair(rowOffsets_[i], rowOffsets_[i + 1]);
     }
 
-    static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &e, const size_t startingRow_ = 0);
+    static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &local);
+    std::vector<UnifiedMemoryCSR> partition_nonzeros(const size_t numPartitions) const;
 };

@@ -5,14 +5,11 @@
 
 #include "graph/types.hpp"
 
-template <typename INDEX, typename SCALAR>
+template <typename INDEX>
 class CSR
 {
-  public:
-    typedef INDEX index_type;
-    typedef SCALAR scalar_type;
-    virtual index_type *row_offsets() = 0;
-    virtual scalar_type *data() = 0;
-    virtual size_t num_nodes() const = 0;
-    virtual size_t num_edges() const = 0;
+public:
+  typedef INDEX index_type;
+  virtual const index_type *row_offsets() const = 0;
+  virtual const index_type *cols() const = 0;
 };

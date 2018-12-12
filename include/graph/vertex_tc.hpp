@@ -1,7 +1,8 @@
 #pragma once
 
 #include "graph/cuda_triangle_counter.hpp"
-#include "graph/par_graph.hpp"
+#include "graph/sparse/unified_memory_csr.hpp"
+#include "graph/dense/cuda_managed_vector.hpp"
 
 #include <vector>
 #include <iostream>
@@ -9,7 +10,7 @@
 
 class VertexTC : public CUDATriangleCounter
 {
-private:
+  private:
 	enum class CountingMethod
 	{
 		LINEAR,
@@ -17,24 +18,24 @@ private:
 		HASH
 	};
 
-private:
-	size_t numCPUThreads_; // how many threads to use
-
+  private:
 	// partitioned data structures
-	std::vector<ParGraph> graphs_;
+	std::vector<UnifiedMemoryCSR> graphs_;
 
-	// per-partition GPU data
-	std::vector<Int *> rowStarts_d_;
-	std::vector<Int *> nonZeros_d_;
-	std::vector<bool *> isLocalNonZero_d_;
-	std::vector<dim3> dimGrids_;
 	// per-block triangle counts for each partition
-	std::vector<size_t *> triangleCounts_;
+	std::vector<CUDAManagedVector<uint64_t>> triangleCounts_;
+
+	// per-partition device pointers
+	std::vector<const Uint *> rowOffsets_d_;
+	std::vector<const Uint *> nonZeros_d_;
+	std::vector<const char *> isLocalNonZero_d_;
+	std::vector<dim3> dimGrids_;
+	std::vector<uint64_t *> triangleCounts_d_;
 
 	size_t numEdges_; // edges in input graph
 	size_t numNodes_; // nodes in input graph
 
-public:
+  public:
 	VertexTC(Config &c);
 	virtual ~VertexTC();
 	virtual void read_data(const std::string &path) override;
