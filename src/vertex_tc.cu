@@ -6,16 +6,41 @@
 
 #include <cub/cub.cuh>
 
-const int BLOCK_DIM_X = 128;
 
-__global__ static void kernel_tc2(
+// count intersections between sorted lists a and b
+__device__ static size_t linear_intersection_count(const Uint *const aBegin, const Uint *const aEnd, const Uint *const bBegin, const Uint *const bEnd) {
+    size_t count = 0;
+    const auto *ap = aBegin;
+    const auto *bp = bBegin;
+
+    while (ap < aEnd && bp < bEnd) {
+
+        if (*ap == *bp) {
+            ++count;
+            ++ap;
+            ++bp;
+        }
+        else if (*ap < *bp){
+            ++ap;
+        }
+        else {
+            ++bp;
+        }
+    }
+    return count;
+}
+
+
+
+template<size_t BLOCK_DIM_X>
+__global__ static void kernel_linear(
     uint64_t * __restrict__ triangleCounts, // per block triangle count
     const Uint *rowStarts,
     const Uint *nonZeros,
     const char *isLocalNonZero,
-    const size_t numRows) {
+    const size_t numRows
+) {
      
-
     // Specialize BlockReduce for a 1D block
     typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
     // Allocate shared memory for BlockReduce
@@ -37,58 +62,93 @@ __global__ static void kernel_tc2(
 
             // only count local edges
             if (!isLocalNonZero || isLocalNonZero[tailOff]) {
-                const Int tail = nonZeros[tailOff];
+                
 
-                // edges from the head
-                Int headEdge = tailStart;
-                const Int headEdgeEnd = tailEnd;
+                // edges from the head 
+                const Uint headEdgeStart = tailStart;
+                const Uint headEdgeEnd = tailEnd;
         
                 // edge from the tail
-                Int tailEdge = rowStarts[tail];
-                // printf("tid=%d edge %d-%d reading nodes %d %d\n", threadIdx.x, head, tail, tail, tail+1);
-                const Int tailEdgeEnd = rowStarts[tail + 1];
-        
-                bool readHead = true;
-                bool readTail = true;
-                while (headEdge < headEdgeEnd && tailEdge < tailEdgeEnd){
-        
-                    Int u, v;
-                    if (readHead) {
-                        u = nonZeros[headEdge];
-                        readHead = false;
-                    }
-                    if (readTail) {
-                        v = nonZeros[tailEdge];
-                        readTail = false;
-                    }
+                const Uint tail = nonZeros[tailOff];
+                const Uint tailEdgeStart = rowStarts[tail];
+                const Uint tailEdgeEnd = rowStarts[tail + 1];
 
-        
-                    // the two nodes that make up this edge both have a common dst
-                    if (u == v) {
-                        ++count;
-                        ++headEdge;
-                        ++tailEdge;
-                        readHead = true;
-                        readTail = true;
-                    }
-                    else if (u < v){
-                        ++headEdge;
-                        readHead = true;
-                    }
-                    else {
-                        ++tailEdge;
-                        readTail = true;
-                    }
-                }
+
+                count += linear_intersection_count(&nonZeros[headEdgeStart], &nonZeros[headEdgeEnd], &nonZeros[tailEdgeStart], &nonZeros[tailEdgeEnd]);
             } 
         }          
     }
 
-    // if (threadIdx.x == 0) {
-    //     triangleCounts[blockIdx.x] = 0;
-    // }
-    // __syncthreads();
-    // atomicAdd(&triangleCounts[blockIdx.x], count);
+    size_t aggregate = BlockReduce(temp_storage).Sum(count);
+    if (threadIdx.x == 0) {
+        triangleCounts[blockIdx.x] = aggregate;
+    }
+    
+}
+
+
+template<size_t BLOCK_DIM_X>
+__global__ static void kernel_linear_shared(
+    uint64_t * __restrict__ triangleCounts, // per block triangle count
+    const Uint *rowStarts,
+    const Uint *nonZeros,
+    const char *isLocalNonZero,
+    const size_t numRows
+) {
+     
+    // Specialize BlockReduce for a 1D block
+    typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
+    // Allocate shared memory for BlockReduce
+    __shared__ typename BlockReduce::TempStorage temp_storage;
+
+    __shared__ Uint headDsts[1024];
+   
+    size_t count = 0;
+    // one row per block
+    // all threads in the block share the same output edges from the head
+    for (Uint row = blockIdx.x; row < numRows; row += gridDim.x) {
+
+        // offsets for head of edge
+        const Uint head = row;
+
+        // offsets for tail of edge
+        const Uint tailStart = rowStarts[head];
+        const Uint tailEnd = rowStarts[head+1];
+
+        // pointers to beginning and end of row's nonzero columns
+        const Uint *headEdgeBegin, *headEdgeEnd;
+
+        // collaboratively load edges from head if they fit in shared memory
+        if (tailEnd - tailStart < 1024) {
+            for (size_t i = threadIdx.x + tailStart; i < tailEnd; i += BLOCK_DIM_X) {
+                headDsts[i - tailStart] = nonZeros[i];
+            }
+            __syncthreads();
+            headEdgeBegin = &headDsts[0];
+            headEdgeEnd = &headDsts[tailEnd - tailStart];
+        } else {
+            headEdgeBegin = &nonZeros[tailStart];
+            headEdgeEnd = &nonZeros[tailEnd];
+        }
+        
+
+        // one thread per edge
+        for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
+
+            // only count local edges
+            if (!isLocalNonZero || isLocalNonZero[tailOff]) {
+                       
+                // edge from the tail
+                const Uint tail = nonZeros[tailOff];
+                const Uint tailEdgeStart = rowStarts[tail];
+                const Uint tailEdgeEnd = rowStarts[tail + 1];
+
+
+                count += linear_intersection_count(headEdgeBegin, headEdgeEnd, &nonZeros[tailEdgeStart], &nonZeros[tailEdgeEnd]);
+            } 
+        }          
+    }
+
     size_t aggregate = BlockReduce(temp_storage).Sum(count);
     if (threadIdx.x == 0) {
         triangleCounts[blockIdx.x] = aggregate;
@@ -200,9 +260,10 @@ size_t VertexTC::count() {
         const dim3 &dimGrid = dimGrids_[i];
         
         const size_t numRows = graph.num_rows();
+        const size_t BLOCK_DIM_X = 128;
         dim3 dimBlock(BLOCK_DIM_X);
         LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc2<<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+        kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
         CUDA_RUNTIME(cudaGetLastError());
     }
 
