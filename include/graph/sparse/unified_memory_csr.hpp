@@ -37,7 +37,7 @@ class UnifiedMemoryCSR : public CSR<Uint>
 
     virtual size_t num_nonzero_rows() const
     {
-        size_t count;
+        size_t count = 0;
         for (size_t i = 0; i < rowOffsets_.size() - 1; ++i)
         {
             count += rowOffsets_[i + 1] - rowOffsets_[i];
@@ -50,11 +50,21 @@ class UnifiedMemoryCSR : public CSR<Uint>
         return data_.size();
     }
 
+    virtual size_t bytes() const
+    {
+        size_t sz = 0;
+        sz += rowOffsets_.capacity() * sizeof(rowOffsets_[0]);
+        sz += data_.capacity() * sizeof(data_[0]);
+        sz += dataIsLocal_.capacity() * sizeof(dataIsLocal_[0]);
+        return sz;
+    }
+
     inline std::pair<index_type, index_type> row(const size_t i) const
     {
         return std::make_pair(rowOffsets_[i], rowOffsets_[i + 1]);
     }
 
-    static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &local);
+    // static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &local);
+    static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &local, const EdgeList &remote = EdgeList());
     std::vector<UnifiedMemoryCSR> partition_nonzeros(const size_t numPartitions) const;
 };

@@ -289,6 +289,7 @@ void VertexTC::read_data(const std::string &path) {
   numNodes_ = graph.num_rows();
   LOG(info, "{} edges", numEdges_);
   LOG(info, "{} nodes", numNodes_);
+  LOG(info, "~{} KB storage", graph.bytes() / 1024);
 
   if (gpus_.size() == 1) {
     graphs_.push_back(graph);
@@ -299,12 +300,15 @@ void VertexTC::read_data(const std::string &path) {
   if (graphs_.size() > 1) {
     size_t partNodes = 0;
     size_t partEdges = 0;
+    size_t partSz = 0;
     for (const auto &graph : graphs_) {
       partNodes += graph.num_rows();
       partEdges += graph.nnz();
+      partSz += graph.bytes();
     }
-    LOG(info, "node replication {}", partNodes / graph.num_rows());
-    LOG(info, "edge replication {}", partEdges / graph.nnz());
+    LOG(info, "node replication {}", double(partNodes) / graph.num_rows());
+    LOG(info, "edge replication {}", double(partEdges) / graph.nnz());
+    LOG(info, "storage replication {}", double(partSz) / graph.bytes());
   }
 }
 
@@ -339,7 +343,6 @@ void VertexTC::setup_data() {
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
-  LOG(trace, "here");
 }
 
 size_t VertexTC::count() {
