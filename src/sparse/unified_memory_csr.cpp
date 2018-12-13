@@ -48,6 +48,12 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local)
         csr.rowOffsets_.push_back(csr.data_.size());
     }
 
+    // add  the last entry to give a length on the last row
+    csr.rowOffsets_.push_back(csr.data_.size());
+
+    LOG(debug, "rowOffsets is length {}", csr.rowOffsets_.size());
+    LOG(debug, "data is length {}", csr.data_.size());
+
     return csr;
 }
 
