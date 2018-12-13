@@ -10,15 +10,18 @@
 
 class VertexTC : public CUDATriangleCounter
 {
-  private:
-	enum class CountingMethod
+private:
+	enum class Kernel
 	{
 		LINEAR,
-		BINARY_TREE,
+		LINEAR_SHARED,
+		BINARY,
 		HASH
 	};
 
-  private:
+private:
+	Kernel kernel_;
+
 	// partitioned data structures
 	std::vector<UnifiedMemoryCSR> graphs_;
 
@@ -35,7 +38,7 @@ class VertexTC : public CUDATriangleCounter
 	size_t numEdges_; // edges in input graph
 	size_t numNodes_; // nodes in input graph
 
-  public:
+public:
 	VertexTC(Config &c);
 	virtual ~VertexTC();
 	virtual void read_data(const std::string &path) override;

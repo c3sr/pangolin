@@ -32,6 +32,8 @@ __device__ static size_t linear_intersection_count(const Uint *const aBegin, con
 
 
 
+
+
 template<size_t BLOCK_DIM_X>
 __global__ static void kernel_linear(
     uint64_t * __restrict__ triangleCounts, // per block triangle count
@@ -48,17 +50,18 @@ __global__ static void kernel_linear(
    
     size_t count = 0;
     // one row per block
-    for (Int row = blockIdx.x; row < numRows; row += gridDim.x) {
+    for (Uint row = blockIdx.x; row < numRows; row += gridDim.x) {
 
         // offsets for head of edge
-        const Int head = row;
+        const Uint head = row;
 
         // offsets for tail of edge
-        const Int tailStart = rowStarts[head];
-        const Int tailEnd = rowStarts[head+1];
+        const Uint tailStart = rowStarts[head];
+        const Uint tailEnd = rowStarts[head+1];
+
 
         // one thread per edge
-        for (Int tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
+        for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
 
             // only count local edges
             if (!isLocalNonZero || isLocalNonZero[tailOff]) {
@@ -157,7 +160,117 @@ __global__ static void kernel_linear_shared(
 }
 
 
+// return 1 if search_val is in array between offets left and right, inclusive
+__device__ static bool binary_search(const Uint* const array, size_t left, size_t right, const Uint search_val) {
+    while(left <= right) {
+        size_t mid = (left + right)/2;
+        Uint val = array[mid];
+        if(val < search_val) {
+            left = mid + 1;
+        } else if(val > search_val) {
+            right = mid - 1;
+        } else { // val == search_val
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+template<size_t BLOCK_DIM_X>
+__global__ static void kernel_binary(
+    uint64_t * __restrict__ triangleCounts, // per block triangle count
+    const Uint *rowStarts,
+    const Uint *nonZeros,
+    const char *isLocalNonZero,
+    const size_t numRows
+) {
+    const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
+    static_assert(BLOCK_DIM_X % 32 == 0); // expect integer number of warps per block
+    
+    
+    const int warpIdx = threadIdx.x / 32; // which warp in thread block
+    const int laneIdx = threadIdx.x % 32; // which thread in warp
+
+
+    // Specialize BlockReduce for a 1D block
+    typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
+    // Allocate shared memory for BlockReduce
+    __shared__ typename BlockReduce::TempStorage temp_storage;
+   
+    size_t count = 0;
+    // one row per block
+    for (Int row = blockIdx.x; row < numRows; row += gridDim.x) {
+
+        // offsets for head of edge
+        const Int head = row;
+
+        // offsets for tail of edge
+        const Int tailStart = rowStarts[head];
+        const Int tailEnd = rowStarts[head+1];
+
+        // one warp per edge
+        for (Int tailOff = tailStart + warpIdx; tailOff < tailEnd; tailOff += WARPS_PER_BLOCK) {
+
+            // only count local edges
+            if (!isLocalNonZero || isLocalNonZero[tailOff]) {
+                
+
+                // edges from the head 
+                const Uint headEdgeStart = tailStart;
+                const Uint headEdgeEnd = tailEnd;
+        
+                // edge from the tail
+                const Uint tail = nonZeros[tailOff];
+                const Uint tailEdgeStart = rowStarts[tail];
+                const Uint tailEdgeEnd = rowStarts[tail + 1];
+
+
+                // warp in parallel across shorter list to binary-search longer list
+                if (headEdgeEnd - headEdgeStart < tailEdgeEnd - tailEdgeStart) {
+                    for (const Uint *u = &nonZeros[headEdgeStart] + laneIdx; u < &nonZeros[headEdgeEnd]; u += 32) {
+                        count += binary_search(nonZeros, tailEdgeStart, tailEdgeEnd-1, *u);
+                    }
+                } else {
+                    for (const Uint *u = &nonZeros[tailEdgeStart] + laneIdx; u < &nonZeros[tailEdgeEnd]; u += 32) {
+                        count += binary_search(nonZeros, headEdgeStart, headEdgeEnd-1, *u);
+                    }
+                }
+
+            } 
+        }          
+    }
+
+    size_t aggregate = BlockReduce(temp_storage).Sum(count);
+    if (threadIdx.x == 0) {
+        triangleCounts[blockIdx.x] = aggregate;
+    }
+    
+}
+
+
 VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
+
+    std::string kernel = c.kernel_;
+
+    if (kernel == "") {
+        LOG(warn, "VertexTC defaulting to \"linear\" kernel");
+        kernel = "linear";
+    }
+
+    if (kernel == "linear") {
+        kernel_ = Kernel::LINEAR;
+    } else if (kernel == "linear_shared") {
+        kernel_ = Kernel::LINEAR_SHARED;
+    } else if (kernel == "binary") {
+        kernel_ = Kernel::BINARY;
+    } else if (kernel == "hash") {
+        kernel_ = Kernel::HASH;
+    } else {
+        LOG(critical, "Unknown triangle counting kernel \"{}\" for VertexTC", c.kernel_);
+        exit(-1);
+    }
+
     triangleCounts_d_ = std::vector<uint64_t*>(gpus_.size(), nullptr);
 	rowOffsets_d_.resize(gpus_.size());
 	nonZeros_d_.resize(gpus_.size());
@@ -182,12 +295,6 @@ void VertexTC::read_data(const std::string &path) {
             filtered.push_back(e);
         }
     }
-
-    // subtract 1 from edges
-    // for (auto &e : filtered) {
-    //     e.first -= 1;
-    //     e.second -= 1;
-    // }
 
     LOG(trace, "filtered edge list has {} entries", filtered.size());
 
@@ -258,17 +365,53 @@ size_t VertexTC::count() {
         const auto &graph = graphs_[i];
         const int dev = gpus_[i];
         const dim3 &dimGrid = dimGrids_[i];
-        
         const size_t numRows = graph.num_rows();
-        const size_t BLOCK_DIM_X = 128;
-        dim3 dimBlock(BLOCK_DIM_X);
-        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
-        CUDA_RUNTIME(cudaGetLastError());
+
+        switch(kernel_) {
+            case Kernel::LINEAR: {
+                LOG(debug, "linear search kernel");
+                const size_t BLOCK_DIM_X = 128;
+                dim3 dimBlock(BLOCK_DIM_X);
+                LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+                kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+                CUDA_RUNTIME(cudaGetLastError());
+                break;
+            }
+            case Kernel::LINEAR_SHARED: {
+                LOG(debug, "linear_shared search kernel");
+                const size_t BLOCK_DIM_X = 128;
+                dim3 dimBlock(BLOCK_DIM_X);
+                LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+                kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+                CUDA_RUNTIME(cudaGetLastError());
+                break;
+            }
+            case Kernel::BINARY: {
+                LOG(debug, "binary search kernel");
+                const size_t BLOCK_DIM_X = 512;
+                dim3 dimBlock(BLOCK_DIM_X);
+                dim3 dimGrid(graph.num_rows());
+                LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+                kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i], isLocalNonZero_d_[i], numRows);
+                CUDA_RUNTIME(cudaGetLastError());
+                break;
+            }
+            case Kernel::HASH: {
+                LOG(critical, "hash kernel unimplmeneted");
+                exit(-1);
+                break;
+            }
+            default: {
+                LOG(critical, "unexpected kernel type.");
+                exit(-1);
+            }
+        }
+
     }
 
 
     Uint total = 0;
+
     for (size_t i = 0; i < graphs_.size(); ++i) {
         const int &dev = gpus_[i];
         const dim3 &dimGrid = dimGrids_[i];
@@ -284,14 +427,6 @@ size_t VertexTC::count() {
         LOG(debug, "partition had {} triangles", partitionTotal);
         total += partitionTotal;
     }
-
-    // auto start = std::chrono::system_clock::now();
-    // for(size_t i = 0; i < dimGrid_.x; ++i) {
-    //     total += triangleCounts_[i];
-    // }
-    // auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-    // LOG(debug, "CPU reduction {}s", elapsed);
-
 
     return total;
 }

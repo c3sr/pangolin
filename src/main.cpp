@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 		  },
 						   "int")["-s"]["--seed"]("random seed");
 	cli = cli | clara::Opt(config.type_, "cpu|csr|cudamemcpy|hu|impact|nvgraph")["-m"]["--method"]("method").required();
+	cli = cli | clara::Opt(config.kernel_, "string")["-k"]["--kernel"]("kernel");
 	cli = cli | clara::Arg(adjacencyListPath, "graph file")("Path to adjacency list").required();
 
 	auto result = cli.parse(clara::Args(argc, argv));
@@ -89,7 +90,11 @@ int main(int argc, char **argv)
 	LOG(info, "setup_data time {}s", elapsed);
 
 	start = std::chrono::system_clock::now();
-	const auto numTriangles = tc->count();
+	auto numTriangles = tc->count();
+	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+	LOG(info, "count time {}s", elapsed);
+	start = std::chrono::system_clock::now();
+	numTriangles = tc->count();
 	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(info, "count time {}s", elapsed);
 
