@@ -171,7 +171,7 @@ kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
               const char *isLocalNonZero, const size_t numRows) {
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
   static_assert(BLOCK_DIM_X % 32 ==
-                0); // expect integer number of warps per block
+                0, "expect integer number of warps per block");
 
   const int warpIdx = threadIdx.x / 32; // which warp in thread block
   const int laneIdx = threadIdx.x % 32; // which thread in warp
