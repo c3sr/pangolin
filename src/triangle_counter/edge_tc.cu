@@ -188,11 +188,13 @@ void EdgeTC::read_data(const std::string &path) {
 
   GraphChallengeTSVReader reader(path);
 
-  auto edgeList = reader.read_edges();
+  if (reader.begin() == reader.end()) {
+    LOG(warn, "{} does not exist or is empty", path);
+  }
 
-  // convert edge list to DAG by src < dst
+  // turn into DAG with src < dst
   EdgeList filtered;
-  for (const auto &e : edgeList) {
+  for (const auto &e : reader) {
     if (e.first < e.second) {
       filtered.push_back(e);
     }

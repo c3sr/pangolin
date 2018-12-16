@@ -1,10 +1,12 @@
-#include <fstream>
+
 #include <limits>
 #include <sstream>
 
 #include "graph/edge_list.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/logger.hpp"
+
+GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : path_(path), is_(path) {}
 
 // read stream until end
 static EdgeList read_stream(std::istream &is, std::istream::streampos end)
@@ -64,8 +66,6 @@ static EdgeList read_stream(std::istream &is, std::istream::streampos end)
     }
     return l;
 }
-
-GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : path_(path) {}
 
 // return the position of the beginning of the next line, or the end of the file
 static std::istream::streampos next_line_or_eof(const std::string &path, std::istream::streampos start)
@@ -154,4 +154,13 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
 EdgeList GraphChallengeTSVReader::read_edges()
 {
     return read_edges(0, -1);
+}
+
+TSVIterator GraphChallengeTSVReader::begin()
+{
+    return TSVIterator(is_);
+}
+TSVIterator GraphChallengeTSVReader::end()
+{
+    return TSVIterator();
 }
