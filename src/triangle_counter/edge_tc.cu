@@ -32,7 +32,7 @@ __device__ static size_t linear_intersection_count(const Uint *const aBegin,
 
 template <size_t BLOCK_DIM_X>
 __global__ static void
-kernel_linear(uint64_t *__restrict__ triangleCounts, // per edge triangle count
+kernel_linear(uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
               const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
               const char *isLocalNonZero, const size_t numEdges) {
 
@@ -65,144 +65,11 @@ kernel_linear(uint64_t *__restrict__ triangleCounts, // per edge triangle count
             &nonZeros[headOffStart], &nonZeros[headOffEnd],
             &nonZeros[tailOffStart], &nonZeros[tailOffEnd]);
             
-            triangleCounts[edgeIdx] = count;
-    }
-
-  }
-}
-
-
-#if 0
-
-template <size_t BLOCK_DIM_X>
-__global__ static void
-kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
-              const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
-              const char *isLocalNonZero, const size_t numEdges) {
-
-  typedef cub::WarpReduce<size_t> WarpReduce;
-  constexpr int WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
-  static_assert(BLOCK_DIM_X % 32 == 0, "need integer number of warps per block");
-  __shared__ typename WarpReduce::TempStorage temp_storage[WARPS_PER_BLOCK];
-
-  const int warpIdx = threadIdx.x / 32; // which warp in thread block
-  const int laneIdx = threadIdx.x % 32; // which thread in warp
-
-  // one warp per edge
-  for (Uint edgeIdx = warpIdx + blockIdx.x * WARPS_PER_BLOCK; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
-
-    size_t count = 0;
-
-    // head and tail of edge
-    const Uint head = edgeSrc[edgeIdx];
-    const Uint tail = nonZeros[edgeIdx];
-
-    // neighbor offsets for head of edge
-    const Uint headOffStart = rowStarts[head];
-    const Uint HeadOffEnd = rowStarts[head + 1];
-
-    // neighbor offsets for tail of edge
-    const Uint tailOffStart = rowStarts[tail];
-    const Uint tailOffEnd = rowStarts[tail + 1];
-
-    // one thread per neighbor
-    for (Uint tailOff = tailStart + laneIdx; tailOff < tailEnd;
-         tailOff += 32) {
-
-      // only count local edges
-      if (!isLocalNonZero || isLocalNonZero[tailOff]) {
-
-        // edges from the head
-        const Uint headEdgeStart = tailStart;
-        const Uint headEdgeEnd = tailEnd;
-
-        // edge from the tail
-        const Uint tail = nonZeros[tailOff];
-        const Uint tailEdgeStart = rowStarts[tail];
-        const Uint tailEdgeEnd = rowStarts[tail + 1];
-
-        count += linear_intersection_count(
-            &nonZeros[headEdgeStart], &nonZeros[headEdgeEnd],
-            &nonZeros[tailEdgeStart], &nonZeros[tailEdgeEnd]);
-      }
-    }
-
-    size_t aggregate = WarpReduce(temp_storage[warpIdx]).Sum(count);
-    if (laneIdx == 0) {
-        triangleCounts[edgeIdx] = aggregate;
+            edgeTriangleCounts[edgeIdx] = count;
     }
   }
 }
 
-#endif
-
-#if 0
-template <size_t BLOCK_DIM_X>
-__global__ static void kernel_linear_shared(
-    uint64_t *__restrict__ triangleCounts, // per block triangle count
-    const Uint *rowStarts, const Uint *nonZeros, const char *isLocalNonZero,
-    const size_t numRows) {
-
-  // Specialize BlockReduce for a 1D block
-  typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
-  // Allocate shared memory for BlockReduce
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-
-  __shared__ Uint headDsts[1024];
-
-  size_t count = 0;
-  // one row per block
-  // all threads in the block share the same output edges from the head
-  for (Uint row = blockIdx.x; row < numRows; row += gridDim.x) {
-
-    // offsets for head of edge
-    const Uint head = row;
-
-    // offsets for tail of edge
-    const Uint tailStart = rowStarts[head];
-    const Uint tailEnd = rowStarts[head + 1];
-
-    // pointers to beginning and end of row's nonzero columns
-    const Uint *headEdgeBegin, *headEdgeEnd;
-
-    // collaboratively load edges from head if they fit in shared memory
-    if (tailEnd - tailStart < 1024) {
-      for (size_t i = threadIdx.x + tailStart; i < tailEnd; i += BLOCK_DIM_X) {
-        headDsts[i - tailStart] = nonZeros[i];
-      }
-      __syncthreads();
-      headEdgeBegin = &headDsts[0];
-      headEdgeEnd = &headDsts[tailEnd - tailStart];
-    } else {
-      headEdgeBegin = &nonZeros[tailStart];
-      headEdgeEnd = &nonZeros[tailEnd];
-    }
-
-    // one thread per edge
-    for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd;
-         tailOff += BLOCK_DIM_X) {
-
-      // only count local edges
-      if (!isLocalNonZero || isLocalNonZero[tailOff]) {
-
-        // edge from the tail
-        const Uint tail = nonZeros[tailOff];
-        const Uint tailEdgeStart = rowStarts[tail];
-        const Uint tailEdgeEnd = rowStarts[tail + 1];
-
-        count += linear_intersection_count(headEdgeBegin, headEdgeEnd,
-                                           &nonZeros[tailEdgeStart],
-                                           &nonZeros[tailEdgeEnd]);
-      }
-    }
-  }
-
-  size_t aggregate = BlockReduce(temp_storage).Sum(count);
-  if (threadIdx.x == 0) {
-    triangleCounts[blockIdx.x] = aggregate;
-  }
-}
-#endif
 
 // return 1 if search_val is in array between offets left and right, inclusive
 __device__ static bool binary_search(const Uint *const array, size_t left,
@@ -221,75 +88,71 @@ __device__ static bool binary_search(const Uint *const array, size_t left,
   return 0;
 }
 
-#if 0
 template <size_t BLOCK_DIM_X>
 __global__ static void
-kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
-              const Uint *rowStarts, const Uint *nonZeros,
-              const char *isLocalNonZero, const size_t numRows) {
+kernel_binary(uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
+              const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
+              const char *isLocalNonZero, const size_t numEdges) {
+
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
   static_assert(BLOCK_DIM_X % 32 ==
                 0, "expect integer number of warps per block");
+  typedef cub::WarpReduce<size_t> WarpReduce;
+  __shared__ typename WarpReduce::TempStorage temp_storage[WARPS_PER_BLOCK];
+
 
   const int warpIdx = threadIdx.x / 32; // which warp in thread block
   const int laneIdx = threadIdx.x % 32; // which thread in warp
 
-  // Specialize BlockReduce for a 1D block
-  typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
-  // Allocate shared memory for BlockReduce
-  __shared__ typename BlockReduce::TempStorage temp_storage;
 
-  size_t count = 0;
-  // one row per block
-  for (Int row = blockIdx.x; row < numRows; row += gridDim.x) {
+  const size_t gwIdx = warpIdx + blockIdx.x * WARPS_PER_BLOCK;
 
-    // offsets for head of edge
-    const Int head = row;
+  // one warp per edge
+  for (Uint edgeIdx = gwIdx; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
 
-    // offsets for tail of edge
-    const Int tailStart = rowStarts[head];
-    const Int tailEnd = rowStarts[head + 1];
+    // only count local edges
+    if (!isLocalNonZero || isLocalNonZero[edgeIdx]) {
 
-    // one warp per edge
-    for (Int tailOff = tailStart + warpIdx; tailOff < tailEnd;
-         tailOff += WARPS_PER_BLOCK) {
+        size_t count = 0;
 
-      // only count local edges
-      if (!isLocalNonZero || isLocalNonZero[tailOff]) {
+        // head and tail of edge
+        const Uint head = edgeSrc[edgeIdx];
+        const Uint tail = nonZeros[edgeIdx];
 
-        // edges from the head
-        const Uint headEdgeStart = tailStart;
-        const Uint headEdgeEnd = tailEnd;
+        // neighbor offsets for head of edge
+        const Uint headOffStart = rowStarts[head];
+        const Uint headOffEnd = rowStarts[head + 1];
 
-        // edge from the tail
-        const Uint tail = nonZeros[tailOff];
-        const Uint tailEdgeStart = rowStarts[tail];
-        const Uint tailEdgeEnd = rowStarts[tail + 1];
+        // neighbor offsets for tail of edge
+        const Uint tailOffStart = rowStarts[tail];
+        const Uint tailOffEnd = rowStarts[tail + 1];
 
-        // warp in parallel across shorter list to binary-search longer list
-        if (headEdgeEnd - headEdgeStart < tailEdgeEnd - tailEdgeStart) {
-          for (const Uint *u = &nonZeros[headEdgeStart] + laneIdx;
-               u < &nonZeros[headEdgeEnd]; u += 32) {
+        if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
+          for (const Uint *u = &nonZeros[headOffStart] + laneIdx;
+               u < &nonZeros[headOffEnd]; u += 32) {
             count +=
-                binary_search(nonZeros, tailEdgeStart, tailEdgeEnd - 1, *u);
+                binary_search(nonZeros, tailOffStart, tailOffEnd - 1, *u);
           }
         } else {
-          for (const Uint *u = &nonZeros[tailEdgeStart] + laneIdx;
-               u < &nonZeros[tailEdgeEnd]; u += 32) {
+          for (const Uint *u = &nonZeros[tailOffStart] + laneIdx;
+               u < &nonZeros[tailOffEnd]; u += 32) {
             count +=
-                binary_search(nonZeros, headEdgeStart, headEdgeEnd - 1, *u);
+                binary_search(nonZeros, headOffStart, headOffEnd - 1, *u);
           }
         }
-      }
+
+
+
+        size_t aggregate = WarpReduce(temp_storage[warpIdx]).Sum(count);
+
+        if (laneIdx == 0) {
+          edgeTriangleCounts[edgeIdx] = aggregate;
+        }
+
     }
   }
-
-  size_t aggregate = BlockReduce(temp_storage).Sum(count);
-  if (threadIdx.x == 0) {
-    triangleCounts[blockIdx.x] = aggregate;
-  }
 }
-#endif
+
 
 
 EdgeTC::EdgeTC(Config &c) : CUDATriangleCounter(c) {
@@ -303,12 +166,8 @@ EdgeTC::EdgeTC(Config &c) : CUDATriangleCounter(c) {
 
   if (kernel == "linear") {
     kernel_ = Kernel::LINEAR;
-  } else if (kernel == "linear_shared") {
-    kernel_ = Kernel::LINEAR_SHARED;
   } else if (kernel == "binary") {
     kernel_ = Kernel::BINARY;
-  } else if (kernel == "hash") {
-    kernel_ = Kernel::HASH;
   } else {
     LOG(critical, "Unknown triangle counting kernel \"{}\" for EdgeTC",
         c.kernel_);
@@ -432,11 +291,9 @@ size_t EdgeTC::count() {
     switch (kernel_) {
     case Kernel::LINEAR: {
       LOG(debug, "linear search kernel");
-      const size_t BLOCK_DIM_X = 512;
+      const size_t BLOCK_DIM_X = 128;
       const dim3 dimBlock(BLOCK_DIM_X);
-      const size_t warpsPerBlock = dimBlock.x / 32;
-      const size_t numGridWarps = graph.nnz();
-      dim3 dimGrid((numGridWarps + warpsPerBlock - 1) / warpsPerBlock);
+      dim3 dimGrid((graph.nnz() + BLOCK_DIM_X - 1) / BLOCK_DIM_X);
       dimGrid.x = std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>((((uint64_t) 1) << 31) - 1)); // 2^32 - 1
       LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
       kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
@@ -445,19 +302,19 @@ size_t EdgeTC::count() {
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
-    case Kernel::LINEAR_SHARED: {
-        LOG(critical, "hash kernel unimplmeneted");
-        exit(-1);
-        break;
-    }
     case Kernel::BINARY: {
-        LOG(critical, "hash kernel unimplmeneted");
-        exit(-1);
-        break;
-    }
-    case Kernel::HASH: {
-      LOG(critical, "hash kernel unimplmeneted");
-      exit(-1);
+      LOG(debug, "binary search kernel");
+      const size_t BLOCK_DIM_X = 512;
+      const dim3 dimBlock(BLOCK_DIM_X);
+      const size_t warpsPerBlock = dimBlock.x / 32;
+      const size_t numGridWarps = graph.nnz();
+      dim3 dimGrid((numGridWarps + warpsPerBlock - 1) / warpsPerBlock);
+      dimGrid.x = std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>((((uint64_t) 1) << 31) - 1)); // 2^32 - 1
+      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
+          triangleCounts_d_[i], rowOffsets_d_[i], rows_d_[i], cols_d_[i],
+          isLocalCol_d_[i], numEdges);
+      CUDA_RUNTIME(cudaGetLastError());
       break;
     }
     default: {
