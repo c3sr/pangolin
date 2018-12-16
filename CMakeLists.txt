@@ -147,12 +147,14 @@ set(TRI_CPP_HEADERS
     include/graph/dense/cuda_managed_vector.hpp
     include/graph/dense/cuda_zero_copy_vector.hpp
     include/graph/reader/gc_tsv_reader.hpp
+    include/graph/triangle_counter/edge_tc.hpp
 )
 set(TRI_CUDA_SOURCES
   src/cudamemcpy_tc.cu
   src/hu_tc.cu
   src/impact_2018_tc.cu
   src/vertex_tc.cu
+  src/triangle_counter/edge_tc.cu
 )
 
 

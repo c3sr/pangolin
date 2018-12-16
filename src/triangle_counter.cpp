@@ -5,6 +5,7 @@
 #include "graph/nvgraph_triangle_counter.hpp"
 #include "graph/hu_tc.hpp"
 #include "graph/vertex_tc.hpp"
+#include "graph/triangle_counter/edge_tc.hpp"
 
 TriangleCounter::~TriangleCounter() {}
 
@@ -44,6 +45,10 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     else if (c.type_ == "vertex")
     {
         return new VertexTC(c);
+    }
+    else if (c.type_ == "edge")
+    {
+        return new EdgeTC(c);
     }
     else if (c.type_ == "cpu")
     {
