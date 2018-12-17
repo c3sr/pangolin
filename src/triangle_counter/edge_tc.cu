@@ -195,6 +195,7 @@ void EdgeTC::read_data(const std::string &path) {
   // turn into DAG with src < dst
   EdgeList filtered;
   for (const auto &e : reader) {
+    LOG(trace, "read edge {} {}", e.first, e.second);
     if (e.first < e.second) {
       filtered.push_back(e);
     }
@@ -214,10 +215,10 @@ void EdgeTC::read_data(const std::string &path) {
 
   if (gpus_.size() == 1) {
     graphs_.push_back(graph);
+    LOG(trace, "added to graphs_");
   } else {
     graphs_ = graph.partition_nonzeros(gpus_.size());
   }
-
 
   // build source edge lists for each graph
   for (const auto &g : graphs_) {
