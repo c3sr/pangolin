@@ -279,7 +279,7 @@ void VertexTC::read_data(const std::string &path) {
     }
   }
 
-  LOG(trace, "filtered edge list has {} entries", filtered.size());
+  TRACE("filtered edge list has {} entries", filtered.size());
 
   LOG(debug, "building DAG");
   // for singe dag, no remote edges
@@ -339,7 +339,7 @@ void VertexTC::setup_data() {
   }
 
   for (const auto i : gpus_) {
-    LOG(trace, "synchronizing GPU {}", i);
+    TRACE("synchronizing GPU {}", i);
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }

@@ -49,14 +49,14 @@ void NvGraphTriangleCounter::setup_data()
     CUDA_RUNTIME(cudaMemcpy(csr_->source_offsets, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
     CUDA_RUNTIME(cudaMemcpy(csr_->destination_indices, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
 
-    LOG(trace, "dag with {} edges and {} nodes", csr_->nedges, csr_->nvertices);
+    TRACE("dag with {} edges and {} nodes", csr_->nedges, csr_->nvertices);
     for (size_t i = 0; i < dag_.num_nodes(); ++i)
     {
         Int rowStart = dag_.sourceOffsets_[i];
         Int rowEnd = dag_.sourceOffsets_[i + 1];
         for (size_t o = rowStart; o < rowEnd; ++o)
         {
-            LOG(trace, "node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
+            TRACE("node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
         }
     }
 }

@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 		srand(time(NULL));
 	}
 
-#ifndef TRI_RELEASE
+#ifndef NDEBUG
 	LOG(warn, "Not a release build");
 #endif
 	TriangleCounter *tc;

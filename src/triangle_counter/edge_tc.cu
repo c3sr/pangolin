@@ -195,13 +195,13 @@ void EdgeTC::read_data(const std::string &path) {
   // turn into DAG with src < dst
   EdgeList filtered;
   for (const auto &e : reader) {
-    LOG(trace, "read edge {} {}", e.first, e.second);
+    TRACE("read edge {} {}", e.first, e.second);
     if (e.first < e.second) {
       filtered.push_back(e);
     }
   }
 
-  LOG(trace, "filtered edge list has {} entries", filtered.size());
+  TRACE("filtered edge list has {} entries", filtered.size());
 
   LOG(debug, "building DAG");
   // for singe dag, no remote edges
@@ -215,7 +215,7 @@ void EdgeTC::read_data(const std::string &path) {
 
   if (gpus_.size() == 1) {
     graphs_.push_back(graph);
-    LOG(trace, "added to graphs_");
+    TRACE("added to graphs_");
   } else {
     graphs_ = graph.partition_nonzeros(gpus_.size());
   }
@@ -278,7 +278,7 @@ void EdgeTC::setup_data() {
   }
 
   for (const auto i : gpus_) {
-    LOG(trace, "synchronizing GPU {}", i);
+    TRACE("synchronizing GPU {}", i);
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }

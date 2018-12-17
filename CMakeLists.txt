@@ -206,7 +206,7 @@ message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
-  tri_compile_definitions(PUBLIC -DTRI_RELEASE)
+  tri_compile_definitions(PUBLIC -DNDEBUG)
 endif()
 
 # Add a special target to clean nvcc generated files.

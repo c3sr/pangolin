@@ -79,14 +79,14 @@ static std::istream::streampos next_line_or_eof(const std::string &path, std::is
 
     if (newlineFinder.eof())
     {
-        LOG(trace, "reached EOF in {} after {} while searching for newline", path, start);
+        TRACE("reached EOF in {} after {} while searching for newline", path, start);
         std::ifstream endFinder(path);
         endFinder.seekg(0, endFinder.end);
         return endFinder.tellg();
     }
     else
     {
-        LOG(trace, "found newline in {} at {} after {}", path, newlineFinder.tellg(), start);
+        TRACE("found newline in {} at {} after {}", path, newlineFinder.tellg(), start);
         return newlineFinder.tellg();
     }
 }
@@ -114,7 +114,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
         LOG(critical, "unable to get size for {}", path_);
         exit(-1);
     }
-    LOG(trace, "file size is {}", sz);
+    TRACE("file size is {}", sz);
 
     if (start == end)
     {
@@ -131,7 +131,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
     {
         edgeStart = next_line_or_eof(path_, start);
     }
-    LOG(trace, "found edge start after {} at {}", start, edgeStart);
+    TRACE("found edge start after {} at {}", start, edgeStart);
 
     // find the end of the edge after end
     size_t edgeEnd;
@@ -143,7 +143,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end)
     {
         edgeEnd = next_line_or_eof(path_, end);
     }
-    LOG(trace, "found edge end after {} at {}", end, edgeEnd);
+    TRACE("found edge end after {} at {}", end, edgeEnd);
 
     fs.clear(); // clear fail and eof bits
     fs.seekg(edgeStart);

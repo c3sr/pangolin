@@ -48,7 +48,7 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, c
     LOG(debug, "smallest row was {}", firstRow);
     for (Uint i = 0; i < firstRow; ++i)
     {
-        LOG(trace, "added empty row {} before smallest row id", i);
+        TRACE("added empty row {} before smallest row id", i);
         csr.rowOffsets_.push_back(0);
     }
 
@@ -137,7 +137,7 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
             Edge e(head, tail);
             assert(currentPartitionIdx < localEdges.size());
             localEdges[currentPartitionIdx].insert(std::move(e));
-            LOG(trace, "added local edge {} {} to partition {}", e.first, e.second, currentPartitionIdx);
+            TRACE("added local edge {} {} to partition {}", e.first, e.second, currentPartitionIdx);
             if (localEdges[currentPartitionIdx].size() >= nnzPerPartition)
             {
                 ++currentPartitionIdx;
@@ -159,12 +159,12 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
 
                 if (0 == local.count(tailEdge))
                 {
-                    LOG(trace, "adding remote edge {} {} to parition {}", tailEdge.first, tailEdge.second, i);
+                    TRACE("adding remote edge {} {} to parition {}", tailEdge.first, tailEdge.second, i);
                     remote.insert(tailEdge);
                 }
                 else
                 {
-                    LOG(trace, "edge {} {} is already local in parition {}", tailEdge.first, tailEdge.second, i);
+                    TRACE("edge {} {} is already local in parition {}", tailEdge.first, tailEdge.second, i);
                 }
             }
         }
@@ -177,7 +177,7 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
         auto &localSet = localEdges[i];
         auto &remoteSet = remoteEdges[i];
 
-        LOG(trace, "building CSR from {} local and {} remote edges", localSet.size(), remoteSet.size());
+        TRACE("building CSR from {} local and {} remote edges", localSet.size(), remoteSet.size());
 
         EdgeList localList(localSet.begin(), localSet.end());
         EdgeList remoteList(remoteSet.begin(), remoteSet.end());
