@@ -158,6 +158,9 @@ EdgeList GraphChallengeTSVReader::read_edges()
 
 TSVIterator GraphChallengeTSVReader::begin()
 {
+    // is_ may have been rread before
+    is_.clear();                 // reset error state
+    is_.seekg(0, std::ios::beg); // go back to beginning
     return TSVIterator(is_);
 }
 TSVIterator GraphChallengeTSVReader::end()
