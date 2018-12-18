@@ -12,19 +12,25 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
     const Int *ap = aBegin;
     const Int *bp = bBegin;
 
-    while (ap < aEnd && bp < bEnd) {
+    if (ap < aEnd && bp < bEnd) {
 
-        if (*ap == *bp) {
-            ++count;
-            ++ap;
-            ++bp;
-        }
-        else if (*ap < *bp){
-            ++ap;
-        }
-        else {
-            ++bp;
-        }
+      Int a = *ap;
+      Int b = *bp;  
+
+      while (ap < aEnd && bp < bEnd) {
+          
+          if (a == b) {
+              ++count;
+              a = *(++ap);
+              b = *(++bp);
+          }
+          else if (a < b){
+              a = *(++ap);
+          }
+          else {
+              b = *(++bp);
+          }
+      }
     }
     return count;
 }

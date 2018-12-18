@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 	cli = cli | clara::Opt(config.gpus_, "ids")
 					["-g"]("gpus to use");
 	cli = cli | clara::Opt(config.hints_)
-					["-h"]["--unified-memory-hints"]("use unified memory hints");
+					["--unified-memory-hints"]("use unified memory hints");
 	cli = cli | clara::Opt(config.storage_, "zc|um")
 					["-s"]("GPU memory kind");
 	cli = cli | clara::Opt([&](unsigned int seed) {
@@ -93,10 +93,6 @@ int main(int argc, char **argv)
 
 	start = std::chrono::system_clock::now();
 	auto numTriangles = tc->count();
-	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-	LOG(info, "count time {}s", elapsed);
-	start = std::chrono::system_clock::now();
-	numTriangles = tc->count();
 	elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
 	LOG(info, "count time {}s", elapsed);
 
