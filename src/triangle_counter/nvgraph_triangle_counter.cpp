@@ -2,7 +2,7 @@
 #include <cmath>
 
 #include "graph/logger.hpp"
-#include "graph/nvgraph_triangle_counter.hpp"
+#include "graph/triangle_counter/nvgraph_triangle_counter.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/utilities.hpp"
 

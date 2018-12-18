@@ -3,7 +3,7 @@
 
 #include "clara.hpp"
 #include "graph/logger.hpp"
-#include "graph/triangle_counter.hpp"
+#include "graph/triangle_counter/triangle_counter.hpp"
 #include "graph/config.hpp"
 
 int main(int argc, char **argv)

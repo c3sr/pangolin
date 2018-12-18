@@ -2,7 +2,7 @@
 #include "graph/par_graph.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/utilities.hpp"
-#include "graph/vertex_tc.hpp"
+#include "graph/triangle_counter/vertex_tc.hpp"
 
 #include <cub/cub.cuh>
 

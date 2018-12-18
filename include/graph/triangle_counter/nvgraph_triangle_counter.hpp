@@ -2,7 +2,7 @@
 
 #include <nvgraph.h>
 
-#include "graph/triangle_counter.hpp"
+#include "graph/triangle_counter/triangle_counter.hpp"
 #include "graph/dag_lowertriangular_csr.hpp"
 
 class NvGraphTriangleCounter : public TriangleCounter

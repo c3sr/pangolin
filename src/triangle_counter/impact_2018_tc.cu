@@ -1,4 +1,4 @@
-#include "graph/impact_2018_tc.hpp"
+#include "graph/triangle_counter/impact_2018_tc.hpp"
 #include "graph/logger.hpp"
 #include "graph/utilities.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"

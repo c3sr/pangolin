@@ -1,10 +1,10 @@
-#include "graph/triangle_counter.hpp"
-#include "graph/cpu_triangle_counter.hpp"
-#include "graph/cudamemcpy_tc.hpp"
-#include "graph/impact_2018_tc.hpp"
-#include "graph/nvgraph_triangle_counter.hpp"
-#include "graph/hu_tc.hpp"
-#include "graph/vertex_tc.hpp"
+#include "graph/triangle_counter/triangle_counter.hpp"
+#include "graph/triangle_counter/cpu_triangle_counter.hpp"
+#include "graph/triangle_counter/cudamemcpy_tc.hpp"
+#include "graph/triangle_counter/impact_2018_tc.hpp"
+#include "graph/triangle_counter/nvgraph_triangle_counter.hpp"
+#include "graph/triangle_counter/hu_tc.hpp"
+#include "graph/triangle_counter/vertex_tc.hpp"
 #include "graph/triangle_counter/edge_tc.hpp"
 
 TriangleCounter::~TriangleCounter() {}

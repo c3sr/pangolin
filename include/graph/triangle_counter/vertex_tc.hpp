@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graph/cuda_triangle_counter.hpp"
+#include "graph/triangle_counter/cuda_triangle_counter.hpp"
 #include "graph/sparse/unified_memory_csr.hpp"
 #include "graph/dense/cuda_managed_vector.hpp"
 
@@ -10,7 +10,7 @@
 
 class VertexTC : public CUDATriangleCounter
 {
-private:
+  private:
 	enum class Kernel
 	{
 		LINEAR,
@@ -19,7 +19,7 @@ private:
 		HASH
 	};
 
-private:
+  private:
 	Kernel kernel_;
 
 	// partitioned data structures
@@ -38,7 +38,7 @@ private:
 	size_t numEdges_; // edges in input graph
 	size_t numNodes_; // nodes in input graph
 
-public:
+  public:
 	VertexTC(Config &c);
 	virtual ~VertexTC();
 	virtual void read_data(const std::string &path) override;

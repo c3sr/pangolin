@@ -1,4 +1,4 @@
-#include "graph/cudamemcpy_tc.hpp"
+#include "graph/triangle_counter/cudamemcpy_tc.hpp"
 #include "graph/logger.hpp"
 #include "graph/utilities.hpp"
 #include "graph/reader/gc_tsv_reader.hpp"

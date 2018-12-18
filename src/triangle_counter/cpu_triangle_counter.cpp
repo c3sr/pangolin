@@ -3,7 +3,7 @@
 #endif
 
 #include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/cpu_triangle_counter.hpp"
+#include "graph/triangle_counter/cpu_triangle_counter.hpp"
 #include "graph/logger.hpp"
 #include "graph/dag2019.hpp"
 

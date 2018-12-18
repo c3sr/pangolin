@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graph/cuda_triangle_counter.hpp"
+#include "graph/triangle_counter/cuda_triangle_counter.hpp"
 #include "graph/sparse/unified_memory_csr.hpp"
 #include "graph/dense/cuda_managed_vector.hpp"
 

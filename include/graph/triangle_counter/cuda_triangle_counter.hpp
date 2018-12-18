@@ -6,7 +6,7 @@
 
 #include <cuda_runtime.h>
 
-#include "graph/triangle_counter.hpp"
+#include "graph/triangle_counter/triangle_counter.hpp"
 #include "graph/config.hpp"
 
 class CUDATriangleCounter : public TriangleCounter

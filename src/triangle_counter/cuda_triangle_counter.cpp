@@ -1,6 +1,6 @@
 #include <nvToolsExt.h>
 
-#include "graph/cuda_triangle_counter.hpp"
+#include "graph/triangle_counter/cuda_triangle_counter.hpp"
 #include "graph/logger.hpp"
 #include "graph/types.hpp"
 #include "graph/utilities.hpp"
