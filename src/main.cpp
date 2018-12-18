@@ -27,6 +27,8 @@ int main(int argc, char **argv)
 					["-c"]["--num_cpu"]("number of cpu threads");
 	cli = cli | clara::Opt(config.gpus_, "ids")
 					["-g"]("gpus to use");
+	cli = cli | clara::Opt(config.hints_)
+					["-h"]["--unified-memory-hints"]("use unified memory hints");
 	cli = cli | clara::Opt(config.storage_, "zc|um")
 					["-s"]("GPU memory kind");
 	cli = cli | clara::Opt([&](unsigned int seed) {
