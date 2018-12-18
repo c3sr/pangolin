@@ -64,6 +64,9 @@ IMPACT2018TC::IMPACT2018TC(Config &c)  : CUDATriangleCounter(c) {
         LOG(critical, "unknown gpu storage kind \"{}\"", c.storage_);
         exit(-1);
     }
+
+    unifiedMemoryHints_ = c.hints_;
+
     nvtxRangePop();
 }
 
@@ -123,20 +126,21 @@ void IMPACT2018TC::setup_data() {
             CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
 
             // processor id is ignored
-            #if 0
-            CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetReadMostly, 0));
-            CUDA_RUNTIME(cudaMemAdvise(edgeDst_d_, edgeBytes, cudaMemAdviseSetReadMostly, 0));
-            CUDA_RUNTIME(cudaMemAdvise(nodes_d_, nodeBytes, cudaMemAdviseSetReadMostly, 0));
-            for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
-                if (cudaDeviceProps_[i].concurrentManagedAccess) {
-                    CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetAccessedBy, i));
-                    CUDA_RUNTIME(cudaMemAdvise(edgeDst_d_, edgeBytes, cudaMemAdviseSetAccessedBy, i));
-                    CUDA_RUNTIME(cudaMemAdvise(nodes_d_, nodeBytes, cudaMemAdviseSetAccessedBy, i));
-                } else {
-                    LOG(warn, "skipping cudaMemAdviseSetAccessedBy for device {}: cudaDeviceProp.concurrentManagedAccess = 0", i);
+            if (unifiedMemoryHints_) {
+                LOG(info, "using unified memory hints");
+                CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetReadMostly, 0));
+                CUDA_RUNTIME(cudaMemAdvise(edgeDst_d_, edgeBytes, cudaMemAdviseSetReadMostly, 0));
+                CUDA_RUNTIME(cudaMemAdvise(nodes_d_, nodeBytes, cudaMemAdviseSetReadMostly, 0));
+                for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
+                    if (cudaDeviceProps_[i].concurrentManagedAccess) {
+                        CUDA_RUNTIME(cudaMemAdvise(edgeSrc_d_, edgeBytes, cudaMemAdviseSetAccessedBy, i));
+                        CUDA_RUNTIME(cudaMemAdvise(edgeDst_d_, edgeBytes, cudaMemAdviseSetAccessedBy, i));
+                        CUDA_RUNTIME(cudaMemAdvise(nodes_d_, nodeBytes, cudaMemAdviseSetAccessedBy, i));
+                    } else {
+                        LOG(warn, "skipping cudaMemAdviseSetAccessedBy for device {}: cudaDeviceProp.concurrentManagedAccess = 0", i);
+                    }
                 }
             }
-            #endif
 
             break;
         }

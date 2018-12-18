@@ -11,4 +11,5 @@ struct Config
     unsigned int seed_;
     std::string storage_;
     std::string kernel_; // which kernel to use, if there are multiple choices
+    bool hints_;         // use unified memory hints
 };

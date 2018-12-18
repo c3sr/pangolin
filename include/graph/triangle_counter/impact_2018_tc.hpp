@@ -22,6 +22,7 @@ class IMPACT2018TC : public CUDATriangleCounter
 	Int *edgeDst_d_;
 	Int *nodes_d_;
 	GPUMemoryKind GPUMemoryKind_;
+	bool unifiedMemoryHints_;
 
   public:
 	IMPACT2018TC(Config &c);
