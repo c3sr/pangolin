@@ -23,7 +23,7 @@ NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 void NvGraphTriangleCounter::read_data(const std::string &path)
 {
     LOG(info, "reading {}", path);
-    auto r = GraphChallengeTSVReader(path);
+    GraphChallengeTSVReader r(path);
     const auto sz = r.size();
 
     auto edgeList = r.read_edges(0, sz);
