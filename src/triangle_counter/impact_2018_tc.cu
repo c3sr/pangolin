@@ -183,7 +183,7 @@ size_t IMPACT2018TC::count() {
         size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
         LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
-        dim3 dimBlock(128);
+        dim3 dimBlock(256);
         size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
         dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
     
