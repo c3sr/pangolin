@@ -5,6 +5,7 @@
 #include "graph/logger.hpp"
 #include "graph/triangle_counter/triangle_counter.hpp"
 #include "graph/config.hpp"
+#include "graph/reader/edge_list_reader.hpp"
 
 int main(int argc, char **argv)
 {
@@ -77,6 +78,12 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	LOG(warn, "Not a release build");
 #endif
+
+	graph::EdgeListReader *reader;
+	reader = graph::EdgeListReader::from_file(adjacencyListPath);
+
+	EdgeList(reader->begin(), reader->end());
+
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 

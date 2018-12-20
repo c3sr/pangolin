@@ -116,6 +116,8 @@ set(TRI_CPP_SOURCES
   src/main.cpp
   src/par_graph.cpp
   src/utilities.cpp
+  src/reader/bel_reader.cpp
+  src/reader/edge_list_reader.cpp
   src/reader/gc_tsv_reader.cpp
   src/sparse/unified_memory_csr.cpp
   src/triangle_counter/cpu_triangle_counter.cpp
@@ -138,6 +140,8 @@ set(TRI_CPP_HEADERS
     include/graph/allocator/cuda_zero_copy.hpp
     include/graph/dense/cuda_managed_vector.hpp
     include/graph/dense/cuda_zero_copy_vector.hpp
+    include/graph/reader/bel_reader.hpp
+    include/graph/reader/edge_list_reader.hpp
     include/graph/reader/gc_tsv_reader.hpp
     include/graph/triangle_counter/cudamemcpy_tc.hpp
     include/graph/triangle_counter/cpu_triangle_counter.hpp
