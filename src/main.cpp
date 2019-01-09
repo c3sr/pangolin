@@ -2,9 +2,10 @@
 #include <fmt/format.h>
 
 #include "clara.hpp"
+#include "graph/config.hpp"
+#include "graph/configure.hpp"
 #include "graph/logger.hpp"
 #include "graph/triangle_counter/triangle_counter.hpp"
-#include "graph/config.hpp"
 #include "graph/reader/edge_list_reader.hpp"
 
 int main(int argc, char **argv)
@@ -55,6 +56,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	// set logging level
 	if (verbose)
 	{
 		logger::console->set_level(spdlog::level::trace);
@@ -63,6 +65,25 @@ int main(int argc, char **argv)
 	{
 		logger::console->set_level(spdlog::level::debug);
 	}
+
+	// log command line before much else happens
+	{
+		std::string cmd;
+		for (int i = 0; i < argc; ++i)
+		{
+			if (i != 0)
+			{
+				cmd += " ";
+			}
+			cmd += argv[i];
+		}
+		LOG(debug, cmd);
+	}
+	LOG(debug, "graph version: {}.{}.{}", GRAPH_VERSION_MAJOR, GRAPH_VERSION_MINOR, GRAPH_VERSION_PATCH);
+	LOG(debug, "graph branch:  {}", GRAPH_GIT_REFSPEC);
+	LOG(debug, "graph sha:     {}", GRAPH_GIT_HASH);
+	LOG(debug, "graph changes: {}", GRAPH_GIT_LOCAL_CHANGES);
+
 	if (seedSet)
 	{
 		LOG(debug, "using seed {}", config.seed_);

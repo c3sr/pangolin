@@ -8,10 +8,20 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 include("cmake/HunterGate.cmake")
 
+
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.23.55.tar.gz"
     SHA1 "da31d97da47cdde05f958786b6729ba9b773bb17"
 )
+
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+include("cmake/GetGitRevisionDescription.cmake")
+
+get_git_head_revision(GIT_REFSPEC GIT_HASH)
+git_local_changes(GIT_LOCAL_CHANGES)
+message(STATUS GIT_REFSPEC=${GIT_REFSPEC})
+message(STATUS GIT_HASH=${GIT_HASH})
+message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 
 option(CONFIG_USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
 option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
@@ -44,6 +54,7 @@ macro(tri_compile_definitions)
   target_compile_definitions(tri32 ${ARGN})
   target_compile_definitions(tri64 ${ARGN})
 endmacro()
+
 hunter_add_package(spdlog)
 find_package(spdlog CONFIG REQUIRED)
 
@@ -128,6 +139,7 @@ set(TRI_CPP_SOURCES
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/config.hpp
+    include/graph/configure.hpp
     include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
     include/graph/edge.hpp
@@ -200,7 +212,14 @@ endif()
 # scope will also build with -std=c++11
 tri_compile_features(PUBLIC cxx_std_11)
 
-
+# Generate version file and include it 
+configure_file (
+    "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in"
+    "${PROJECT_BINARY_DIR}/include/graph/configure.hpp"
+)
+tri_include_directories(PRIVATE
+  ${PROJECT_BINARY_DIR}/include
+)
 
 # Convert CUDA flags from list
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
