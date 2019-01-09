@@ -186,7 +186,7 @@ void EdgeTC::read_data(const std::string &path) {
 
   LOG(info, "reading {}", path);
 
-  GraphChallengeTSVReader reader(path);
+  graph::GraphChallengeTSVReader reader(path);
 
   if (reader.begin() == reader.end()) {
     LOG(warn, "{} does not exist or is empty", path);

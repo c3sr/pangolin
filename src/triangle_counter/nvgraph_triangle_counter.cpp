@@ -23,7 +23,7 @@ NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 void NvGraphTriangleCounter::read_data(const std::string &path)
 {
     LOG(info, "reading {}", path);
-    GraphChallengeTSVReader r(path);
+    graph::GraphChallengeTSVReader r(path);
     const auto sz = r.size();
 
     auto edgeList = r.read_edges(0, sz);
@@ -54,7 +54,7 @@ void NvGraphTriangleCounter::setup_data()
     {
         Int rowStart = dag_.sourceOffsets_[i];
         Int rowEnd = dag_.sourceOffsets_[i + 1];
-        for (size_t o = rowStart; o < rowEnd; ++o)
+        for (Int o = rowStart; o < rowEnd; ++o)
         {
             TRACE("node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
         }

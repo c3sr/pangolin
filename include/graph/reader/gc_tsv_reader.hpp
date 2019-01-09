@@ -11,9 +11,12 @@ sorted with increasing src, and within each src increasing dst
 #include <sstream>
 #include <fstream>
 #include <cassert>
+#include <cstdio>
 
-#include "graph/edge_list.hpp"
+#include "edge_list_reader.hpp"
 
+namespace graph
+{
 class TSVIterator : public std::iterator<std::input_iterator_tag, Edge>
 {
 private:
@@ -86,15 +89,17 @@ public:
   }
 };
 
-class GraphChallengeTSVReader
+class GraphChallengeTSVReader : public EdgeListReader
 {
 
 private:
+  FILE *fp_;
   std::string path_;
   std::ifstream is_;
 
 public:
   GraphChallengeTSVReader(const std::string &path);
+  ~GraphChallengeTSVReader() override;
 
   // read_edges(0, N/2)
   // read_edges(N/2, N)
@@ -115,5 +120,9 @@ public:
   TSVIterator begin();
   TSVIterator end();
 
+  size_t read(Edge *ptr, const size_t num) override;
+
   long size();
 };
+
+} // namespace graph

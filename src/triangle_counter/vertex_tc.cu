@@ -267,7 +267,7 @@ void VertexTC::read_data(const std::string &path) {
 
   LOG(info, "reading {}", path);
 
-  GraphChallengeTSVReader reader(path);
+  graph::GraphChallengeTSVReader reader(path);
 
   auto edgeList = reader.read_edges();
 

@@ -102,7 +102,7 @@ IMPACT2018TC::~IMPACT2018TC() {
 void IMPACT2018TC::read_data(const std::string &path) {
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
-    GraphChallengeTSVReader reader(path);
+    graph::GraphChallengeTSVReader reader(path);
     auto edgeList = reader.read_edges();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);

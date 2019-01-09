@@ -6,7 +6,23 @@
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/logger.hpp"
 
-GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : path_(path), is_(path) {}
+namespace graph
+{
+
+GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : fp_(nullptr), path_(path), is_(path)
+{
+    fp_ = fopen(path.c_str(), "r");
+    assert(fp_);
+}
+
+GraphChallengeTSVReader::~GraphChallengeTSVReader()
+{
+    if (fp_)
+    {
+        fclose(fp_);
+        fp_ = nullptr;
+    }
+}
 
 // read stream until end
 static EdgeList read_stream(std::istream &is, std::istream::streampos end)
@@ -70,7 +86,6 @@ static EdgeList read_stream(std::istream &is, std::istream::streampos end)
 // return the position of the beginning of the next line, or the end of the file
 static std::istream::streampos next_line_or_eof(const std::string &path, std::istream::streampos start)
 {
-
     std::ifstream newlineFinder(path);
     newlineFinder.seekg(start);
 
@@ -167,3 +182,40 @@ TSVIterator GraphChallengeTSVReader::end()
 {
     return TSVIterator();
 }
+
+size_t GraphChallengeTSVReader::read(Edge *ptr, const size_t num)
+{
+    assert(fp_ != nullptr);
+    assert(ptr != nullptr);
+
+    // try to read num edges
+    size_t i = 0;
+    for (; i < num; ++i)
+    {
+        long long unsigned dst, src, weight;
+        const size_t numFilled = scanf("%llu %llu %llu", &dst, &src, &weight);
+        if (numFilled != 3)
+        {
+            if (feof(fp_))
+            {
+                fclose(fp_);
+                fp_ = nullptr;
+                break;
+            }
+            else if (ferror(fp_))
+            {
+                LOG(error, "Error while reading {}", path_);
+                assert(0);
+            }
+            else
+            {
+                LOG(error, "Unexpected error while reading {}", path_);
+                assert(0);
+            }
+        }
+        ptr[i] = Edge(src, dst);
+    }
+    return i;
+}
+
+} // namespace graph

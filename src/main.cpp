@@ -103,8 +103,6 @@ int main(int argc, char **argv)
 	graph::EdgeListReader *reader;
 	reader = graph::EdgeListReader::from_file(adjacencyListPath);
 
-	EdgeList(reader->begin(), reader->end());
-
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 
