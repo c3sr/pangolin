@@ -1,4 +1,4 @@
-# darpa_graph_challenge
+# Graph Challenge
 
 [GraphChallenge Challenges](https://graphchallenge.mit.edu/challenges)
 
