@@ -14,13 +14,31 @@ class EdgeListReader
 public:
   virtual ~EdgeListReader() {}
 
-  // read some number of edges from the file
+  // read some number of edges from the file into buffer
   virtual size_t read(Edge *ptr, const size_t num) = 0;
-  void read(EdgeList &edgeList, const size_t num)
+  EdgeList read(const size_t num)
   {
-    edgeList.resize(num);
+    EdgeList edgeList(num);
     const size_t numRead = read(edgeList.data(), num);
     edgeList.resize(numRead);
+    return edgeList;
+  }
+
+  // read all edges from the file
+  EdgeList read()
+  {
+    const size_t bufSize = 10;
+    EdgeList edgeList, buf(bufSize);
+    while (true)
+    {
+      const size_t numRead = read(buf.data(), 10);
+      if (0 == numRead)
+      {
+        break;
+      }
+      edgeList.insert(edgeList.end(), buf.begin(), buf.begin() + numRead);
+    }
+    return edgeList;
   }
 
   // construct an edge list reader based on the file type of path

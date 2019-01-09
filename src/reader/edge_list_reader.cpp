@@ -6,6 +6,10 @@
 
 static bool endswith(const std::string &base, const std::string &suffix)
 {
+    if (base.size() < suffix.size())
+    {
+        return false;
+    }
     return 0 == base.compare(base.size() - suffix.size(), suffix.size(), suffix);
 }
 

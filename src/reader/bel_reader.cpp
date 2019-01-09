@@ -26,7 +26,8 @@ size_t BELReader::read(Edge *ptr, const size_t num)
 {
     assert(fp_ != nullptr);
     assert(ptr != nullptr);
-    const size_t numRead = fread(ptr, sizeof(Edge), num, fp_);
+    char *buf = new char[num * 24];
+    const size_t numRead = fread(buf, 24, num, fp_);
 
     // end of file or error
     if (numRead != num)
@@ -50,8 +51,23 @@ size_t BELReader::read(Edge *ptr, const size_t num)
             assert(0);
         }
     }
+    else
+    {
+        for (size_t i = 0; i < numRead; ++i)
+        {
+            std::memcpy(&ptr[i].first, &buf[i * 24 + 8], 8);
+            std::memcpy(&ptr[i].second, &buf[i * 24 + 0], 8);
+        }
+    }
+
+    // for (size_t i = 0; i < numRead; ++i)
+    // {
+    //     LOG(debug, "{} {}", ptr[i].first, ptr[i].second);
+    // }
+    // exit(0);
 
     // no characters extracted or parsing error
+    delete[] buf;
     return numRead;
 }
 

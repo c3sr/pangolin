@@ -193,7 +193,7 @@ size_t GraphChallengeTSVReader::read(Edge *ptr, const size_t num)
     for (; i < num; ++i)
     {
         long long unsigned dst, src, weight;
-        const size_t numFilled = scanf("%llu %llu %llu", &dst, &src, &weight);
+        const size_t numFilled = fscanf(fp_, "%llu %llu %llu", &dst, &src, &weight);
         if (numFilled != 3)
         {
             if (feof(fp_))

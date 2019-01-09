@@ -102,9 +102,14 @@ int main(int argc, char **argv)
 
 	graph::EdgeListReader *reader;
 	reader = graph::EdgeListReader::from_file(adjacencyListPath);
+	LOG(trace, "created reader");
+
+	EdgeList test = reader->read();
+	LOG(info, "got {} edges", test.size());
 
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
+	LOG(trace, "created triangle counter");
 
 	auto start = std::chrono::system_clock::now();
 	tc->read_data(adjacencyListPath);
