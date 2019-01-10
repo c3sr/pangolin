@@ -198,8 +198,6 @@ size_t GraphChallengeTSVReader::read(Edge *ptr, const size_t num)
         {
             if (feof(fp_))
             {
-                fclose(fp_);
-                fp_ = nullptr;
                 break;
             }
             else if (ferror(fp_))

@@ -18,8 +18,8 @@ BELReader::~BELReader()
     if (fp_)
     {
         fclose(fp_);
+        fp_ = nullptr;
     }
-    fp_ = nullptr;
 }
 
 size_t BELReader::read(Edge *ptr, const size_t num)
@@ -35,7 +35,7 @@ size_t BELReader::read(Edge *ptr, const size_t num)
         // end of file
         if (feof(fp_))
         {
-            return 0;
+            // do nothing
         }
         // some error
         else if (ferror(fp_))
@@ -51,13 +51,10 @@ size_t BELReader::read(Edge *ptr, const size_t num)
             assert(0);
         }
     }
-    else
+    for (size_t i = 0; i < numRead; ++i)
     {
-        for (size_t i = 0; i < numRead; ++i)
-        {
-            std::memcpy(&ptr[i].first, &buf[i * 24 + 8], 8);
-            std::memcpy(&ptr[i].second, &buf[i * 24 + 0], 8);
-        }
+        std::memcpy(&ptr[i].first, &buf[i * 24 + 8], 8);
+        std::memcpy(&ptr[i].second, &buf[i * 24 + 0], 8);
     }
 
     // for (size_t i = 0; i < numRead; ++i)
