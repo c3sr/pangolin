@@ -100,18 +100,6 @@ int main(int argc, char **argv)
 	LOG(warn, "Not a release build");
 #endif
 
-	graph::EdgeListReader *reader;
-	reader = graph::EdgeListReader::from_file(adjacencyListPath);
-	LOG(trace, "created reader");
-
-	{
-		auto start = std::chrono::system_clock::now();
-		EdgeList test = reader->read();
-		double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-		LOG(info, "read_data time {}s", elapsed);
-		LOG(info, "got {} edges", test.size());
-	}
-
 	TriangleCounter *tc;
 	tc = TriangleCounter::CreateTriangleCounter(config);
 	LOG(trace, "created triangle counter");

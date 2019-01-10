@@ -88,8 +88,8 @@ CudaMemcpyTC::~CudaMemcpyTC() {
 void CudaMemcpyTC::read_data(const std::string &path) {
 
     LOG(info, "reading {}", path);
-    graph::GraphChallengeTSVReader reader(path);
-    auto edgeList = reader.read_edges();
+    auto *reader = graph::EdgeListReader::from_file(path);
+    auto edgeList = reader->read();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
 

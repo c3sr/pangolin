@@ -24,6 +24,25 @@ GraphChallengeTSVReader::~GraphChallengeTSVReader()
     }
 }
 
+EdgeListReader *GraphChallengeTSVReader::clone()
+{
+    // create a new reader
+    auto *reader = new GraphChallengeTSVReader(path_);
+
+    // match position in fp_
+    if (fp_)
+    {
+        long int tell = ftell(fp_);
+        fseek(reader->fp_, tell, SEEK_SET);
+    }
+
+    // match position in is_
+    std::streampos pos = is_.tellg();
+    reader->is_.seekg(pos);
+
+    return reader;
+}
+
 // read stream until end
 static EdgeList read_stream(std::istream &is, std::istream::streampos end)
 {

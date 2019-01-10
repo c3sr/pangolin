@@ -6,6 +6,7 @@
 #include "graph/triangle_counter/hu_tc.hpp"
 #include "graph/triangle_counter/vertex_tc.hpp"
 #include "graph/triangle_counter/edge_tc.hpp"
+#include "graph/reader/edge_list_reader.hpp"
 
 TriangleCounter::~TriangleCounter() {}
 

@@ -61,15 +61,11 @@ CPUTriangleCounter::CPUTriangleCounter(const Config &c)
 void CPUTriangleCounter::read_data(const std::string &path)
 {
 
-    {
-        LOG(info, "reading {}", path);
-        graph::GraphChallengeTSVReader r(path);
-        const auto sz = r.size();
-
-        auto edgeList = r.read_edges(0, sz);
-        LOG(debug, "building DAG");
-        dag_ = DAG2019::from_edgelist(edgeList);
-    }
+    LOG(info, "reading {}", path);
+    auto *reader = graph::EdgeListReader::from_file(path);
+    auto edgeList = reader->read();
+    LOG(debug, "building DAG");
+    dag_ = DAG2019::from_edgelist(edgeList);
 
     LOG(info, "{} nodes", dag_.num_nodes());
     LOG(info, "{} edges", dag_.num_edges());

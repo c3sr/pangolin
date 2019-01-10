@@ -101,6 +101,8 @@ public:
   GraphChallengeTSVReader(const std::string &path);
   ~GraphChallengeTSVReader() override;
 
+  virtual EdgeListReader *clone() override;
+
   // read_edges(0, N/2)
   // read_edges(N/2, N)
   /*

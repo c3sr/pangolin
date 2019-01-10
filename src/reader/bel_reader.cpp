@@ -22,6 +22,21 @@ BELReader::~BELReader()
     }
 }
 
+EdgeListReader *BELReader::clone()
+{
+    // create a new reader
+    auto *reader = new BELReader(path_);
+
+    // match position in fp_
+    if (fp_)
+    {
+        long int tell = ftell(fp_);
+        fseek(reader->fp_, tell, SEEK_SET);
+    }
+
+    return reader;
+}
+
 size_t BELReader::read(Edge *ptr, const size_t num)
 {
     assert(fp_ != nullptr);

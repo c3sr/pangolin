@@ -24,6 +24,8 @@ public:
   BELReader(const std::string &path);
   ~BELReader() override;
 
+  virtual EdgeListReader *clone() override;
+
   virtual size_t read(Edge *ptr, const size_t num) override;
 
   size_t size();
