@@ -202,7 +202,7 @@ size_t GraphChallengeTSVReader::read(Edge *ptr, const size_t num)
             }
             else if (ferror(fp_))
             {
-                LOG(error, "Error while reading {}", path_);
+                LOG(error, "Error while reading {}: {}", path_, strerror(errno));
                 assert(0);
             }
             else

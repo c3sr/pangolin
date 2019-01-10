@@ -40,10 +40,10 @@ size_t BELReader::read(Edge *ptr, const size_t num)
         // some error
         else if (ferror(fp_))
         {
-            LOG(error, "Error while reading {}", path_);
-            assert(0);
+            LOG(error, "Error while reading {}: {}", path_, strerror(errno));
             fclose(fp_);
             fp_ = nullptr;
+            assert(0);
         }
         else
         {
