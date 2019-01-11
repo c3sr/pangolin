@@ -117,8 +117,9 @@ Hu2018TC::~Hu2018TC() {
 void Hu2018TC::read_data(const std::string &path) {
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
-    graph::GraphChallengeTSVReader reader(path);
-    auto edgeList = reader.read_edges();
+    LOG(info, "reading {}", path);
+    auto *reader = graph::EdgeListReader::from_file(path);
+    auto edgeList = reader->read();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
 
