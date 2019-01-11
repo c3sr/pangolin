@@ -47,4 +47,4 @@ Our 2017 submission may be cited with the following bibtex entry
 
 ## Other
 
-See [references](references/README.md) for some notes on references.
+See [references](references) for some notes on references.
