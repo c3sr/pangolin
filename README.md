@@ -1,6 +1,4 @@
-# darpa_graph_challenge
-
-[GraphChallenge Challenges](https://graphchallenge.mit.edu/challenges)
+# Graph
 
 ## Building graph from Source
 
@@ -33,6 +31,19 @@ Both have equivalent functionality, but use 32-bit and 64-bit values for graph v
 ## Running tri
 
     ./tri32 -h
+
+## Citing
+
+Our 2017 submission may be cited with the following bibtex entry
+
+    @inproceedings{mailthody2018collaborative,
+    title={Collaborative (CPU+ GPU) Algorithms for Triangle Counting and Truss Decomposition},
+    author={Mailthody, Vikram S and Date, Ketan and Qureshi, Zaid and Pearson, Carl and Nagi, Rakesh and Xiong, Jinjun and Hwu, Wen-mei},
+    booktitle={2018 IEEE High Performance extreme Computing Conference (HPEC)},
+    pages={1--7},
+    year={2018},
+    organization={IEEE}
+    }
 
 ## Other
 
