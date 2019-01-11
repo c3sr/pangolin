@@ -2,22 +2,38 @@
 
 [GraphChallenge Challenges](https://graphchallenge.mit.edu/challenges)
 
-## Static Challenge
+## Building graph from Source
 
-* [slides (20170209)](https://graphchallenge.mit.edu/sites/default/files/documents/SubGraphChallenge-2017-02-09.pdf)
-* [paper](https://arxiv.org/abs/1708.06866)
-* [GitHub](https://github.com/graphchallenge/GraphChallenge)
+### Prerequisites
 
-## 
+1. Install CUDA
 
-* [arxiv pdf](https://arxiv.org/pdf/cs/0609116v1.pdf)
-* Fastest known algorithm for finding, counting, pseudo-listing triangles
+Instructions for installing CUDA on supported systems may be obtained from Nvidia's website.
 
-##
+2. Install CMake 3.12+
 
-* [website](https://www.andrew.cmu.edu/user/dwise/15418/)
-* Partitioning Idea
+On x86 linux, CMake provides prebuilt binaries with a shell script.
+On POWER, you will need to build CMake from source.
+You can check your cmake version with `cmake --version`.
 
-## High Performance Exact Triangle Counting on GPUs
+3. (Optional) Install Doxygen
 
-* Mauro Bisson and Massimiliano Fatica
+If doxygen is installed, building graph will also create API documentation.
+
+### Building on Ubuntu/Debian
+
+    mkdir -p build
+    cd build
+    cmake ..
+    make
+
+This will produce two binaries: `tri32` and `tri64`.
+Both have equivalent functionality, but use 32-bit and 64-bit values for graph vertex/edge IDs respectively.
+
+## Running tri
+
+    ./tri32 -h
+
+## Other
+
+See [references](references/README.md) for some notes on references.

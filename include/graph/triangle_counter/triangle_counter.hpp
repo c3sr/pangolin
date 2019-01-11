@@ -1,9 +1,16 @@
+/*! \file triangle_counter.hpp
+    \brief A Documented file.
+    
+    Details.
+*/
+
 #pragma once
 
 #include <string>
 
 #include "graph/config.hpp"
 
+/*! An interface for all triangle counters */
 class TriangleCounter
 {
 
