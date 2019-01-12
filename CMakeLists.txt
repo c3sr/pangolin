@@ -12,6 +12,7 @@ include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.23.55.tar.gz"
     SHA1 "da31d97da47cdde05f958786b6729ba9b773bb17"
+    LOCAL
 )
 
 project(graph LANGUAGES C CXX CUDA VERSION 0.0.1)
@@ -63,8 +64,12 @@ macro(tri_compile_definitions)
   target_compile_definitions(pangolin64 ${ARGN})
 endmacro()
 
+hunter_add_package(fmt)
+find_package(fmt CONFIG REQUIRED)
+
 hunter_add_package(spdlog)
 find_package(spdlog CONFIG REQUIRED)
+
 
 hunter_add_package(cub)
 find_package(cub CONFIG REQUIRED)
