@@ -70,7 +70,6 @@ find_package(fmt CONFIG REQUIRED)
 hunter_add_package(spdlog)
 find_package(spdlog CONFIG REQUIRED)
 
-
 hunter_add_package(cub)
 find_package(cub CONFIG REQUIRED)
 
@@ -80,9 +79,6 @@ IF(OPENMP_FOUND)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS})
 ENDIF()
-
-
-
 
 find_package(CUDA REQUIRED)
 if (CUDA_FOUND)
@@ -95,10 +91,12 @@ endif()
 
 # Disable extended variants of C++ dialects
 # i.e. don't choose gnu++17 over c++17
+# FIXME: don't set these globally
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 # CUDA flags
+# FIXME: don't set these globally
 set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -133,6 +131,8 @@ set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CUDA_VERBOSE_BUILD OFF)
 
+
+
 set(TRI_CPP_SOURCES
   src/config.cpp
   src/dag_lowertriangular_csr.cpp
@@ -156,6 +156,7 @@ set(TRI_CPP_HEADERS
     include/graph/edge.hpp
     include/graph/edge_list.hpp
     include/graph/logger.hpp
+    include/graph/pangolin.hpp
     include/graph/par_graph.hpp
     include/graph/types.hpp
     include/graph/utilities.hpp
@@ -182,14 +183,7 @@ set(TRI_CUDA_SOURCES
   src/triangle_counter/edge_tc.cu
 )
 
-install(
-  FILES
-    ${TRI_CPP_HEADERS}
-  DESTINATION
-    include
-  COMPONENT
-    Devel
-)
+
 
 add_library(pangolin32 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 add_library(pangolin64 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
@@ -209,8 +203,25 @@ set(version_config "${generated_dir}/${PROJECT_NAME}ConfigVersion.cmake")
 set(targets_export_name "${PROJECT_NAME}Targets")
 set(namespace "${PROJECT_NAME}::")
 
+##  Handle the header file with pangolin version info
+message(STATUS "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/graph/configure.hpp")
+configure_file (
+    "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
+)
+# install the pangolin version file
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
+  DESTINATION include
+)
+# include the binary dir during build or the install dir during install
+tri_include_directories(PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/graph> # fake that "configure.hpp" is in same dir as pangolin.hpp
+  $<INSTALL_INTERFACE:include>
+)
+
 include(CMakePackageConfigHelpers)
-# Create the version file
+# Create the CMake version file
 write_basic_package_version_file(
   "${version_config}"
   VERSION ${CMAKE_PROJECT_VERSION}
@@ -224,6 +235,15 @@ configure_package_config_file(
     INSTALL_DESTINATION "${config_install_dir}"
 )
 
+# Install the include files
+install(
+  FILES
+    ${TRI_CPP_HEADERS}
+  DESTINATION
+    include
+  COMPONENT
+    Devel
+)
 
 # install the toolchain file
 install(
@@ -265,11 +285,11 @@ endif()
 
 
 if (CUDA_FOUND)
-  tri_include_directories(SYSTEM PRIVATE ${CUDA_INCLUDE_DIRS})
+  tri_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
 endif()
 
 tri_include_directories(PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
@@ -283,7 +303,6 @@ set_tri_properties(PROPERTIES
 )
 
 
-# FIXME: these should be public
 tri_link_libraries(PUBLIC spdlog::spdlog)
 tri_link_libraries(PUBLIC ${OpenMP_LIBRARIES})
 if(CUDA_FOUND)
@@ -294,16 +313,22 @@ if(CUDA_FOUND)
   tri_link_libraries(PUBLIC cub::cub)
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  # using Clang or AppleClang
+  tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  # using GCC
+  tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  # using Intel C++
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  # using Visual Studio C++
+endif()
+
 # Request that scope be built with -std=c++11
 # As this is a public compile feature anything that links to
 # scope will also build with -std=c++11
 tri_compile_features(PUBLIC cxx_std_11)
-
-# Generate version file and include it 
-configure_file (
-    "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in"
-    "include/graph/configure.hpp"
-)
 
 # add the binary dir where the version file is
 tri_include_directories(PUBLIC
@@ -318,9 +343,10 @@ string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
+  message(STATUS "Setting verbose build during Debug")
   set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
-  tri_compile_definitions(PUBLIC -DNDEBUG)
+  tri_compile_definitions(PRIVATE -DNDEBUG)
 endif()
 
 # Add a special target to clean nvcc generated files.
