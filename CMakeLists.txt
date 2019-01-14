@@ -135,6 +135,7 @@ set(CUDA_VERBOSE_BUILD OFF)
 
 set(TRI_CPP_SOURCES
   src/config.cpp
+  src/configure.hpp.in
   src/dag_lowertriangular_csr.cpp
   src/dag2019.cpp
   src/logger.cpp
@@ -150,7 +151,6 @@ set(TRI_CPP_SOURCES
 set(TRI_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/config.hpp
-    include/graph/configure.hpp.in
     include/graph/dag_lowertriangular_csr.hpp
     include/graph/dag2019.hpp
     include/graph/edge.hpp
@@ -204,15 +204,15 @@ set(targets_export_name "${PROJECT_NAME}Targets")
 set(namespace "${PROJECT_NAME}::")
 
 ##  Handle the header file with pangolin version info
-message(STATUS "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/graph/configure.hpp")
+message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/graph/configure.hpp")
 configure_file (
-    "${PROJECT_SOURCE_DIR}/include/graph/configure.hpp.in"
+    "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
     "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
 )
 # install the pangolin version file
 install(
   FILES "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
-  DESTINATION include
+  DESTINATION include/graph
 )
 # include the binary dir during build or the install dir during install
 tri_include_directories(PUBLIC
@@ -237,20 +237,12 @@ configure_package_config_file(
 
 # Install the include files
 install(
-  FILES
-    ${TRI_CPP_HEADERS}
+  DIRECTORY
+    include/graph
   DESTINATION
-    include
+    ${include_install_dir}
   COMPONENT
     Devel
-)
-
-# install the toolchain file
-install(
-  FILES
-    cmake/toolchain.cmake
-  DESTINATION
-    "${config_install_dir}"
 )
 
 # install the pangolinConfig and pangolinVersionConfig.cmake files
