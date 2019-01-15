@@ -15,12 +15,11 @@ HunterGate(
     LOCAL
 )
 
-project(graph LANGUAGES C CXX CUDA VERSION 0.0.1)
+project(pangolin LANGUAGES CXX CUDA VERSION 0.0.1)
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_COLOR_MAKEFILE ON)
-set(VERBOSE_BUILD ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
@@ -33,11 +32,8 @@ message(STATUS GIT_REFSPEC=${GIT_REFSPEC})
 message(STATUS GIT_HASH=${GIT_HASH})
 message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 
-option(CONFIG_USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
-# option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
+option(USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
-# option(USE_CUDA "compile with CUDA support" ON)
-# option(USE_NVGRAPH "build with NVGraph support" ON)
 
 project(pangolin LANGUAGES C CXX CUDA VERSION 0.1.0)
 
@@ -68,7 +64,9 @@ macro(pangolin_compile_options)
   target_compile_options(pangolin64 ${ARGN})
 endmacro()
 
-hunter_add_package(fmt)
+if(USE_HUNTER)
+  hunter_add_package(fmt)
+endif()
 find_package(fmt CONFIG REQUIRED)
 
 hunter_add_package(spdlog)
@@ -80,47 +78,6 @@ find_package(cub CONFIG REQUIRED)
 find_package(OpenMP REQUIRED)
 
 
-
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -G)
-elseif (CMAKE_BUILD_TYPE MATCHES Release)
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -lineinfo)
-endif()
-
-
-# Disable extended variants of C++ dialects
-# i.e. don't choose gnu++17 over c++17
-# FIXME: don't set these globally
-#pangolin_compile_options(CMAKE_CXX_EXTENSIONS OFF)
-# set(CMAKE_CXX_EXTENSIONS OFF)
-
-
-
-
-# CMake FindCUDA auto seems to add unsupported architectures somtimes, so we allow the user
-# to override with NVCC_ARCH_FLAGS
-# if(CUDA_MULTI_ARCH)
-#   CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS All)
-# else()
-#   if (DEFINED NVCC_ARCH_FLAGS)
-#     message(STATUS "Manual cuda arch flags...")
-#     CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS ${NVCC_ARCH_FLAGS})
-#   else()
-#     message(STATUS "Automatic cuda arch flags...")
-#     CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS Auto)
-#   endif()
-# endif()
-
-
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
-
-message(STATUS "Enabling CUDA support (version: ${CUDA_VERSION_STRING},"
-			   " archs: ${CUDA_ARCH_FLAGS_readable})")
-
-set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-set(CUDA_VERBOSE_BUILD OFF)
 
 
 
@@ -183,6 +140,18 @@ add_library(pangolin::pangolin64 ALIAS pangolin64)
 
 
 
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+  pangolin_compile_options(
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-G>
+  )
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+  pangolin_compile_options(
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+  )
+endif()
+
+
+
 IF(OPENMP_FOUND)
   tri_compile_definitions(PRIVATE -DUSE_OPENMP)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_C)
@@ -198,6 +167,10 @@ pangolin_compile_options(
   PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--Wno-deprecated-gpu-targets;--expt-extended-lambda;-Xcompiler=-Wall;-Xcompiler=-Wextra>
 )
 
+
+pangolin_compile_options(
+  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>
+)
 
 include(GenerateExportHeader)
 generate_export_header(pangolin32)
