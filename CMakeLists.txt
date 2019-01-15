@@ -34,10 +34,10 @@ message(STATUS GIT_HASH=${GIT_HASH})
 message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 
 option(CONFIG_USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
-option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
+# option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
 option(USE_OPENMP "compile with OpenMP support" ON)
-option(USE_CUDA "compile with CUDA support" ON)
-option(USE_NVGRAPH "build with NVGraph support" ON)
+# option(USE_CUDA "compile with CUDA support" ON)
+# option(USE_NVGRAPH "build with NVGraph support" ON)
 
 project(pangolin LANGUAGES C CXX CUDA VERSION 0.1.0)
 
@@ -80,47 +80,38 @@ find_package(cub CONFIG REQUIRED)
 find_package(OpenMP REQUIRED)
 
 
-find_package(CUDA REQUIRED)
-if (CUDA_FOUND)
-  if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -G)
-  elseif (CMAKE_BUILD_TYPE MATCHES Release)
-    set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -lineinfo)
-  endif()
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -G)
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -lineinfo)
 endif()
+
 
 # Disable extended variants of C++ dialects
 # i.e. don't choose gnu++17 over c++17
 # FIXME: don't set these globally
-set(CMAKE_CXX_EXTENSIONS OFF)
+#pangolin_compile_options(CMAKE_CXX_EXTENSIONS OFF)
+# set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-# CUDA flags
-# FIXME: don't set these globally
-set(CMAKE_CUDA_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 # CMake FindCUDA auto seems to add unsupported architectures somtimes, so we allow the user
 # to override with NVCC_ARCH_FLAGS
-if(CUDA_MULTI_ARCH)
-  CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS All)
-else()
-  if (DEFINED NVCC_ARCH_FLAGS)
-    message(STATUS "Manual cuda arch flags...")
-    CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS ${NVCC_ARCH_FLAGS})
-  else()
-    message(STATUS "Automatic cuda arch flags...")
-    CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS Auto)
-  endif()
-endif()
+# if(CUDA_MULTI_ARCH)
+#   CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS All)
+# else()
+#   if (DEFINED NVCC_ARCH_FLAGS)
+#     message(STATUS "Manual cuda arch flags...")
+#     CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS ${NVCC_ARCH_FLAGS})
+#   else()
+#     message(STATUS "Automatic cuda arch flags...")
+#     CUDA_SELECT_NVCC_ARCH_FLAGS(CUDA_ARCH_FLAGS Auto)
+#   endif()
+# endif()
 
-# FIXME: we should not modify these globally
-LIST(APPEND CMAKE_CUDA_FLAGS ${CUDA_ARCH_FLAGS}
-					         -Wno-deprecated-gpu-targets
-					         --expt-extended-lambda
-                   -Xcompiler -Wall
-                   -Xcompiler -Wextra
-)
+
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 
@@ -195,11 +186,16 @@ add_library(pangolin::pangolin64 ALIAS pangolin64)
 IF(OPENMP_FOUND)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_C)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
-  # SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  # SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS})
+  pangolin_compile_options(
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${OpenMP_CXX_FLAGS}>
+  )
 ENDIF()
 
+
+
+pangolin_compile_options(
+  PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--Wno-deprecated-gpu-targets;--expt-extended-lambda;-Xcompiler=-Wall;-Xcompiler=-Wextra>
+)
 
 
 include(GenerateExportHeader)
@@ -289,9 +285,9 @@ if (OPENMP_FOUND)
 endif()
 
 
-if (CUDA_FOUND)
-  tri_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
-endif()
+# message(STATUS ${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES})
+# tri_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
+tri_include_directories(SYSTEM PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 tri_include_directories(PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -309,14 +305,9 @@ set_tri_properties(PROPERTIES
 
 
 tri_link_libraries(PUBLIC spdlog::spdlog)
-tri_link_libraries(PUBLIC ${OpenMP_LIBRARIES})
-if(CUDA_FOUND)
-  tri_link_libraries(PUBLIC ${CUDA_LIBRARIES})
-  tri_link_libraries(PUBLIC -L${CUDA_TOOLKIT_ROOT_DIR}/lib64)
-  tri_link_libraries(PUBLIC nvgraph)
-  tri_link_libraries(PUBLIC nvToolsExt)
-  tri_link_libraries(PUBLIC cub::cub)
-endif()
+tri_link_libraries(PUBLIC nvgraph)
+tri_link_libraries(PUBLIC nvToolsExt)
+tri_link_libraries(PUBLIC cub::cub)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
@@ -330,22 +321,23 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++
 endif()
 
-# Request that scope be built with -std=c++11
-# As this is a public compile feature anything that links to
-# scope will also build with -std=c++11
+# Request that pangolin and anything requiring it be built with -std=c++11
 tri_compile_features(PUBLIC cxx_std_11)
-
+set_tri_properties(PROPERTIES
+  CUDA_STANDARD 11
+  CUDA_STANDARD_REQUIRED ON
+  CUDA_EXTENSIONS OFF
+)
+set_tri_properties(PROPERTIES
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
 # add the binary dir where the version file is
 tri_include_directories(PUBLIC
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
   $<INSTALL_INTERFACE:include>  
 )
-
-# FIXME: this should not be modified
-# Convert CUDA flags from list
-message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
-string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
-message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Setting verbose build during Debug")
@@ -353,9 +345,6 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
   tri_compile_definitions(PRIVATE -DNDEBUG)
 endif()
-
-# Add a special target to clean nvcc generated files.
-CUDA_BUILD_CLEAN_TARGET()
 
 # Add a target to generate API documentation
 find_package(Doxygen)
@@ -368,5 +357,3 @@ if(DOXYGEN_FOUND)
   )
 endif(DOXYGEN_FOUND)
 
-
-include(GenerateExportHeader)
