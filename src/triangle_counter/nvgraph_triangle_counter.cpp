@@ -6,6 +6,8 @@
 #include "graph/reader/gc_tsv_reader.hpp"
 #include "graph/utilities.hpp"
 
+#include <nvToolsExt.h>
+
 NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 {
     if (c.gpus_.size() > 1)

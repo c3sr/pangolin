@@ -184,6 +184,7 @@ add_library(pangolin::pangolin64 ALIAS pangolin64)
 
 
 IF(OPENMP_FOUND)
+  tri_compile_definitions(PRIVATE -DUSE_OPENMP)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_C)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
   pangolin_compile_options(
@@ -276,14 +277,7 @@ install(
     DESTINATION "${config_install_dir}"
 )
 
-
-
 target_compile_definitions(pangolin64 PRIVATE -DUSE_INT64)
-
-if (OPENMP_FOUND)
-  tri_compile_definitions(PRIVATE -DUSE_OPENMP)
-endif()
-
 
 # message(STATUS ${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES})
 # tri_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
@@ -305,9 +299,9 @@ set_tri_properties(PROPERTIES
 
 
 tri_link_libraries(PUBLIC spdlog::spdlog)
-tri_link_libraries(PUBLIC nvgraph)
-tri_link_libraries(PUBLIC nvToolsExt)
 tri_link_libraries(PUBLIC cub::cub)
+tri_link_libraries(PRIVATE nvgraph)
+tri_link_libraries(PRIVATE nvToolsExt)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
