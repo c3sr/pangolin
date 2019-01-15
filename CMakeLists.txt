@@ -63,6 +63,10 @@ macro(tri_compile_definitions)
   target_compile_definitions(pangolin32 ${ARGN})
   target_compile_definitions(pangolin64 ${ARGN})
 endmacro()
+macro(pangolin_compile_options)
+  target_compile_options(pangolin32 ${ARGN})
+  target_compile_options(pangolin64 ${ARGN})
+endmacro()
 
 hunter_add_package(fmt)
 find_package(fmt CONFIG REQUIRED)
@@ -74,11 +78,7 @@ hunter_add_package(cub)
 find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
-IF(OPENMP_FOUND)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS})
-ENDIF()
+
 
 find_package(CUDA REQUIRED)
 if (CUDA_FOUND)
@@ -189,6 +189,19 @@ add_library(pangolin32 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_S
 add_library(pangolin64 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
 add_library(pangolin::pangolin32 ALIAS pangolin32)
 add_library(pangolin::pangolin64 ALIAS pangolin64)
+
+
+
+IF(OPENMP_FOUND)
+  tri_link_libraries(PRIVATE OpenMP::OpenMP_C)
+  tri_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
+  # SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  # SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS})
+ENDIF()
+
+
+
 include(GenerateExportHeader)
 generate_export_header(pangolin32)
 generate_export_header(pangolin64)
@@ -307,10 +320,10 @@ endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
-  tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+  # tri_link_libraries(PRIVATE "-Wl,--no-undefined")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using GCC
-  tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+  # tri_link_libraries(PRIVATE "-Wl,--no-undefined")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   # using Intel C++
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
