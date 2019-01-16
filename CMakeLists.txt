@@ -67,10 +67,14 @@ if(USE_HUNTER)
 endif()
 find_package(fmt CONFIG REQUIRED)
 
-hunter_add_package(spdlog)
+if(USE_HUNTER)
+  hunter_add_package(spdlog)
+endif()
 find_package(spdlog CONFIG REQUIRED)
 
-hunter_add_package(cub)
+if(USE_HUNTER)
+  hunter_add_package(cub)
+endif()
 find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
@@ -79,7 +83,7 @@ find_package(OpenMP REQUIRED)
 
 
 
-set(TRI_CPP_SOURCES
+set(PANGOLIN_CPP_SOURCES
   src/config.cpp
   src/configure.hpp.in
   src/dag_lowertriangular_csr.cpp
@@ -94,7 +98,7 @@ set(TRI_CPP_SOURCES
   src/triangle_counter/triangle_counter.cpp
   src/triangle_counter/cuda_triangle_counter.cpp
 )
-set(TRI_CPP_HEADERS
+set(PANGOLIN_CPP_HEADERS
     third_party/clara/clara.hpp
     include/graph/config.hpp
     include/graph/dag_lowertriangular_csr.hpp
@@ -121,7 +125,7 @@ set(TRI_CPP_HEADERS
     include/graph/triangle_counter/triangle_counter.hpp
     include/graph/triangle_counter/edge_tc.hpp
 )
-set(TRI_CUDA_SOURCES
+set(PANGOLIN_CU_SOURCES
   src/triangle_counter/cudamemcpy_tc.cu
   src/triangle_counter/hu_tc.cu
   src/triangle_counter/impact_2018_tc.cu
@@ -131,12 +135,15 @@ set(TRI_CUDA_SOURCES
 
 
 
-add_library(pangolin32 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
-add_library(pangolin64 SHARED ${TRI_CPP_HEADERS} ${TRI_CUDA_SOURCES} ${TRI_CPP_SOURCES})
+add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
+add_library(pangolin64 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
 add_library(pangolin::pangolin32 ALIAS pangolin32)
 add_library(pangolin::pangolin64 ALIAS pangolin64)
 
-
+## Add CUDA flags
+pangolin_compile_options(
+  PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--Wno-deprecated-gpu-targets;--expt-extended-lambda;-Xcompiler=-Wall;-Xcompiler=-Wextra>
+)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   pangolin_compile_options(
@@ -149,25 +156,25 @@ elseif (CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 
+## Add CXX Flags
+pangolin_compile_options(
+  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>
+)
 
-IF(OPENMP_FOUND)
+
+## Add OpenMP Flags
+if(OPENMP_FOUND)
   pangolin_compile_definitions(PRIVATE -DUSE_OPENMP)
   pangolin_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
   pangolin_compile_options(
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${OpenMP_CXX_FLAGS}>
   )
-ENDIF()
+endif()
 
 
 
-pangolin_compile_options(
-  PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--Wno-deprecated-gpu-targets;--expt-extended-lambda;-Xcompiler=-Wall;-Xcompiler=-Wextra>
-)
 
 
-pangolin_compile_options(
-  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>
-)
 
 include(GenerateExportHeader)
 generate_export_header(pangolin32)
@@ -249,15 +256,12 @@ install(
 
 target_compile_definitions(pangolin64 PRIVATE -DUSE_INT64)
 
-# message(STATUS ${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES})
-# pangolin_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
+## Add include directories
 pangolin_include_directories(SYSTEM PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-
 pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-
 pangolin_include_directories(PRIVATE
   ${PROJECT_SOURCE_DIR}/third_party/clara
 )
