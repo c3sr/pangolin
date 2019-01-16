@@ -2,7 +2,6 @@
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
 #include "pangolin/reader/gc_tsv_reader.hpp"
-#include "pangolin/dag2019.hpp"
 
 #include <nvToolsExt.h>
 #include <limits>

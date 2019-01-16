@@ -1,4 +1,4 @@
-#include "pangolin/dag2019.hpp"
+#include "pangolin/sparse/dag2019.hpp"
 
 DAG2019 DAG2019::from_edgelist(EdgeList &l)
 {

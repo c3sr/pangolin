@@ -115,6 +115,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/triangle_counter/cuda_triangle_counter.hpp
     include/pangolin/triangle_counter/hu_tc.hpp
     include/pangolin/triangle_counter/impact_2018_tc.hpp
+    include/pangolin/triangle_counter/impact_2019_tc.hpp
     include/pangolin/triangle_counter/nvgraph_triangle_counter.hpp
     include/pangolin/triangle_counter/vertex_tc.hpp
     include/pangolin/triangle_counter/triangle_counter.hpp
@@ -124,6 +125,7 @@ set(PANGOLIN_CU_SOURCES
   src/triangle_counter/cudamemcpy_tc.cu
   src/triangle_counter/hu_tc.cu
   src/triangle_counter/impact_2018_tc.cu
+  src/triangle_counter/impact_2019_tc.cu
   src/triangle_counter/vertex_tc.cu
   src/triangle_counter/edge_tc.cu
 )

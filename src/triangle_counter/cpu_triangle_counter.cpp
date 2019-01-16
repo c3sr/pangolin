@@ -5,7 +5,6 @@
 #include "pangolin/reader/gc_tsv_reader.hpp"
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/logger.hpp"
-#include "pangolin/dag2019.hpp"
 
 static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd)
 {

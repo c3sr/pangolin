@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pangolin/triangle_counter/triangle_counter.hpp"
-#include "pangolin/dag2019.hpp"
+#include "pangolin/sparse/dag2019.hpp"
 
 #include <vector>
 #include <iostream>
