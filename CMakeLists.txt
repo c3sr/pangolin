@@ -278,10 +278,10 @@ tri_link_libraries(PRIVATE nvToolsExt)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
-  # tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+  set_tri_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using GCC
-  # tri_link_libraries(PRIVATE "-Wl,--no-undefined")
+  set_tri_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   # using Intel C++
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
