@@ -2,6 +2,6 @@
 
 #include <utility>
 
-#include "graph/types.hpp"
+#include "pangolin/types.hpp"
 
 typedef std::pair<Uint, Uint> Edge;

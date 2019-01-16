@@ -5,8 +5,8 @@
 #include <set>
 #include <iterator>
 
-#include "graph/edge_list.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/logger.hpp"
 
 struct VertexSet
 {

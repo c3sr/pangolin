@@ -2,9 +2,9 @@
 #include <limits>
 #include <sstream>
 
-#include "graph/edge_list.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/logger.hpp"
 
 GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : path_(path), is_(path) {}
 

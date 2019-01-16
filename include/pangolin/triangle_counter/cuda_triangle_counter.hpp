@@ -6,8 +6,8 @@
 
 #include <cuda_runtime.h>
 
-#include "graph/triangle_counter/triangle_counter.hpp"
-#include "graph/config.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
+#include "pangolin/config.hpp"
 
 class CUDATriangleCounter : public TriangleCounter
 {

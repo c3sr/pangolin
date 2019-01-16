@@ -1,4 +1,4 @@
-#include "graph/par_graph.hpp"
+#include "pangolin/par_graph.hpp"
 
 #include <algorithm>
 #include <map>

@@ -2,8 +2,8 @@
 
 #include <nvgraph.h>
 
-#include "graph/triangle_counter/triangle_counter.hpp"
-#include "graph/dag_lowertriangular_csr.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
+#include "pangolin/dag_lowertriangular_csr.hpp"
 
 class NvGraphTriangleCounter : public TriangleCounter
 {

@@ -2,9 +2,9 @@
 
 #include <cuda_runtime.h>
 
-#include "graph/sparse/csr.hpp"
-#include "graph/dense/cuda_managed_vector.hpp"
-#include "graph/edge_list.hpp"
+#include "pangolin/sparse/csr.hpp"
+#include "pangolin/dense/cuda_managed_vector.hpp"
+#include "pangolin/edge_list.hpp"
 
 class UnifiedMemoryCSR : public CSR<Uint>
 {

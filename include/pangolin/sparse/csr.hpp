@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "graph/types.hpp"
+#include "pangolin/types.hpp"
 
 template <typename INDEX>
 class CSR

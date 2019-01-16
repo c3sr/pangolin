@@ -5,8 +5,8 @@
 #include <fstream>
 #include <algorithm> // std::sort
 
-#include "graph/edge_list.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/logger.hpp"
 
 // Node - the type used to store Node IDs
 // Index - the type used to index into the Node IDs
