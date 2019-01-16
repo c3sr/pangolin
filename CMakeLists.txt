@@ -95,7 +95,6 @@ set(PANGOLIN_CPP_SOURCES
   src/triangle_counter/cuda_triangle_counter.cpp
 )
 set(PANGOLIN_CPP_HEADERS
-    third_party/clara/clara.hpp
     include/pangolin/config.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
     include/pangolin/dag2019.hpp
@@ -258,9 +257,7 @@ pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-pangolin_include_directories(PRIVATE
-  ${PROJECT_SOURCE_DIR}/third_party/clara
-)
+
 
 set_pangolin_properties(PROPERTIES
 	# CUDA_SEPARABLE_COMPILATION ON
