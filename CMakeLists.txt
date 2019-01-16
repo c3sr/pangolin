@@ -37,23 +37,23 @@ option(USE_OPENMP "compile with OpenMP support" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-macro(tri_include_directories)
+macro(pangolin_include_directories)
   target_include_directories(pangolin32 ${ARGN})
   target_include_directories(pangolin64 ${ARGN})
 endmacro()
-macro(tri_link_libraries)
+macro(pangolin_link_libraries)
   target_link_libraries(pangolin32 ${ARGN})
   target_link_libraries(pangolin64 ${ARGN})
 endmacro()
-macro(set_tri_properties)
+macro(set_pangolin_properties)
   set_target_properties(pangolin32 ${ARGN})
   set_target_properties(pangolin64 ${ARGN})
 endmacro()
-macro(tri_compile_features)
+macro(pangolin_compile_features)
   target_compile_features(pangolin32 ${ARGN})
   target_compile_features(pangolin64 ${ARGN})
 endmacro()
-macro(tri_compile_definitions)
+macro(pangolin_compile_definitions)
   target_compile_definitions(pangolin32 ${ARGN})
   target_compile_definitions(pangolin64 ${ARGN})
 endmacro()
@@ -151,8 +151,8 @@ endif()
 
 
 IF(OPENMP_FOUND)
-  tri_compile_definitions(PRIVATE -DUSE_OPENMP)
-  tri_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
+  pangolin_compile_definitions(PRIVATE -DUSE_OPENMP)
+  pangolin_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
   pangolin_compile_options(
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${OpenMP_CXX_FLAGS}>
   )
@@ -195,7 +195,7 @@ install(
   DESTINATION include/graph
 )
 # include the binary dir during build or the install dir during install
-tri_include_directories(PUBLIC
+pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/graph> # fake that "configure.hpp" is in same dir as pangolin.hpp
   $<INSTALL_INTERFACE:include>
 )
@@ -250,35 +250,35 @@ install(
 target_compile_definitions(pangolin64 PRIVATE -DUSE_INT64)
 
 # message(STATUS ${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES})
-# tri_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
-tri_include_directories(SYSTEM PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+# pangolin_include_directories(SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS})
+pangolin_include_directories(SYSTEM PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
-tri_include_directories(PUBLIC
+pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
-tri_include_directories(PRIVATE
+pangolin_include_directories(PRIVATE
   ${PROJECT_SOURCE_DIR}/third_party/clara
 )
 
-set_tri_properties(PROPERTIES
+set_pangolin_properties(PROPERTIES
 	# CUDA_SEPARABLE_COMPILATION ON
   CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
 
 
-tri_link_libraries(PUBLIC spdlog::spdlog)
-tri_link_libraries(PUBLIC cub::cub)
-tri_link_libraries(PRIVATE nvgraph)
-tri_link_libraries(PRIVATE nvToolsExt)
+pangolin_link_libraries(PUBLIC spdlog::spdlog)
+pangolin_link_libraries(PUBLIC cub::cub)
+pangolin_link_libraries(PRIVATE nvgraph)
+pangolin_link_libraries(PRIVATE nvToolsExt)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
-  set_tri_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
+  set_pangolin_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using GCC
-  set_tri_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
+  set_pangolin_properties(PROPERTIES LINK_FLAGS -Wl,--no-undefined)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   # using Intel C++
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -286,19 +286,19 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 # Request that pangolin and anything requiring it be built with -std=c++11
-tri_compile_features(PUBLIC cxx_std_11)
-set_tri_properties(PROPERTIES
+pangolin_compile_features(PUBLIC cxx_std_11)
+set_pangolin_properties(PROPERTIES
   CUDA_STANDARD 11
   CUDA_STANDARD_REQUIRED ON
   CUDA_EXTENSIONS OFF
 )
-set_tri_properties(PROPERTIES
+set_pangolin_properties(PROPERTIES
   CXX_STANDARD 11
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
 )
 # add the binary dir where the version file is
-tri_include_directories(PUBLIC
+pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
   $<INSTALL_INTERFACE:include>  
 )
@@ -307,7 +307,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Setting verbose build during Debug")
   set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
-  tri_compile_definitions(PRIVATE -DNDEBUG)
+  pangolin_compile_definitions(PRIVATE -DNDEBUG)
 endif()
 
 # Add a target to generate API documentation
