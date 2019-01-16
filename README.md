@@ -16,6 +16,8 @@ You can check your cmake version with `cmake --version`.
 
 3. (Optional) Install Doxygen
 
+    sudo apt install doxygen graphviz
+
 If doxygen is installed, building graph will also create API documentation.
 
 ### Building on Ubuntu/Debian
