@@ -1,4 +1,4 @@
-# Graph
+# Pangolin
 
 ## Building Pangolin from Source
 
@@ -53,9 +53,7 @@ git checkout <hash, branch, etc>
 ```cmake
 # CMakeLists.txt
 add_subdirectory(thirdparty/pangolin)
-
 ...
-
 target_link_libraries(... pangolin::pangolin32)
 ```
 
@@ -76,9 +74,7 @@ make install
 ```cmake
 # CMakeLists.txt
 find_package(pangolin CONFIG REQUIRED)
-
 ...
-
 target_link_libraries(... pangolin::pangolin32)
 ```
 
