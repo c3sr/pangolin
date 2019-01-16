@@ -1,6 +1,6 @@
 # Graph
 
-## Building graph from Source
+## Building Pangolin from Source
 
 ### Prerequisites
 
@@ -13,6 +13,7 @@ Instructions for installing CUDA on supported systems may be obtained from Nvidi
 On x86 linux, CMake provides prebuilt binaries with a shell script.
 On POWER, you will need to build CMake from source.
 You can check your cmake version with `cmake --version`.
+CMake will need to built with support for SSL.
 
 3. (Optional) Install Doxygen
 
@@ -27,25 +28,19 @@ If doxygen is installed, building graph will also create API documentation.
     cmake ..
     make
 
-This will produce two binaries: `tri32` and `tri64`.
+This will produce two libraries: `pangolin32` and `pangolin64`.
 Both have equivalent functionality, but use 32-bit and 64-bit values for graph vertex/edge IDs respectively.
 
-## Running tri
+## Using Pangolin with CMake
 
-    ./tri32 -h
+See [Pangolin_Example](https://github.com/c3sr/pangolin_example) for an example.
 
-## Citing
+Pangolin may be used with CMake `add_subdirectory()`, or installed and used with CMake `find_package(pangolin CONFIG)`.
+Pangolin exports two targets `pangolin::pangolin32` and `pangolin::pangolin64` for 32-bit or 64-bit integer types in graph IDs.
 
-Our 2017 submission may be cited with the following bibtex entry
+## Getting Started
 
-    @inproceedings{mailthody2018collaborative,
-    title={Collaborative (CPU+ GPU) Algorithms for Triangle Counting and Truss Decomposition},
-    author={Mailthody, Vikram S and Date, Ketan and Qureshi, Zaid and Pearson, Carl and Nagi, Rakesh and Xiong, Jinjun and Hwu, Wen-mei},
-    booktitle={2018 IEEE High Performance extreme Computing Conference (HPEC)},
-    pages={1--7},
-    year={2018},
-    organization={IEEE}
-    }
+API documentation may be produced with `make docs` if Doxygen and Graphviz are installed.
 
 ## Other
 
