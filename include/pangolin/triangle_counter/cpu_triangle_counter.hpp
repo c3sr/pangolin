@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graph/triangle_counter/triangle_counter.hpp"
-#include "graph/dag2019.hpp"
-#include "graph/config.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
+#include "pangolin/dag2019.hpp"
+#include "pangolin/config.hpp"
 
 #include <vector>
 #include <iostream>

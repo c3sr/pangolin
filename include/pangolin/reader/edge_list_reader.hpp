@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graph/edge_list.hpp"
+#include "pangolin/edge_list.hpp"
 
 class EdgeIterator
 {

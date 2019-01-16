@@ -2,10 +2,10 @@
 #include <fmt/format.h>
 
 #include "clara.hpp"
-#include "graph/logger.hpp"
-#include "graph/triangle_counter/triangle_counter.hpp"
-#include "graph/config.hpp"
-#include "graph/configure.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
+#include "pangolin/config.hpp"
+#include "pangolin/configure.hpp"
 
 int main(int argc, char **argv)
 {

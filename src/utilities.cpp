@@ -1,5 +1,5 @@
-#include "graph/utilities.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/logger.hpp"
 
 void checkCuda(cudaError_t result, const char *file, const int line)
 {

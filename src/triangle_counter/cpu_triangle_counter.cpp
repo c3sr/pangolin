@@ -2,10 +2,10 @@
 #include <omp.h>
 #endif
 
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/triangle_counter/cpu_triangle_counter.hpp"
-#include "graph/logger.hpp"
-#include "graph/dag2019.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/dag2019.hpp"
 
 static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd)
 {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graph/triangle_counter/cuda_triangle_counter.hpp"
-#include "graph/sparse/unified_memory_csr.hpp"
-#include "graph/dense/cuda_managed_vector.hpp"
+#include "cuda_triangle_counter.hpp"
+#include "pangolin/sparse/unified_memory_csr.hpp"
+#include "pangolin/dense/cuda_managed_vector.hpp"
 
 #include <vector>
 #include <iostream>

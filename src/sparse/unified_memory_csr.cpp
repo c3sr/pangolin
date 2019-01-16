@@ -1,5 +1,5 @@
-#include "graph/sparse/unified_memory_csr.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/sparse/unified_memory_csr.hpp"
+#include "pangolin/logger.hpp"
 #include <cassert>
 #include <set>
 

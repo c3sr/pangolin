@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include "graph/config.hpp"
+#include "pangolin/config.hpp"
 
 /*! An interface for all triangle counters */
 class TriangleCounter

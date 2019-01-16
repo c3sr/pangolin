@@ -12,7 +12,7 @@ sorted with increasing src, and within each src increasing dst
 #include <fstream>
 #include <cassert>
 
-#include "graph/edge_list.hpp"
+#include "pangolin/edge_list.hpp"
 
 class TSVIterator : public std::iterator<std::input_iterator_tag, Edge>
 {

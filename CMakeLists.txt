@@ -15,7 +15,7 @@ HunterGate(
     LOCAL
 )
 
-project(pangolin LANGUAGES CXX CUDA VERSION 0.0.1)
+project(pangolin LANGUAGES CXX CUDA VERSION 0.1.0.0)
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -32,7 +32,7 @@ message(STATUS GIT_REFSPEC=${GIT_REFSPEC})
 message(STATUS GIT_HASH=${GIT_HASH})
 message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 
-option(USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
+option(USE_HUNTER "Turn on to enable using the hunter package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
@@ -79,10 +79,6 @@ find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
 
-
-
-
-
 set(PANGOLIN_CPP_SOURCES
   src/config.cpp
   src/configure.hpp.in
@@ -100,30 +96,30 @@ set(PANGOLIN_CPP_SOURCES
 )
 set(PANGOLIN_CPP_HEADERS
     third_party/clara/clara.hpp
-    include/graph/config.hpp
-    include/graph/dag_lowertriangular_csr.hpp
-    include/graph/dag2019.hpp
-    include/graph/edge.hpp
-    include/graph/edge_list.hpp
-    include/graph/logger.hpp
-    include/graph/pangolin.hpp
-    include/graph/par_graph.hpp
-    include/graph/types.hpp
-    include/graph/utilities.hpp
-    include/graph/allocator/cuda_managed.hpp
-    include/graph/allocator/cuda_zero_copy.hpp
-    include/graph/dense/cuda_managed_vector.hpp
-    include/graph/dense/cuda_zero_copy_vector.hpp
-    include/graph/reader/gc_tsv_reader.hpp
-    include/graph/triangle_counter/cudamemcpy_tc.hpp
-    include/graph/triangle_counter/cpu_triangle_counter.hpp
-    include/graph/triangle_counter/cuda_triangle_counter.hpp
-    include/graph/triangle_counter/hu_tc.hpp
-    include/graph/triangle_counter/impact_2018_tc.hpp
-    include/graph/triangle_counter/nvgraph_triangle_counter.hpp
-    include/graph/triangle_counter/vertex_tc.hpp
-    include/graph/triangle_counter/triangle_counter.hpp
-    include/graph/triangle_counter/edge_tc.hpp
+    include/pangolin/config.hpp
+    include/pangolin/dag_lowertriangular_csr.hpp
+    include/pangolin/dag2019.hpp
+    include/pangolin/edge.hpp
+    include/pangolin/edge_list.hpp
+    include/pangolin/logger.hpp
+    include/pangolin/pangolin.hpp
+    include/pangolin/par_graph.hpp
+    include/pangolin/types.hpp
+    include/pangolin/utilities.hpp
+    include/pangolin/allocator/cuda_managed.hpp
+    include/pangolin/allocator/cuda_zero_copy.hpp
+    include/pangolin/dense/cuda_managed_vector.hpp
+    include/pangolin/dense/cuda_zero_copy_vector.hpp
+    include/pangolin/reader/gc_tsv_reader.hpp
+    include/pangolin/triangle_counter/cudamemcpy_tc.hpp
+    include/pangolin/triangle_counter/cpu_triangle_counter.hpp
+    include/pangolin/triangle_counter/cuda_triangle_counter.hpp
+    include/pangolin/triangle_counter/hu_tc.hpp
+    include/pangolin/triangle_counter/impact_2018_tc.hpp
+    include/pangolin/triangle_counter/nvgraph_triangle_counter.hpp
+    include/pangolin/triangle_counter/vertex_tc.hpp
+    include/pangolin/triangle_counter/triangle_counter.hpp
+    include/pangolin/triangle_counter/edge_tc.hpp
 )
 set(PANGOLIN_CU_SOURCES
   src/triangle_counter/cudamemcpy_tc.cu
@@ -191,19 +187,19 @@ set(targets_export_name "${PROJECT_NAME}Targets")
 set(namespace "${PROJECT_NAME}::")
 
 ##  Handle the header file with pangolin version info
-message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/graph/configure.hpp")
+message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/pangolin/configure.hpp")
 configure_file (
     "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
 )
 # install the pangolin version file
 install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/include/graph/configure.hpp"
-  DESTINATION include/graph
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+  DESTINATION include/pangolin
 )
 # include the binary dir during build or the install dir during install
 pangolin_include_directories(PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/graph> # fake that "configure.hpp" is in same dir as pangolin.hpp
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pangolin> # fake that "configure.hpp" is in same dir as pangolin.hpp
   $<INSTALL_INTERFACE:include>
 )
 

@@ -1,2 +1,2 @@
-#include "graph/config.hpp"
-#include "graph/utilities.hpp"
+#include "pangolin/config.hpp"
+#include "pangolin/utilities.hpp"

@@ -1,10 +1,10 @@
 #include <memory>
 #include <cmath>
 
-#include "graph/logger.hpp"
-#include "graph/triangle_counter/nvgraph_triangle_counter.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/utilities.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/utilities.hpp"
 
 #include <nvToolsExt.h>
 

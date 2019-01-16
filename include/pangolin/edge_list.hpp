@@ -2,6 +2,6 @@
 
 #include <vector>
 
-#include "graph/edge.hpp"
+#include "pangolin/edge.hpp"
 
 typedef std::vector<Edge> EdgeList;
