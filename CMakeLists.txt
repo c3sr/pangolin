@@ -322,5 +322,7 @@ if(DOXYGEN_FOUND)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating API documentation with Doxygen" VERBATIM
   )
+  # make docs only build if pangolin does
+  add_dependencies(docs pangolin32 pangolin64)
 endif(DOXYGEN_FOUND)
 
