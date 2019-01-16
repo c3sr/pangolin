@@ -1,4 +1,4 @@
-#include "graph/dag2019.hpp"
+#include "pangolin/dag2019.hpp"
 
 DAG2019 DAG2019::from_edgelist(EdgeList &l)
 {
@@ -36,7 +36,7 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         if (dag.nodes_.size() != size_t(edge.first + 1))
         {
             assert(edge.first == dag.nodes_.size());
-            // LOG(trace, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
+            // TRACE("node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
             dag.nodes_.push_back(dag.edgeSrc_.size());
         }
 
@@ -45,11 +45,11 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         {
             dag.edgeSrc_.push_back(edge.first);
             dag.edgeDst_.push_back(edge.second);
-            // LOG(trace, "added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
+            // TRACE("added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
         }
     }
     dag.nodes_.push_back(dag.edgeSrc_.size());
-    // LOG(trace, "final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
+    // TRACE("final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
 
     // // check that all nodes point to an edge or one past the end of the edge arrays
     // for (const auto n : dag.nodes_)
