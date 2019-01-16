@@ -35,8 +35,6 @@ message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 option(USE_HUNTER "Turn on to enable using the hunteger package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
 
-project(pangolin LANGUAGES C CXX CUDA VERSION 0.1.0)
-
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 macro(tri_include_directories)
@@ -154,7 +152,6 @@ endif()
 
 IF(OPENMP_FOUND)
   tri_compile_definitions(PRIVATE -DUSE_OPENMP)
-  tri_link_libraries(PRIVATE OpenMP::OpenMP_C)
   tri_link_libraries(PRIVATE OpenMP::OpenMP_CXX)
   pangolin_compile_options(
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${OpenMP_CXX_FLAGS}>
