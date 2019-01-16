@@ -178,6 +178,7 @@ generate_export_header(pangolin64)
 set(include_install_dir "include")
 set(lib_install_dir "lib")
 set(config_install_dir "${lib_install_dir}/cmake/${PROJECT_NAME}")
+set(docs_install_dir "docs")
 
 set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
@@ -220,7 +221,7 @@ configure_package_config_file(
 # Install the include files
 install(
   DIRECTORY
-    include/graph
+    include/pangolin
   DESTINATION
     ${include_install_dir}
   COMPONENT
@@ -248,6 +249,7 @@ install(
     NAMESPACE "${namespace}"
     DESTINATION "${config_install_dir}"
 )
+
 
 target_compile_definitions(pangolin64 PRIVATE -DUSE_INT64)
 
@@ -318,5 +320,14 @@ if(DOXYGEN_FOUND)
   )
   # make docs only build if pangolin does
   add_dependencies(docs pangolin32 pangolin64)
+  # install docs
+  install(
+    DIRECTORY
+      ${CMAKE_CURRENT_BINARY_DIR}/docs/
+    DESTINATION
+      docs
+    COMPONENT
+      docs
+)
 endif(DOXYGEN_FOUND)
 
