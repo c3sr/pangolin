@@ -100,11 +100,9 @@ template <size_t BLOCK_DIM_X>
 __global__ static void
 kernel_binary(
     uint64_t *__restrict__ edgeTriangleCounts, //<! per-edge triangle count
-    const Uint *rowStarts,
     const Uint *edgeSrc,
     const Uint *edgeDst,
-    const Uint *nonZeros,
-    const char *isLocalNonZero,
+    const Uint *rowStarts, //<! offset in edgeSrc/edgeDst where each row starts
     const Uint edgeOffset,
     const Uint numEdges) {
 
@@ -124,46 +122,42 @@ kernel_binary(
   // one warp per edge
   for (Uint edgeIdx = gwIdx; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
 
-    // only count local edges
-    if (!isLocalNonZero || isLocalNonZero[edgeIdx]) {
+    size_t count = 0;
 
-        size_t count = 0;
+    // head and tail of edge
+    const Uint head = edgeSrc[edgeIdx];
+    const Uint tail = edgeDst[edgeIdx];
 
-        // head and tail of edge
-        const Uint head = edgeSrc[edgeIdx];
-        const Uint tail = nonZeros[edgeIdx];
+    // neighbor offsets for head of edge
+    const Uint headOffStart = rowStarts[head];
+    const Uint headOffEnd = rowStarts[head + 1];
 
-        // neighbor offsets for head of edge
-        const Uint headOffStart = rowStarts[head];
-        const Uint headOffEnd = rowStarts[head + 1];
+    // neighbor offsets for tail of edge
+    const Uint tailOffStart = rowStarts[tail];
+    const Uint tailOffEnd = rowStarts[tail + 1];
 
-        // neighbor offsets for tail of edge
-        const Uint tailOffStart = rowStarts[tail];
-        const Uint tailOffEnd = rowStarts[tail + 1];
-
-        if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
-          for (const Uint *u = &nonZeros[headOffStart] + laneIdx;
-               u < &nonZeros[headOffEnd]; u += 32) {
-            count +=
-                binary_search(nonZeros, tailOffStart, tailOffEnd - 1, *u);
-          }
-        } else {
-          for (const Uint *u = &nonZeros[tailOffStart] + laneIdx;
-               u < &nonZeros[tailOffEnd]; u += 32) {
-            count +=
-                binary_search(nonZeros, headOffStart, headOffEnd - 1, *u);
-          }
+    if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
+        for (const Uint *u = &edgeDst[headOffStart] + laneIdx;
+            u < &edgeDst[headOffEnd]; u += 32) {
+        count +=
+            binary_search(edgeDst, tailOffStart, tailOffEnd - 1, *u);
         }
-
-
-
-        size_t aggregate = WarpReduce(temp_storage[warpIdx]).Sum(count);
-
-        if (laneIdx == 0) {
-          edgeTriangleCounts[edgeIdx] = aggregate;
+    } else {
+        for (const Uint *u = &edgeDst[tailOffStart] + laneIdx;
+            u < &edgeDst[tailOffEnd]; u += 32) {
+        count +=
+            binary_search(edgeDst, headOffStart, headOffEnd - 1, *u);
         }
-
     }
+
+
+
+    size_t aggregate = WarpReduce(temp_storage[warpIdx]).Sum(count);
+
+    if (laneIdx == 0) {
+        edgeTriangleCounts[edgeIdx] = aggregate;
+    }
+
   }
 }
 
@@ -182,6 +176,16 @@ IMPACT2019TC::IMPACT2019TC(Config &c)  : CUDATriangleCounter(c) {
         LOG(critical, "unknown gpu storage kind \"{}\"", c.storage_);
         exit(-1);
     }
+
+    if ("linear" == c.kernel_) {
+        kernelKind_ = KernelKind::Linear;
+    } else if ("binary" == c.kernel_) {
+        kernelKind_ = KernelKind::Binary;
+    } else {
+        LOG(critical, "unknown kernel kind \"{}\", expecting linear|binary", c.kernel_);
+        exit(-1);
+    }
+
     unifiedMemoryHints_ = c.hints_;
     nvtxRangePop();
 }
@@ -299,6 +303,7 @@ size_t IMPACT2019TC::count() {
         LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
         dim3 dimBlock(256);
+
         size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
         dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
     
