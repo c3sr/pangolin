@@ -25,5 +25,8 @@ public:
   // available after read_data()
   virtual size_t num_edges() = 0;
 
+  /*! Create a triangle counter
+
+  */
   static TriangleCounter *CreateTriangleCounter(Config &config);
 };

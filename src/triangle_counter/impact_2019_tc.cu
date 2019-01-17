@@ -7,6 +7,7 @@
 
 #include <nvToolsExt.h>
 #include <limits>
+#include <cub/cub.cuh>
 
 __device__ static size_t linear_intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd) {
     size_t count = 0;

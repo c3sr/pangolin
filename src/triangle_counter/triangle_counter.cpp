@@ -2,6 +2,7 @@
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/triangle_counter/cudamemcpy_tc.hpp"
 #include "pangolin/triangle_counter/impact_2018_tc.hpp"
+#include "pangolin/triangle_counter/impact_2019_tc.hpp"
 #include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
 #include "pangolin/triangle_counter/hu_tc.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
@@ -21,9 +22,13 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
         LOG(critical, "no counting method provided. Use -m flag");
         exit(-1);
     }
-    else if (c.type_ == "impact")
+    else if (c.type_ == "impact2018")
     {
         return new IMPACT2018TC(c);
+    }
+    else if (c.type_ == "impact2019")
+    {
+        return new IMPACT2019TC(c);
     }
     else if (c.type_ == "hu")
     {

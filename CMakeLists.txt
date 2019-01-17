@@ -83,11 +83,11 @@ set(PANGOLIN_CPP_SOURCES
   src/config.cpp
   src/configure.hpp.in
   src/dag_lowertriangular_csr.cpp
-  src/dag2019.cpp
   src/logger.cpp
   src/par_graph.cpp
   src/utilities.cpp
   src/reader/gc_tsv_reader.cpp
+  src/sparse/dag2019.cpp
   src/sparse/unified_memory_csr.cpp
   src/triangle_counter/cpu_triangle_counter.cpp
   src/triangle_counter/nvgraph_triangle_counter.cpp
@@ -97,7 +97,6 @@ set(PANGOLIN_CPP_SOURCES
 set(PANGOLIN_CPP_HEADERS
     include/pangolin/config.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
-    include/pangolin/dag2019.hpp
     include/pangolin/edge.hpp
     include/pangolin/edge_list.hpp
     include/pangolin/logger.hpp
@@ -109,6 +108,8 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/allocator/cuda_zero_copy.hpp
     include/pangolin/dense/cuda_managed_vector.hpp
     include/pangolin/dense/cuda_zero_copy_vector.hpp
+    include/pangolin/sparse/dag2019.hpp
+    include/pangolin/sparse/unified_memory_csr.hpp
     include/pangolin/reader/gc_tsv_reader.hpp
     include/pangolin/triangle_counter/cudamemcpy_tc.hpp
     include/pangolin/triangle_counter/cpu_triangle_counter.hpp
