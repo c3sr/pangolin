@@ -15,11 +15,13 @@ On POWER, you will need to build CMake from source.
 You can check your cmake version with `cmake --version`.
 CMake will need to built with support for SSL.
 
-3. (Optional) Install Doxygen
+3. (Optional) Install Doxygen/Graphviz for API documentation
+
+Install doxygen and graphviz
 
     sudo apt install doxygen graphviz
 
-If doxygen is installed, building graph will also create API documentation.
+If doxygen is installed, building pangolin will also create API documentation.
 
 ### Building on Ubuntu/Debian
 
