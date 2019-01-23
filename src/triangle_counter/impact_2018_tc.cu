@@ -6,34 +6,6 @@
 #include <nvToolsExt.h>
 #include <limits>
 
-__device__ static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd) {
-    size_t count = 0;
-    const Int *ap = aBegin;
-    const Int *bp = bBegin;
-
-    if (ap < aEnd && bp < bEnd) {
-
-      Int a = *ap;
-      Int b = *bp;  
-
-      while (ap < aEnd && bp < bEnd) {
-          
-          if (a == b) {
-              ++count;
-              a = *(++ap);
-              b = *(++bp);
-          }
-          else if (a < b){
-              a = *(++ap);
-          }
-          else {
-              b = *(++bp);
-          }
-      }
-    }
-    return count;
-}
-
 __global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
