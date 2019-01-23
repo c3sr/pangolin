@@ -34,7 +34,7 @@ __device__ static size_t intersection_count(const Int *const aBegin, const Int *
     return count;
 }
 
-__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
+__global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -44,13 +44,35 @@ __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, Int *edge
         const Int src = edgeSrc[i];
         const Int dst = edgeDst[i];
 
-        const Int src_edge = nodes[src];
-        const Int src_edge_end = nodes[src + 1];
+        const Int srcEdge = nodes[src];
+        const Int srcEdgeEnd = nodes[src + 1];
 
-        const Int dst_edge = nodes[dst];
-        const Int dst_edge_end = nodes[dst + 1];
+        const Int dstEdge = nodes[dst];
+        const Int dstEdgeEng = nodes[dst + 1];
 
-        size_t count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+        size_t count = 0;
+
+
+            Int *srcPtr = &edgeDst[srcEdge];
+            Int *dstPtr = &edgeDst[dstEdge];
+
+            while(srcPtr < &edgeDst[srcEdgeEnd] && dstPtr < &edgeDst[dstEdgeEng] ) {
+        
+            const Int srcNbr = *srcPtr; // neighbor vertex of edge src
+            const Int dstNbr = *dstPtr; // neighbor vertex of edge dst
+        
+            if (srcNbr == dstNbr) {
+                ++count;
+                ++srcPtr;
+                ++dstPtr;
+            } else if (srcNbr < dstNbr) {
+                ++srcPtr;
+            } else {
+                ++dstPtr;
+            }
+            }         
+
+        // size_t count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
 
         triangleCounts[i] = count;
     }
