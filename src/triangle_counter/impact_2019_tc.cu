@@ -16,21 +16,36 @@ __device__ static size_t linear_intersection_count(const Int *const aBegin, cons
 
     if (ap < aEnd && bp < bEnd) {
 
-      Int a = *ap;
-      Int b = *bp;  
+        // bool loadA = false;
+        // bool loadB = false;
+        Int a = *ap;
+        Int b = *bp;
+        
+        while (ap < aEnd && bp < bEnd) {
+            
+            // if (loadA) {
+                a = *ap;
+                // loadA = false;
+            // }
+            // if (loadB) {
+                b = *bp;
+                // loadB = false;
+            // }
 
-      while (ap < aEnd && bp < bEnd) {
-          
           if (a == b) {
               ++count;
-              a = *(++ap);
-              b = *(++bp);
+              ++ap;
+              ++bp;
+            //   loadA = true;
+            //   loadB = true;
           }
           else if (a < b){
-              a = *(++ap);
+              ++ap;
+            //   loadA = true;
           }
           else {
-              b = *(++bp);
+              ++bp;
+            //   loadB = true;
           }
       }
     }
@@ -45,9 +60,9 @@ Compare sorted neighbor lists linearly.
 */
 __global__ static void kernel_tc(
     uint64_t * __restrict__ triangleCounts, //!< per-edge triangle counts
-    Int *edgeSrc, //!< node ids for edge srcs
-    Int *edgeDst, //!< node ids for edge dsts
-    Int *nodes, //!< source node offsets in edgeDst
+    const Int *const edgeSrc, //!< node ids for edge srcs
+    const Int *const edgeDst, //!< node ids for edge dsts
+    const Int *const nodes, //!< source node offsets in edgeDst
     size_t edgeOffset, //!< where in the edge list this function should begin counting
     size_t numEdges //!< how many edges to count triangles for
     ){
@@ -74,11 +89,11 @@ __global__ static void kernel_tc(
 
 
 // return 1 if search_val is in array between offets left and right, inclusive
-__device__ static bool binary_search(const Uint *const array, size_t left,
-    size_t right, const Uint search_val) {
+__device__ static bool binary_search(const Int *const array, size_t left,
+    size_t right, const Int search_val) {
     while (left <= right) {
         size_t mid = (left + right) / 2;
-        Uint val = array[mid];
+        Int val = array[mid];
         if (val < search_val) {
             left = mid + 1;
         } else if (val > search_val) {
@@ -100,11 +115,11 @@ template <size_t BLOCK_DIM_X>
 __global__ static void
 kernel_binary(
     uint64_t *__restrict__ edgeTriangleCounts, //<! per-edge triangle count
-    const Uint *edgeSrc,
-    const Uint *edgeDst,
-    const Uint *rowStarts, //<! offset in edgeSrc/edgeDst where each row starts
-    const Uint edgeOffset,
-    const Uint numEdges) {
+    const Int *edgeSrc,
+    const Int *edgeDst,
+    const Int *rowStarts, //<! offset in edgeSrc/edgeDst where each row starts
+    const Int edgeOffset,
+    const Int numEdges) {
 
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
   static_assert(BLOCK_DIM_X % 32 ==
@@ -120,30 +135,30 @@ kernel_binary(
   const size_t gwIdx = warpIdx + blockIdx.x * WARPS_PER_BLOCK;
 
   // one warp per edge
-  for (Uint edgeIdx = gwIdx; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
+  for (Int edgeIdx = gwIdx; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
 
     size_t count = 0;
 
     // head and tail of edge
-    const Uint head = edgeSrc[edgeIdx];
-    const Uint tail = edgeDst[edgeIdx];
+    const Int head = edgeSrc[edgeIdx];
+    const Int tail = edgeDst[edgeIdx];
 
     // neighbor offsets for head of edge
-    const Uint headOffStart = rowStarts[head];
-    const Uint headOffEnd = rowStarts[head + 1];
+    const Int headOffStart = rowStarts[head];
+    const Int headOffEnd = rowStarts[head + 1];
 
     // neighbor offsets for tail of edge
-    const Uint tailOffStart = rowStarts[tail];
-    const Uint tailOffEnd = rowStarts[tail + 1];
+    const Int tailOffStart = rowStarts[tail];
+    const Int tailOffEnd = rowStarts[tail + 1];
 
     if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
-        for (const Uint *u = &edgeDst[headOffStart] + laneIdx;
+        for (const Int *u = &edgeDst[headOffStart] + laneIdx;
             u < &edgeDst[headOffEnd]; u += 32) {
         count +=
             binary_search(edgeDst, tailOffStart, tailOffEnd - 1, *u);
         }
     } else {
-        for (const Uint *u = &edgeDst[tailOffStart] + laneIdx;
+        for (const Int *u = &edgeDst[tailOffStart] + laneIdx;
             u < &edgeDst[tailOffEnd]; u += 32) {
         count +=
             binary_search(edgeDst, headOffStart, headOffEnd - 1, *u);
