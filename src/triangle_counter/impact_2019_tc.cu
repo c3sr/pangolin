@@ -16,36 +16,36 @@ __device__ static size_t linear_intersection_count(const Int *const aBegin, cons
 
     if (ap < aEnd && bp < bEnd) {
 
-        // bool loadA = false;
-        // bool loadB = false;
+        bool loadA = false;
+        bool loadB = false;
         Int a = *ap;
         Int b = *bp;
         
         while (ap < aEnd && bp < bEnd) {
             
-            // if (loadA) {
+            if (loadA) {
                 a = *ap;
-                // loadA = false;
-            // }
-            // if (loadB) {
+                loadA = false;
+            }
+            if (loadB) {
                 b = *bp;
-                // loadB = false;
-            // }
+                loadB = false;
+            }
 
           if (a == b) {
               ++count;
               ++ap;
               ++bp;
-            //   loadA = true;
-            //   loadB = true;
+              loadA = true;
+              loadB = true;
           }
           else if (a < b){
               ++ap;
-            //   loadA = true;
+              loadA = true;
           }
           else {
               ++bp;
-            //   loadB = true;
+              loadB = true;
           }
       }
     }

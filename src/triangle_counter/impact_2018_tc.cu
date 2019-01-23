@@ -44,8 +44,6 @@ __global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edg
             }
             }         
 
-        // size_t count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
-
         triangleCounts[i] = count;
     }
 }
