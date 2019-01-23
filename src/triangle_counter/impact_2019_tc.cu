@@ -63,8 +63,8 @@ __global__ static void kernel_tc(
     const Int *const edgeSrc, //!< node ids for edge srcs
     const Int *const edgeDst, //!< node ids for edge dsts
     const Int *const nodes, //!< source node offsets in edgeDst
-    size_t edgeOffset, //!< where in the edge list this function should begin counting
-    size_t numEdges //!< how many edges to count triangles for
+    const size_t edgeOffset, //!< where in the edge list this function should begin counting
+    const size_t numEdges //!< how many edges to count triangles for
     ){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -317,13 +317,35 @@ size_t IMPACT2019TC::count() {
         size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
         LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
-        dim3 dimBlock(256);
+        // Launch the correct kind of kernel
+        switch (kernelKind_) {
+            case KernelKind::Linear: {
+                LOG(debug, "linear kernel");
+                dim3 dimBlock(256);
+                size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
+                dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
+                LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+                kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
+                break;
+            }
+            case KernelKind::Binary: {
+                LOG(debug, "binary kernel");
+                constexpr int dimBlock = 512;
+                static_assert(dimBlock % 32 == 0, "Expect integer warps per block");
+                const int warpsPerBlock = dimBlock / 32;
+                size_t desiredGridSize = (edgeCount + warpsPerBlock - 1) / warpsPerBlock;
+                dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
+                LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock);
+                kernel_binary<dimBlock><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
+                break;
+            }
+            default: {
+                LOG(critical, "unexpected kernelKind_");
+                exit(-1);
+            }
+        }
 
-        size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
-        dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
-    
-        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-        kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
+
         edgeOffset += edgesPerDevice;
     }
     
