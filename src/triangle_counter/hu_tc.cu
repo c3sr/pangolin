@@ -1,9 +1,8 @@
-#include "graph/triangle_counter/hu_tc.hpp"
-#include "graph/logger.hpp"
-#include "graph/utilities.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/dag2019.hpp"
-#include "graph/sparse/unified_memory_csr.hpp"
+#include "pangolin/triangle_counter/hu_tc.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/sparse/unified_memory_csr.hpp"
 
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
@@ -118,7 +117,7 @@ void Hu2018TC::read_data(const std::string &path) {
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
     LOG(info, "reading {}", path);
-    auto *reader = graph::EdgeListReader::from_file(path);
+    auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);

@@ -1,8 +1,7 @@
-#include "graph/reader/edge_list_reader.hpp"
-
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/reader/bel_reader.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/reader/edge_list_reader.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/reader/bel_reader.hpp"
+#include "pangolin/logger.hpp"
 
 static bool endswith(const std::string &base, const std::string &suffix)
 {
@@ -13,16 +12,18 @@ static bool endswith(const std::string &base, const std::string &suffix)
     return 0 == base.compare(base.size() - suffix.size(), suffix.size(), suffix);
 }
 
-namespace graph
+namespace pangolin
 {
 EdgeListReader *EdgeListReader::from_file(const std::string &path)
 {
     if (endswith(path, ".bel"))
     {
+        LOG(debug, "creating BELReader");
         return new BELReader(path);
     }
     else if (endswith(path, ".tsv"))
     {
+        LOG(debug, "creating GraphChallengeTSVReader");
         return new GraphChallengeTSVReader(path);
     }
     else
@@ -31,4 +32,4 @@ EdgeListReader *EdgeListReader::from_file(const std::string &path)
         exit(-1);
     }
 }
-} // namespace graph
+} // namespace pangolin

@@ -1,11 +1,11 @@
 #include <limits>
 #include <cstdio>
 
-#include "graph/edge_list.hpp"
-#include "graph/reader/bel_reader.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/reader/bel_reader.hpp"
+#include "pangolin/logger.hpp"
 
-namespace graph
+namespace pangolin
 {
 
 BELReader::BELReader(const std::string &path) : fp_(nullptr), path_(path)
@@ -83,4 +83,4 @@ size_t BELReader::read(Edge *ptr, const size_t num)
     return numRead;
 }
 
-} // namespace graph
+} // namespace pangolin

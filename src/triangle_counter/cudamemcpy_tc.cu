@@ -1,8 +1,7 @@
-#include "graph/triangle_counter/cudamemcpy_tc.hpp"
-#include "graph/logger.hpp"
-#include "graph/utilities.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/dag2019.hpp"
+#include "pangolin/triangle_counter/cudamemcpy_tc.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
 
 const int BLOCK_DIM_X = 128;
 
@@ -88,7 +87,7 @@ CudaMemcpyTC::~CudaMemcpyTC() {
 void CudaMemcpyTC::read_data(const std::string &path) {
 
     LOG(info, "reading {}", path);
-    auto *reader = graph::EdgeListReader::from_file(path);
+    auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);

@@ -1,8 +1,8 @@
-#include "graph/logger.hpp"
-#include "graph/par_graph.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/utilities.hpp"
-#include "graph/triangle_counter/vertex_tc.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/par_graph.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/triangle_counter/vertex_tc.hpp"
 
 #include <cub/cub.cuh>
 
@@ -267,7 +267,7 @@ void VertexTC::read_data(const std::string &path) {
 
   LOG(info, "reading {}", path);
 
-  graph::GraphChallengeTSVReader reader(path);
+  pangolin::GraphChallengeTSVReader reader(path);
 
   auto edgeList = reader.read_edges();
 

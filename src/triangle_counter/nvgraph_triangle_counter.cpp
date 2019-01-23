@@ -1,10 +1,12 @@
 #include <memory>
 #include <cmath>
 
-#include "graph/logger.hpp"
-#include "graph/triangle_counter/nvgraph_triangle_counter.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/utilities.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/utilities.hpp"
+
+#include <nvToolsExt.h>
 
 NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 {
@@ -23,7 +25,7 @@ NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 void NvGraphTriangleCounter::read_data(const std::string &path)
 {
     LOG(info, "reading {}", path);
-    graph::GraphChallengeTSVReader r(path);
+    pangolin::GraphChallengeTSVReader r(path);
     const auto sz = r.size();
 
     auto edgeList = r.read_edges(0, sz);

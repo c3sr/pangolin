@@ -2,11 +2,11 @@
 #include <limits>
 #include <sstream>
 
-#include "graph/edge_list.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/logger.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/logger.hpp"
 
-namespace graph
+namespace pangolin
 {
 
 GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : fp_(nullptr), path_(path), is_(path)
@@ -235,4 +235,4 @@ size_t GraphChallengeTSVReader::read(Edge *ptr, const size_t num)
     return i;
 }
 
-} // namespace graph
+} // namespace pangolin

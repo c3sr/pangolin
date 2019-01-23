@@ -1,9 +1,9 @@
 #include <nvToolsExt.h>
 
-#include "graph/triangle_counter/cuda_triangle_counter.hpp"
-#include "graph/logger.hpp"
-#include "graph/types.hpp"
-#include "graph/utilities.hpp"
+#include "pangolin/triangle_counter/cuda_triangle_counter.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/types.hpp"
+#include "pangolin/utilities.hpp"
 
 CUDATriangleCounter::CUDATriangleCounter(Config &c) : gpus_(c.gpus_), unique_gpus_(gpus_.begin(), gpus_.end())
 {

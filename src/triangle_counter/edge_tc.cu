@@ -1,8 +1,8 @@
-#include "graph/logger.hpp"
-#include "graph/par_graph.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/utilities.hpp"
-#include "graph/triangle_counter/edge_tc.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/par_graph.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/triangle_counter/edge_tc.hpp"
 
 #include <cub/cub.cuh>
 
@@ -184,10 +184,8 @@ EdgeTC::~EdgeTC() {}
 
 void EdgeTC::read_data(const std::string &path) {
 
-  LOG(info, "reading {}", path);
-
-  LOG(info, "reading {}", path);
-  auto *reader = graph::EdgeListReader::from_file(path);
+  LOG(info, "EdgeTC::read_data(): reading {}", path);
+  auto *reader = pangolin::EdgeListReader::from_file(path);
   auto edgeList = reader->read();
 
   // turn into DAG with src < dst

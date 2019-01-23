@@ -2,10 +2,9 @@
 #include <omp.h>
 #endif
 
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/triangle_counter/cpu_triangle_counter.hpp"
-#include "graph/logger.hpp"
-#include "graph/dag2019.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
+#include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
+#include "pangolin/logger.hpp"
 
 static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd)
 {
@@ -62,7 +61,7 @@ void CPUTriangleCounter::read_data(const std::string &path)
 {
 
     LOG(info, "reading {}", path);
-    auto *reader = graph::EdgeListReader::from_file(path);
+    auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read();
     LOG(debug, "building DAG");
     dag_ = DAG2019::from_edgelist(edgeList);

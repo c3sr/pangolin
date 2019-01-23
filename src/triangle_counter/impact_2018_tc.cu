@@ -1,41 +1,12 @@
-#include "graph/triangle_counter/impact_2018_tc.hpp"
-#include "graph/logger.hpp"
-#include "graph/utilities.hpp"
-#include "graph/reader/gc_tsv_reader.hpp"
-#include "graph/dag2019.hpp"
+#include "pangolin/triangle_counter/impact_2018_tc.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/utilities.hpp"
+#include "pangolin/reader/gc_tsv_reader.hpp"
 
 #include <nvToolsExt.h>
 #include <limits>
 
-__device__ static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd) {
-    size_t count = 0;
-    const Int *ap = aBegin;
-    const Int *bp = bBegin;
-
-    if (ap < aEnd && bp < bEnd) {
-
-      Int a = *ap;
-      Int b = *bp;  
-
-      while (ap < aEnd && bp < bEnd) {
-          
-          if (a == b) {
-              ++count;
-              a = *(++ap);
-              b = *(++bp);
-          }
-          else if (a < b){
-              a = *(++ap);
-          }
-          else {
-              b = *(++bp);
-          }
-      }
-    }
-    return count;
-}
-
-__global__ static void kernel_tc(size_t * __restrict__ triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
+__global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -45,13 +16,33 @@ __global__ static void kernel_tc(size_t * __restrict__ triangleCounts, Int *edge
         const Int src = edgeSrc[i];
         const Int dst = edgeDst[i];
 
-        const Int src_edge = nodes[src];
-        const Int src_edge_end = nodes[src + 1];
+        const Int srcEdge = nodes[src];
+        const Int srcEdgeEnd = nodes[src + 1];
 
-        const Int dst_edge = nodes[dst];
-        const Int dst_edge_end = nodes[dst + 1];
+        const Int dstEdge = nodes[dst];
+        const Int dstEdgeEng = nodes[dst + 1];
 
-        size_t count = intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+        size_t count = 0;
+
+
+            Int *srcPtr = &edgeDst[srcEdge];
+            Int *dstPtr = &edgeDst[dstEdge];
+
+            while(srcPtr < &edgeDst[srcEdgeEnd] && dstPtr < &edgeDst[dstEdgeEng] ) {
+        
+            const Int srcNbr = *srcPtr; // neighbor vertex of edge src
+            const Int dstNbr = *dstPtr; // neighbor vertex of edge dst
+        
+            if (srcNbr == dstNbr) {
+                ++count;
+                ++srcPtr;
+                ++dstPtr;
+            } else if (srcNbr < dstNbr) {
+                ++srcPtr;
+            } else {
+                ++dstPtr;
+            }
+            }         
 
         triangleCounts[i] = count;
     }
@@ -102,7 +93,7 @@ IMPACT2018TC::~IMPACT2018TC() {
 void IMPACT2018TC::read_data(const std::string &path) {
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
-    graph::GraphChallengeTSVReader reader(path);
+    pangolin::GraphChallengeTSVReader reader(path);
     auto edgeList = reader.read_edges();
     LOG(debug, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
