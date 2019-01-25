@@ -84,6 +84,27 @@ target_link_libraries(... pangolin::pangolin32)
 
 API documentation may be produced with `make docs` if Doxygen and Graphviz are installed.
 
+
+## Profiling
+
+[CUDA metrics guide](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference)
+
+### GPUs with CC <= 7.2
+
+nvprof -o timeline.nvvp -f ./gc ...
+nvprof -o analysis.nvvp -f --analysis-metrics ./gc
+
+### GPUs with CC > 7.2
+
+On GPUs with CC > 7.2, some version of Nsight needs to be ue used
+
+Either open the NVIDIA Nsight Compute profiler and do it interactively, or generate a report and import it
+
+/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu-cli -o profile -f ...
+/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu&
+
+
+
 ## Other
 
 See [references](references) for some notes on references.
