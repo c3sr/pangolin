@@ -115,11 +115,12 @@ template <size_t BLOCK_DIM_X>
 __global__ static void
 kernel_binary(
     uint64_t *__restrict__ edgeTriangleCounts, //<! per-edge triangle count
-    const Int *edgeSrc,
-    const Int *edgeDst,
+    const Int *edgeSrc, //<!list of edge sources
+    const Int *edgeDst, //<! list of edge destinations
     const Int *rowStarts, //<! offset in edgeSrc/edgeDst where each row starts
-    const Int edgeOffset,
-    const Int numEdges) {
+    const Int edgeOffset, //<! which edge this kernel should start at
+    const Int numEdges //<! how many edges to work on
+) {
 
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
   static_assert(BLOCK_DIM_X % 32 ==
@@ -359,15 +360,37 @@ size_t IMPACT2019TC::count() {
     }
 
     nvtxRangePush("final reduction");
+    size_t final_total = 0;
     auto start = std::chrono::system_clock::now();
-    size_t total = 0;
-    for(size_t i = 0; i < hostDAG_.num_edges(); ++i) {
-        total += triangleCounts_[i];
+    if (0) // CPU
+    {
+        LOG(debug, "CPU reduction");
+        size_t total = 0;
+        for(size_t i = 0; i < hostDAG_.num_edges(); ++i) {
+            total += triangleCounts_[i];
+        }
+        final_total = total;
+    } else { // GPU
+        LOG(debug, "GPU reduction");
+        size_t *total;
+        CUDA_RUNTIME(cudaMallocManaged(&total, sizeof(*total)));
+        void     *d_temp_storage = nullptr;
+        size_t   temp_storage_bytes = 0;
+        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, triangleCounts_, total, hostDAG_.num_edges());
+        // Allocate temporary storage
+        LOG(debug, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
+        CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+        // Run sum-reduction
+        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, triangleCounts_, total, hostDAG_.num_edges());
+        CUDA_RUNTIME(cudaDeviceSynchronize());
+        final_total = *total;
+        CUDA_RUNTIME(cudaFree(total));
+        CUDA_RUNTIME(cudaFree(d_temp_storage));
     }
     auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-    nvtxRangePop();
-    LOG(debug, "CPU reduction {}s", elapsed);
+    nvtxRangePop(); // final reduction
+    LOG(debug, "Final reduction {}s", elapsed);
 
     nvtxRangePop();
-    return total;
+    return final_total;
 }
