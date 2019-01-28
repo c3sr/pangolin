@@ -330,17 +330,19 @@ size_t IMPACT2019TC::count() {
                 dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
                 LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
                 kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
+                CUDA_RUNTIME(cudaGetLastError());
                 break;
             }
             case KernelKind::Binary: {
                 LOG(debug, "binary kernel");
-                constexpr int dimBlock = 512;
+                constexpr int dimBlock = 256;
                 static_assert(dimBlock % 32 == 0, "Expect integer warps per block");
                 const int warpsPerBlock = dimBlock / 32;
                 size_t desiredGridSize = (edgeCount + warpsPerBlock - 1) / warpsPerBlock;
                 dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
                 LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock);
                 kernel_binary<dimBlock><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
+                CUDA_RUNTIME(cudaGetLastError());
                 break;
             }
             default: {
