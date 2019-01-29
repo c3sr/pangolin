@@ -1,12 +1,13 @@
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/triangle_counter/cudamemcpy_tc.hpp"
+#include "pangolin/triangle_counter/edge_tc.hpp"
+#include "pangolin/triangle_counter/hu_tc.hpp"
 #include "pangolin/triangle_counter/impact_2018_tc.hpp"
 #include "pangolin/triangle_counter/impact_2019_tc.hpp"
 #include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
-#include "pangolin/triangle_counter/hu_tc.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
+#include "pangolin/triangle_counter/spmm_tc.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
-#include "pangolin/triangle_counter/edge_tc.hpp"
 
 TriangleCounter::~TriangleCounter() {}
 
@@ -58,6 +59,9 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     else if (c.type_ == "cpu")
     {
         return new CPUTriangleCounter(c);
+    }
+    else if (c.type_ == "spmm") {
+        return new SpmmTC(c);
     }
     else
     {

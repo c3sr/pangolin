@@ -118,33 +118,55 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/triangle_counter/cudamemcpy_tc.hpp
     include/pangolin/triangle_counter/cpu_triangle_counter.hpp
     include/pangolin/triangle_counter/cuda_triangle_counter.hpp
+    include/pangolin/triangle_counter/edge_tc.hpp
     include/pangolin/triangle_counter/hu_tc.hpp
     include/pangolin/triangle_counter/impact_2018_tc.hpp
     include/pangolin/triangle_counter/impact_2019_tc.hpp
     include/pangolin/triangle_counter/nvgraph_triangle_counter.hpp
-    include/pangolin/triangle_counter/vertex_tc.hpp
+    include/pangolin/triangle_counter/spmm_tc.hpp
     include/pangolin/triangle_counter/triangle_counter.hpp
-    include/pangolin/triangle_counter/edge_tc.hpp
+    include/pangolin/triangle_counter/vertex_tc.hpp
 )
 set(PANGOLIN_CU_SOURCES
   src/triangle_counter/cudamemcpy_tc.cu
+  src/triangle_counter/edge_tc.cu
   src/triangle_counter/hu_tc.cu
   src/triangle_counter/impact_2018_tc.cu
   src/triangle_counter/impact_2019_tc.cu
+  src/triangle_counter/spmm_tc.cu
   src/triangle_counter/vertex_tc.cu
-  src/triangle_counter/edge_tc.cu
+)
+
+set(PANGOLIN_CU_HEADERS
+  include/pangolin/sparse/gpu_csr.hu
+  include/pangolin/dense/vector.hu
+  include/pangolin/dense/vector-impl.hu
 )
 
 
 
-add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
-add_library(pangolin64 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
+add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
+add_library(pangolin64 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
 add_library(pangolin::pangolin32 ALIAS pangolin32)
 add_library(pangolin::pangolin64 ALIAS pangolin64)
 
 ## Add CUDA flags
 pangolin_compile_options(
-  PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--Wno-deprecated-gpu-targets;--expt-extended-lambda;-Xcompiler=-Wall;-Xcompiler=-Wextra>
+  PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+  --Wno-deprecated-gpu-targets;
+  --expt-extended-lambda;
+  -Xcompiler=-Wall;
+  -Xcompiler=-Wextra;
+  -Xcompiler=-Wcast-align;
+  -Xcompiler=-Wstrict-aliasing;
+  -Xcompiler=-Wpointer-arith;
+  -Xcompiler=-Winit-self;
+  -Xcompiler=-Wswitch-enum;
+  -Xcompiler=-Wredundant-decls;
+  -Xcompiler=-Wfloat-equal;
+  -Xcompiler=-Wundef;
+  -Xcompiler=-Wvla;
+  -Xcompiler=-Wshadow>
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -160,7 +182,20 @@ endif()
 
 ## Add CXX Flags
 pangolin_compile_options(
-  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>
+  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:
+  -Wall;
+  -Wextra;
+  -Wcast-align;
+  -Wstrict-aliasing;
+  -Wpointer-arith;
+  -Winit-self;
+  -Wswitch-enum;
+  -Wredundant-decls;
+  -Wfloat-equal;
+  -Wundef;
+  -Wvla;
+  -Wshadow;
+  -Wpedantic>
 )
 
 

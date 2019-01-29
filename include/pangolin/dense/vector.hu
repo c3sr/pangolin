@@ -1,0 +1,73 @@
+#pragma once
+
+#ifdef __CUDACC__
+#define PANGOLIN_CUDA_MEMBER __host__ __device__
+#else
+#define PANGOLIN_CUDA_MEMBER
+#endif 
+
+namespace pangolin
+{
+template <typename VALUE_TYPE>
+__device__ __host__ 
+class Vector
+{
+  public:
+    typedef VALUE_TYPE value_type;
+    typedef value_type &reference;
+    typedef const value_type &const_reference;
+
+  private:
+    size_t capacity_;
+    size_t size_;
+    value_type *data_;
+
+  public:
+    // default constructor
+    __host__ explicit Vector();
+
+    // move constructor
+    __host__ Vector(Vector &&other);
+
+    // copy constructor
+    __host__ Vector(const Vector &other);
+
+    // destructor
+    __host__ ~Vector();
+
+    // move-assignment
+    __host__ Vector &operator=(Vector &&other);
+
+    
+    __host__ explicit Vector(size_t n);
+
+    PANGOLIN_CUDA_MEMBER inline value_type *data() noexcept;
+    PANGOLIN_CUDA_MEMBER inline const value_type *data() const noexcept;
+
+    __host__ void push_back(const value_type &val);
+
+    __host__ void reserve(size_t n);
+
+    __host__ void resize(size_t n);
+
+
+    __host__ void resize(size_t n, const value_type& val);
+
+
+    __host__ void shrink_to_fit();
+
+    PANGOLIN_CUDA_MEMBER inline size_t capacity() const noexcept;
+    PANGOLIN_CUDA_MEMBER inline size_t size() const noexcept;
+    PANGOLIN_CUDA_MEMBER inline bool empty() const noexcept;
+
+    PANGOLIN_CUDA_MEMBER inline reference operator[](size_t n);
+    PANGOLIN_CUDA_MEMBER inline const_reference operator[](size_t n) const;
+};
+
+} // namespace pangolin
+
+#ifdef PANGOLIN_CUDA_MEMBER
+#undef PANGOLIN_CUDA_MEMBER
+#endif
+
+#include "vector-impl.hu"

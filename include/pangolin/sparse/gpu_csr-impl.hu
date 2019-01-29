@@ -1,0 +1,104 @@
+#pragma once
+
+#include "gpu_csr.hu"
+#include "pangolin/logger.hpp"
+
+#ifdef __CUDACC__
+#define PANGOLIN_CUDA_MEMBER __host__ __device__
+#else
+#define PANGOLIN_CUDA_MEMBER
+#endif 
+
+namespace pangolin {
+
+template<typename Index>
+PANGOLIN_CUDA_MEMBER uint64_t GPUCSR<Index>::num_rows() const { 
+    if (rowOffset_.size() == 0) {
+        return 0;
+    } else {
+        return rowOffset_.size() - 1;
+    }
+}
+
+template<typename Index>
+uint64_t GPUCSR<Index>::num_nodes() const { 
+    std::set<Index> nodes;
+    // add all dsts
+    for (Index ci = 0; ci < col_.size(); ++ci) {
+        nodes.insert(col_[ci]);
+    }
+    // add non-zero sources
+    for (Index i = 0; i < rowOffset_.size() - 1; ++i) {
+        Index row_start = rowOffset_[i];
+        Index row_end = rowOffset_[i+1];
+        if (row_start != row_end) {
+            nodes.insert(i);
+        }
+    }
+    return nodes.size();
+}
+
+template<typename Index>
+GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
+    GPUCSR<Index> csr;
+
+    
+    if (es.size() == 0) {
+        LOG(warn, "constructing from empty edge list");
+        return csr;
+    }
+
+
+    // find the first src row
+    Index firstRow;
+    for (const auto &e : es) {
+        if (nullptr != edgeFilter) {
+            if (edgeFilter(e)) {
+                continue;
+            }
+        }
+        firstRow = e.first; // src
+        break;
+    }
+    
+    // add empty rows until firstRow
+    LOG(debug, "first row was {}", firstRow);
+    for (Index i = 0; i < firstRow; ++i)
+    {
+        TRACE("added empty row {} before smallest row id {}", i, firstRow);
+        csr.rowOffset_.push_back(0);
+    }
+
+
+    for (const auto &edge : es) {
+        // skip edges if there is a filter
+        if (nullptr != edgeFilter) {
+            if (!edgeFilter(edge)) {
+                continue;
+            }
+        }
+
+        assert(edge.first >= 0);
+        assert(edge.second >= 0);
+
+        // edge has a new src and should be in a new row
+        while (csr.rowOffset_.size() != size_t(edge.first + 1))
+        {
+            assert(edge.first >= csr.rowOffset_.size()); // src should be larger than the current largest row
+            // TRACE("node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
+            csr.rowOffset_.push_back(csr.col_.size());
+        }
+
+        // convert to directed graph by only saving one direction of edges
+        csr.col_.push_back(edge.second);
+        // TRACE("added edge {} ({} -> {})", csr.num_edges() - 1, edge.src_, edge.dst_);
+    }
+    csr.rowOffset_.push_back(csr.col_.size());
+
+    return csr;
+}
+
+} // namespace pangolin
+#ifdef PANGOLIN_CUDA_MEMBER
+#undef PANGOLIN_CUDA_MEMBER
+#endif

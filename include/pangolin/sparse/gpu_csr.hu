@@ -1,0 +1,31 @@
+#pragma once
+
+#include "pangolin/types.hpp"
+#include "pangolin/edge_list.hpp"
+#include "pangolin/dense/vector.hu"
+
+#ifdef __CUDACC__
+#define PANGOLIN_CUDA_MEMBER __host__ __device__
+#else
+#define PANGOLIN_CUDA_MEMBER
+#endif 
+
+namespace pangolin {
+
+template<typename Index>
+class GPUCSR {
+    public:
+        Vector<Index> rowOffset_; //<! offset in col_ that each row starts at
+        Vector<Index> col_; //<! non-zero column indices
+        PANGOLIN_CUDA_MEMBER uint64_t nnz() const {return col_.size(); } //<! number of non-zeros
+        uint64_t num_nodes() const; //<! number of unique row/col indices
+        PANGOLIN_CUDA_MEMBER uint64_t num_rows() const; //<! length of rowOffset - 1
+        static GPUCSR<Index> from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &) = nullptr); //<! build a CSR from and edgelist. Ignore edges with edgeFilter return true
+    };
+} // namespace pangolin
+    
+#ifdef PANGOLIN_CUDA_MEMBER
+#undef PANGOLIN_CUDA_MEMBER
+#endif
+
+#include "gpu_csr-impl.hu"
