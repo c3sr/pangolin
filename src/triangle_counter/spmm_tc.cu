@@ -47,8 +47,8 @@ __global__ void spmm_csr_csr(Index *edgeSrc, //<! src of edge (at least # edges 
                              Index *edgeDst, //<! dst of edge (at least # edges long)
                              uint64_t *edgeCnt, //<! tri count of edge (at least # edges long)
                              uint64_t *nextEdge, //<! pointer to next available edge
-                             const pangolin::GPUCSR<Index> aL, //<! aL*aU, lower-triangular
-                             const pangolin::GPUCSR<Index> aU //<! aL*aU, upper-triagular
+                             const pangolin::GPUCSRView<Index> aL, //<! aL*aU, lower-triangular
+                             const pangolin::GPUCSRView<Index> aU //<! aL*aU, upper-triagular
 ) {
     static_assert(sizeof(long long unsigned) == sizeof(uint64_t), "");
     const size_t num_rows = aL.num_rows();
@@ -163,7 +163,7 @@ size_t SpmmTC::count() {
     // dim3 dimBlock(1);
     // dim3 dimGrid(1);
     LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-    spmm_csr_csr<<<dimGrid, dimBlock>>>(edgeSrc_, edgeDst_, edgeCnt_, nextEdge_, aL_, aU_);
+    spmm_csr_csr<<<dimGrid, dimBlock>>>(edgeSrc_, edgeDst_, edgeCnt_, nextEdge_, aL_.view(), aU_.view());
     LOG(debug, "launched kernel");
     CUDA_RUNTIME(cudaGetLastError());
     

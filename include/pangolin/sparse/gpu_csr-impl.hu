@@ -76,6 +76,16 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter
     return csr;
 }
 
+template<typename Index>
+GPUCSRView<Index> GPUCSR<Index>::view() const {
+    GPUCSRView<Index> view;
+    view.nnz_ = nnz();
+    view.num_rows_ = num_rows();
+    view.rowOffset_ = rowOffset_.data();
+    view.col_ = col_.data();
+    return view;
+}
+
 
 } // namespace pangolin
 #ifdef PANGOLIN_CUDA_MEMBER

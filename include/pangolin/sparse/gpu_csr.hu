@@ -13,15 +13,43 @@
 namespace pangolin {
 
 template<typename Index>
+class GPUCSR;
+
+/*! \brief a read-only view of a GPUCSR
+
+Suitable for passing to a GPU kernel by value.
+Any modifications to the underlying GPUCSR may invalidate this view
+*/
+template<typename Index>
+class GPUCSRView {
+    friend class GPUCSR<Index>;
+private:
+  uint64_t nnz_; //<! number of non-zeros
+  uint64_t num_rows_; //<! length of rowOffset - 1
+
+public:
+ const Index *rowOffset_; //<! offset in col_ that each row starts at
+ const Index *col_; //<! non-zero column indices
+
+ PANGOLIN_CUDA_MEMBER uint64_t nnz() const {return nnz_; }
+ PANGOLIN_CUDA_MEMBER uint64_t num_rows() const {return num_rows_; }
+};
+
+
+template<typename Index>
 class GPUCSR {
-    public:
-        Vector<Index> rowOffset_; //<! offset in col_ that each row starts at
-        Vector<Index> col_; //<! non-zero column indices
-        PANGOLIN_CUDA_MEMBER uint64_t nnz() const {return col_.size(); } //<! number of non-zeros
-        uint64_t num_nodes() const; //<! number of unique row/col indices
-        PANGOLIN_CUDA_MEMBER uint64_t num_rows() const; //<! length of rowOffset - 1
-        static GPUCSR<Index> from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &) = nullptr); //<! build a CSR from and edgelist. Ignore edges with edgeFilter return true
-    };
+ public:
+  Vector<Index> rowOffset_; //<! offset in col_ that each row starts at
+  Vector<Index> col_; //<! non-zero column indices
+  PANGOLIN_CUDA_MEMBER uint64_t nnz() const {return col_.size(); } //<! number of non-zeros
+  uint64_t num_nodes() const; //<! number of unique row/col indices
+  PANGOLIN_CUDA_MEMBER uint64_t num_rows() const; //<! length of rowOffset - 1
+  static GPUCSR<Index> from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &) = nullptr); //<! build a CSR from and edgelist. Ignore edges with edgeFilter return true
+  GPUCSRView<Index> view() const; //<! create a GPUCSRView for this GPUCSR
+};
+
+
+
 } // namespace pangolin
     
 #ifdef PANGOLIN_CUDA_MEMBER
