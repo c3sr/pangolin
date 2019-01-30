@@ -96,12 +96,16 @@ nvprof -o analysis.nvvp -f --analysis-metrics ./gc
 
 ### GPUs with CC > 7.2
 
-On GPUs with CC > 7.2, some version of Nsight needs to be ue used
-
+On GPUs with CC > 7.2, some version of Nsight needs to be used.
 Either open the NVIDIA Nsight Compute profiler and do it interactively, or generate a report and import it
 
-/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu-cli -o profile -f ...
-/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu&
+    /usr/local/cuda/NsightCompute-1.0/nv-nsight-cu-cli -o profile -f ...
+
+or
+
+    /usr/local/cuda/NsightCompute-1.0/nv-nsight-cu&
+
+`File` > `Open File` > `profile.nsight-cuprof-report`
 
 
 
