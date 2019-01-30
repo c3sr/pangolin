@@ -49,54 +49,33 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter
     }
 
 
-    // find the first src row
-    Index firstRow;
-    for (const auto &e : es) {
-        if (nullptr != edgeFilter) {
-            if (edgeFilter(e)) {
-                continue;
-            }
-        }
-        firstRow = e.first; // src
-        break;
-    }
-    
-    // add empty rows until firstRow
-    LOG(debug, "first row was {}", firstRow);
-    for (Index i = 0; i < firstRow; ++i)
-    {
-        TRACE("added empty row {} before smallest row id {}", i, firstRow);
-        csr.rowOffset_.push_back(0);
-    }
-
-
     for (const auto &edge : es) {
-        // skip edges if there is a filter
-        if (nullptr != edgeFilter) {
-            if (!edgeFilter(edge)) {
-                continue;
-            }
-        }
-
-        assert(edge.first >= 0);
-        assert(edge.second >= 0);
 
         // edge has a new src and should be in a new row
+        // even if the edge is filtered out, we need to add empty rows
         while (csr.rowOffset_.size() != size_t(edge.first + 1))
         {
-            assert(edge.first >= csr.rowOffset_.size()); // src should be larger than the current largest row
+            // expecting inputs to be sorted by src, so it should be at least
+            // as big as the current largest row we have recored
+            assert(edge.first >= csr.rowOffset_.size());
             // TRACE("node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
             csr.rowOffset_.push_back(csr.col_.size());
         }
 
-        // convert to directed graph by only saving one direction of edges
-        csr.col_.push_back(edge.second);
-        // TRACE("added edge {} ({} -> {})", csr.num_edges() - 1, edge.src_, edge.dst_);
+        // filter or add the edge
+        if (nullptr != edgeFilter && edgeFilter(edge)) {
+            continue;
+        } else {
+            csr.col_.push_back(edge.second);
+        }
     }
+
+    // add the final length of the non-zeros to the offset array
     csr.rowOffset_.push_back(csr.col_.size());
 
     return csr;
 }
+
 
 } // namespace pangolin
 #ifdef PANGOLIN_CUDA_MEMBER
