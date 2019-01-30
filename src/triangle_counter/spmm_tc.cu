@@ -122,10 +122,10 @@ void SpmmTC::read_data(const std::string &path) {
     aL_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {return e.first <= e.second; })); // keep src > dst
     aU_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {return e.first >= e.second; })); // keep src < dst
 
+    // LOG(info, "Lower-triangular: {} nodes", aL_.num_nodes());
     LOG(info, "Lower-triangular: {} edges", aL_.nnz());
-    LOG(info, "Lower-triangular: {} nodes", aL_.num_nodes());
+    // LOG(info, "Upper-triangular: {} nodes", aU_.num_nodes());
     LOG(info, "Upper-triangular: {} edges", aU_.nnz());
-    LOG(info, "Upper-triangular: {} nodes", aU_.num_nodes());
     nvtxRangePop();
 }
 
@@ -142,6 +142,7 @@ void SpmmTC::setup_data() {
     CUDA_RUNTIME(cudaMallocManaged(&edgeDst_, edgeDstBytes));
     LOG(debug, "allocating {}B for edge triangle counts", edgeCntBytes);
     CUDA_RUNTIME(cudaMallocManaged(&edgeCnt_, edgeCntBytes));
+    LOG(debug, "allocating {}B for next edge offset counter", sizeof(*nextEdge_));
     CUDA_RUNTIME(cudaMallocManaged(&nextEdge_, sizeof(*nextEdge_)));
     nvtxRangePop();
 }
