@@ -195,6 +195,8 @@ pangolin_compile_options(
   -Wundef;
   -Wvla;
   -Wshadow;
+  -Wformat=2;
+  -Wconversion;
   -Wpedantic>
 )
 
