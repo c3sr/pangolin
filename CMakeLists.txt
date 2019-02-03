@@ -82,6 +82,7 @@ find_package(OpenMP REQUIRED)
 set(PANGOLIN_CPP_SOURCES
   src/config.cpp
   src/configure.hpp.in
+  src/cusparse.cpp
   src/dag_lowertriangular_csr.cpp
   src/logger.cpp
   src/par_graph.cpp
@@ -98,6 +99,7 @@ set(PANGOLIN_CPP_SOURCES
 )
 set(PANGOLIN_CPP_HEADERS
     include/pangolin/config.hpp
+    include/pangolin/cusparse.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
     include/pangolin/edge.hpp
     include/pangolin/edge_list.hpp
@@ -128,6 +130,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/triangle_counter/vertex_tc.hpp
 )
 set(PANGOLIN_CU_SOURCES
+  src/sparse/cusparse_csr.cu
   src/triangle_counter/cudamemcpy_tc.cu
   src/triangle_counter/edge_tc.cu
   src/triangle_counter/hu_tc.cu
@@ -138,6 +141,7 @@ set(PANGOLIN_CU_SOURCES
 )
 
 set(PANGOLIN_CU_HEADERS
+  include/pangolin/sparse/cusparse_csr.hu
   include/pangolin/sparse/gpu_csr.hu
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
@@ -315,6 +319,7 @@ pangolin_link_libraries(PUBLIC spdlog::spdlog)
 pangolin_link_libraries(PUBLIC cub::cub)
 pangolin_link_libraries(PRIVATE nvgraph)
 pangolin_link_libraries(PRIVATE nvToolsExt)
+pangolin_link_libraries(PRIVATE cusparse)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang

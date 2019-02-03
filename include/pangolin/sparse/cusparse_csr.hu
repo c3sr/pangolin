@@ -1,0 +1,33 @@
+/*!
+Routines for interacting with CUSparse
+*/
+
+#pragma once
+
+#include <cusparse.h>
+
+#include "pangolin/dense/vector.hu"
+#include "pangolin/namespace.hpp"
+#include "pangolin/edge_list.hpp"
+
+
+
+PANGOLIN_NAMESPACE_BEGIN
+
+class CusparseCSR {
+ public:
+  CusparseCSR();
+  cusparseMatDescr_t descr_;
+  Vector<int> csrRowPtr_;
+  Vector<int> csrColInd_;
+  Vector<int> csrVal_;
+
+  const int *csrRowPtrA() const { return csrRowPtr_.data(); }
+  const int *csrColIndA() const { return csrColInd_.data(); }
+  const int *csrValA() const {return csrVal_.data(); }
+
+  static CusparseCSR from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &));
+};
+
+
+PANGOLIN_NAMESPACE_END
