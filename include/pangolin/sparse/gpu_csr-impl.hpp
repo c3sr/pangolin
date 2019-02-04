@@ -1,15 +1,20 @@
 #pragma once
 
-#include "gpu_csr.hu"
+#include "gpu_csr.hpp"
 #include "pangolin/logger.hpp"
 
 #ifdef __CUDACC__
 #define PANGOLIN_CUDA_MEMBER __host__ __device__
 #else
 #define PANGOLIN_CUDA_MEMBER
+#include <set>
 #endif 
 
 namespace pangolin {
+
+template<typename Index>
+GPUCSR<Index>::GPUCSR() : maxCol_(0) { 
+}
 
 template<typename Index>
 PANGOLIN_CUDA_MEMBER uint64_t GPUCSR<Index>::num_rows() const { 
@@ -51,13 +56,16 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter
 
     for (const auto &edge : es) {
 
+        const Index src = static_cast<Index>(edge.first);
+        const Index dst = static_cast<Index>(edge.second);
+
         // edge has a new src and should be in a new row
         // even if the edge is filtered out, we need to add empty rows
-        while (csr.rowOffset_.size() != size_t(edge.first + 1))
+        while (csr.rowOffset_.size() != size_t(src + 1))
         {
             // expecting inputs to be sorted by src, so it should be at least
             // as big as the current largest row we have recored
-            assert(edge.first >= csr.rowOffset_.size());
+            assert(src >= csr.rowOffset_.size());
             // TRACE("node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
             csr.rowOffset_.push_back(csr.col_.size());
         }
@@ -66,7 +74,8 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter
         if (nullptr != edgeFilter && edgeFilter(edge)) {
             continue;
         } else {
-            csr.col_.push_back(edge.second);
+            csr.col_.push_back(dst);
+            csr.maxCol_ = std::max(dst, csr.maxCol_);
         }
     }
 

@@ -92,10 +92,11 @@ set(PANGOLIN_CPP_SOURCES
   src/reader/gc_tsv_reader.cpp
   src/sparse/dag2019.cpp
   src/sparse/unified_memory_csr.cpp
+  src/triangle_counter/cuda_triangle_counter.cpp
   src/triangle_counter/cpu_triangle_counter.cpp
+  src/triangle_counter/cusparse_tc.cpp
   src/triangle_counter/nvgraph_triangle_counter.cpp
   src/triangle_counter/triangle_counter.cpp
-  src/triangle_counter/cuda_triangle_counter.cpp
 )
 set(PANGOLIN_CPP_HEADERS
     include/pangolin/config.hpp
@@ -120,6 +121,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/triangle_counter/cudamemcpy_tc.hpp
     include/pangolin/triangle_counter/cpu_triangle_counter.hpp
     include/pangolin/triangle_counter/cuda_triangle_counter.hpp
+    include/pangolin/triangle_counter/cusparse_tc.hpp
     include/pangolin/triangle_counter/edge_tc.hpp
     include/pangolin/triangle_counter/hu_tc.hpp
     include/pangolin/triangle_counter/impact_2018_tc.hpp

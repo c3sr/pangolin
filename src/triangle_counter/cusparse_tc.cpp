@@ -6,99 +6,154 @@
 #include "pangolin/triangle_counter/cusparse_tc.hpp"
 #include "pangolin/reader/edge_list_reader.hpp"
 #include "pangolin/utilities.hpp"
+#include "pangolin/cusparse.hpp"
+#include "pangolin/narrow.hpp"
 
+PANGOLIN_NAMESPACE_BEGIN
 
-CUSparseTriangleCounter::CUSparseTriangleCounter(Config &c)
+CusparseTC::CusparseTC(Config &c)
 {
-    if (c.gpus_.size() > 1)
+
+    if (c.gpus_.size() == 0)
     {
-        gpu_ = c.gpus_[0];
-        LOG(warn, "CUSparseTriangleCounter requires exactly 1 GPU. Selected GPU {}", gpu_);
-    }
-    else if (c.gpus_.size() == 0)
-    {
-        LOG(critical, "CUSparseTriangleCounter requires 1 GPU");
+        LOG(critical, "CusparseTC requires 1 GPU");
         exit(-1);
     }
+    
+    gpu_ = c.gpus_[0];
+    if (c.gpus_.size() > 1)
+    {
+        LOG(warn, "CusparseTC requires exactly 1 GPU. Selected GPU {}", gpu_);
+    }
 
-    CUSPARSE(cusparseCreateHandle(&cusparseHandle_));
+    LOG(debug, "create CUSparse handle");
+    CUSPARSE(cusparseCreate(&handle_));
 
     int version;
-    CUSPARSE(cusparseGetVersion(cusparseHandle, &version));
+    CUSPARSE(cusparseGetVersion(handle_, &version));
     LOG(info, "CUSparse version {}", version);
 }
 
-void CUSparseTriangleCounter::read_data(const std::string &path)
+void CusparseTC::read_data(const std::string &path)
 {
-    LOG(info, "reading {}", path)
+    nvtxRangePush(__PRETTY_FUNCTION__);
+    LOG(info, "reading {}", path);
     auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read();
     if (edgeList.size() == 0) {
         LOG(warn, "empty edge list");
     }
-    LOG(debug, "building DAG");
-    hostDAG_ = DAG2019::from_edgelist(edgeList);
-
-    LOG(info, "reading {}", path);
-    pangolin::GraphChallengeTSVReader r(path);
-    const auto sz = r.size();
-
-    auto edgeList = r.read_edges(0, sz);
-    LOG(debug, "building DAG");
-    dag_ = DAGLowerTriangularCSR::from_edgelist(edgeList);
-
-    LOG(debug, "{} nodes", dag_.num_nodes());
-    LOG(debug, "{} edges", dag_.num_edges());
-
-    csr_ = new struct nvgraphCSRTopology32I_st;
-    csr_->nvertices = dag_.num_nodes();
-    csr_->nedges = dag_.num_edges();
+    LOG(debug, "building A");
+    A_ = GPUCSR<int>::from_edgelist(edgeList);
+    LOG(debug, "building B");
+    B_ = GPUCSR<int>::from_edgelist(edgeList);
+    nvtxRangePop();
 }
 
-void CUSparseTriangleCounter::setup_data()
+void CusparseTC::setup_data()
 {
     assert(sizeof(Int) == sizeof(int));
-
-    const size_t srcBytes = dag_.sourceOffsets_.size() * sizeof(Int);
-    const size_t dstBytes = dag_.destinationIndices_.size() * sizeof(Int);
-    CUDA_RUNTIME(cudaMalloc((void **)&(csr_->source_offsets), srcBytes));
-    CUDA_RUNTIME(cudaMalloc((void **)&(csr_->destination_indices), dstBytes));
-    CUDA_RUNTIME(cudaMemcpy(csr_->source_offsets, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
-    CUDA_RUNTIME(cudaMemcpy(csr_->destination_indices, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
-
-    TRACE("dag with {} edges and {} nodes", csr_->nedges, csr_->nvertices);
-    for (size_t i = 0; i < dag_.num_nodes(); ++i)
-    {
-        Int rowStart = dag_.sourceOffsets_[i];
-        Int rowEnd = dag_.sourceOffsets_[i + 1];
-        for (Int o = rowStart; o < rowEnd; ++o)
-        {
-            TRACE("node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
-        }
-    }
 }
 
-size_t CUSparseTriangleCounter::count()
+size_t CusparseTC::count()
 {
 
-    if (csr_->nvertices == 0)
-    {
-        return 0;
-    }
-    uint64_t trcount = 0;
+    const int m = checked_narrow(A_.num_rows());
+    const int n = checked_narrow(A_.max_col());
+    const int k = checked_narrow(B_.max_col());
 
-    nvgraphHandle_t handle;
-    nvgraphGraphDescr_t graphDes;
+    const cusparseOperation_t transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
+    const cusparseOperation_t transB = CUSPARSE_OPERATION_NON_TRANSPOSE;
 
-    NVGRAPH(nvgraphCreate(&handle));
-    NVGRAPH(nvgraphCreateGraphDescr(handle, &graphDes));
 
-    NVGRAPH(nvgraphSetGraphStructure(handle, graphDes, (void *)csr_, NVGRAPH_CSR_32));
 
-    NVGRAPH(nvgraphTriangleCount(handle, graphDes, &trcount));
+    cusparseMatDescr_t descrA = nullptr;
+    cusparseMatDescr_t descrB = nullptr;
+    cusparseMatDescr_t descrC = nullptr;
 
-    NVGRAPH(nvgraphDestroyGraphDescr(handle, graphDes));
-    NVGRAPH(nvgraphDestroy(handle));
+    CUSPARSE(cusparseCreateMatDescr(&descrA));
+    CUSPARSE(cusparseCreateMatDescr(&descrB));
+    CUSPARSE(cusparseCreateMatDescr(&descrC));
 
-    return trcount;
+    const int nnzA = checked_narrow(A_.nnz());
+    const int nnzB = checked_narrow(B_.nnz());
+
+    const int *csrRowPtrA = A_.deviceRowPtr();
+    const int *csrColIndA = A_.deviceColInd();
+
+    const int *csrRowPtrB = B_.deviceRowPtr();
+    const int *csrColIndB = B_.deviceRowPtr();
+
+    int *csrRowPtrC = nullptr;
+    LOG(debug, "allocate {} rows for C", A_.num_rows());
+    CUDA_RUNTIME(cudaMallocManaged(&csrRowPtrC, sizeof(int) * A_.num_rows() + 1));
+    
+    LOG(debug, "compute C nnzs");
+    int nnzC;
+cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k, 
+        descrA, nnzA, csrRowPtrA, csrColIndA,
+        descrB, nnzB, csrRowPtrB, csrColIndB,
+        descrC, csrRowPtrC, &nnzC );
+    LOG(debug, "C has {} nonzeros", nnzC);
+/*
+int baseC, nnzC;
+// nnzTotalDevHostPtr points to host memory
+int *nnzTotalDevHostPtr = &nnzC;
+cusparseSetPointerMode(handle, CUSPARSE_POINTER_MODE_HOST);
+cudaMalloc((void**)&csrRowPtrC, sizeof(int)*(m+1));
+cusparseXcsrgemmNnz(handle, transA, transB, m, n, k, 
+        descrA, nnzA, csrRowPtrA, csrColIndA,
+        descrB, nnzB, csrRowPtrB, csrColIndB,
+        descrC, csrRowPtrC, nnzTotalDevHostPtr );
+if (NULL != nnzTotalDevHostPtr){
+    nnzC = *nnzTotalDevHostPtr;
+}else{
+    cudaMemcpy(&nnzC, csrRowPtrC+m, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&baseC, csrRowPtrC, sizeof(int), cudaMemcpyDeviceToHost);
+    nnzC -= baseC;
 }
+cudaMalloc((void**)&csrColIndC, sizeof(int)*nnzC);
+cudaMalloc((void**)&csrValC, sizeof(float)*nnzC);
+cusparseScsrgemm(handle, transA, transB, m, n, k,
+        descrA, nnzA,
+        csrValA, csrRowPtrA, csrColIndA,
+        descrB, nnzB,
+        csrValB, csrRowPtrB, csrColIndB,
+        descrC,
+        csrValC, csrRowPtrC, csrColIndC);
+*/
+
+    // CUSPARSE(
+    //     cusparseXcsrgemmNnz(cusparseHandle_t handle_,
+    //         transA, 
+    //         transB,
+    //         int m, 
+    //         int n, 
+    //         int k,
+    //         const cusparseMatDescr_t descrA_, 
+    //         const int nnzA,                                     
+    //         const int *rowPtrA_, 
+    //         const int *colIndA_,
+    //         const cusparseMatDescr_t descrB_, 
+    //         const int nnzB,                                     
+    //         const int *rowPtrB_, 
+    //         const int *colIndB_,
+    //         const cusparseMatDescr_t descrC, 
+    //         int *csrRowPtrC,
+    //         int *nnzTotalDevHostPtr 
+    //     )
+    // );
+
+    LOG(debug, "destroy matrix descriptions");
+    CUSPARSE(cusparseDestroyMatDescr(descrA));
+    CUSPARSE(cusparseDestroyMatDescr(descrB));
+    CUSPARSE(cusparseDestroyMatDescr(descrC));
+
+    return 0;
+}
+
+CusparseTC::~CusparseTC() {
+    CUSPARSE(cusparseDestroy(handle_));
+}
+
+PANGOLIN_NAMESPACE_END

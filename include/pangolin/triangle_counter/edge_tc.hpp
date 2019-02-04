@@ -46,6 +46,6 @@ public:
   virtual void read_data(const std::string &path) override;
   virtual void setup_data() override;
   virtual size_t count() override;
-  virtual size_t num_edges() override { return numEdges_; }
+  virtual uint64_t num_edges() override { return numEdges_; }
   virtual size_t num_nodes() { return numNodes_; }
 };
