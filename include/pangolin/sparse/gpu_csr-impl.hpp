@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "gpu_csr.hpp"
 #include "pangolin/logger.hpp"
 
@@ -7,7 +9,6 @@
 #define PANGOLIN_CUDA_MEMBER __host__ __device__
 #else
 #define PANGOLIN_CUDA_MEMBER
-#include <set>
 #endif 
 
 namespace pangolin {

@@ -94,7 +94,6 @@ set(PANGOLIN_CPP_SOURCES
   src/sparse/unified_memory_csr.cpp
   src/triangle_counter/cuda_triangle_counter.cpp
   src/triangle_counter/cpu_triangle_counter.cpp
-  src/triangle_counter/cusparse_tc.cpp
   src/triangle_counter/nvgraph_triangle_counter.cpp
   src/triangle_counter/triangle_counter.cpp
 )
@@ -133,9 +132,11 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/triangle_counter/triangle_counter.hpp
     include/pangolin/triangle_counter/vertex_tc.hpp
 )
+
 set(PANGOLIN_CU_SOURCES
   src/sparse/cusparse_csr.cu
   src/triangle_counter/cudamemcpy_tc.cu
+  src/triangle_counter/cusparse_tc.cu
   src/triangle_counter/edge_tc.cu
   src/triangle_counter/hu_tc.cu
   src/triangle_counter/impact_2018_tc.cu
@@ -143,10 +144,9 @@ set(PANGOLIN_CU_SOURCES
   src/triangle_counter/spmm_tc.cu
   src/triangle_counter/vertex_tc.cu
 )
-
+    
 set(PANGOLIN_CU_HEADERS
-  include/pangolin/sparse/cusparse_csr.hu
-
+  include/pangolin/sparse/cusparse_csr.hu  
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
 )

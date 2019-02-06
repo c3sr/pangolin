@@ -1,6 +1,8 @@
 #include <memory>
 #include <cmath>
 #include <nvToolsExt.h>
+#include <cub/cub.cuh>
+#include <cusp/csr_matrix.h>
 
 #include "pangolin/logger.hpp"
 #include "pangolin/triangle_counter/cusparse_tc.hpp"
@@ -59,8 +61,8 @@ size_t CusparseTC::count()
 {
 
     const int m = checked_narrow(A_.num_rows());
-    const int n = checked_narrow(A_.max_col());
-    const int k = checked_narrow(B_.max_col());
+    const int n = checked_narrow(A_.max_col()+1);
+    const int k = checked_narrow(B_.max_col()+1);
     LOG(debug, "CUSparse product m={} n={} k={}", m, n, k);
 
     const cusparseOperation_t transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
@@ -80,33 +82,36 @@ size_t CusparseTC::count()
     const int *csrRowPtrA = A_.deviceRowPtr();
     const int *csrColIndA = A_.deviceColInd();
     assert(nnzA == csrRowPtrA[m] - csrRowPtrA[0]);
+    LOG(debug, "A has {} nonzeros", nnzA);
 
     const int nnzB = checked_narrow(B_.nnz());
     const int *csrRowPtrB = B_.deviceRowPtr();
-    const int *csrColIndB = B_.deviceRowPtr();
+    const int *csrColIndB = B_.deviceColInd();
     assert(nnzB == csrRowPtrB[m] - csrRowPtrB[0]);
+    LOG(debug, "B has {} nonzeros", nnzB);
 
     int *csrRowPtrC = nullptr;
-    LOG(debug, "allocate {} rows for C", A_.num_rows());
-    CUDA_RUNTIME(cudaMallocManaged(&csrRowPtrC, sizeof(int) * A_.num_rows() + 1));
+    LOG(debug, "allocate {} rows for C", m);
+    CUDA_RUNTIME(cudaMallocManaged(&csrRowPtrC, sizeof(int) * (m + 1)));
     
     LOG(debug, "compute C nnzs");
     int nnzC;
-    int baseC;
     int *nnzTotalDevHostPtr = &nnzC;
-    cusparseSetPointerMode(handle_, CUSPARSE_POINTER_MODE_HOST);
-cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k, 
+    CUSPARSE(cusparseSetPointerMode(handle_, CUSPARSE_POINTER_MODE_HOST));
+    CUSPARSE(cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k, 
         descrA, nnzA, csrRowPtrA, csrColIndA,
         descrB, nnzB, csrRowPtrB, csrColIndB,
-        descrC, csrRowPtrC, nnzTotalDevHostPtr);
-    CUDA_RUNTIME(cudaDeviceSynchronize());
+        descrC, csrRowPtrC, nnzTotalDevHostPtr)
+    );
+    // CUDA_RUNTIME(cudaDeviceSynchronize());
     if (nullptr != nnzTotalDevHostPtr){
+        TRACE("get nnzC from nnzTotalDevHostPtr");
         nnzC = *nnzTotalDevHostPtr;
+        assert(nnzC == csrRowPtrC[m] - csrRowPtrC[0]);
     } else {
+        int baseC;
         nnzC = csrRowPtrC[m];
         baseC = csrRowPtrC[0];
-        // cudaMemcpy(&nnzC, csrRowPtrC+m, sizeof(int), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(&baseC, csrRowPtrC, sizeof(int), cudaMemcpyDeviceToHost);
         nnzC -= baseC;
     }
     LOG(debug, "C has {} nonzeros", nnzC);
@@ -128,6 +133,7 @@ cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k,
     CUDA_RUNTIME(cudaMallocManaged(&csrValB, sizeof(float) * nnzB));  
     std::fill(csrValB, csrValB + nnzB, 1.0f);
 
+    LOG(debug, "cusparseScsrgemm");
     CUSPARSE(cusparseScsrgemm(handle_, transA, transB, m, n, k,
         descrA, nnzA,
         csrValA, csrRowPtrA, csrColIndA,
@@ -138,13 +144,49 @@ cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k,
     ));
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
+    for (size_t i = 0; i < nnzC; ++i) {
+        printf("%f ", csrValC[i]);
+    }
+    printf("\n");
 
+
+    // use CUSP for element-wise multiplication
+    typedef cusp::array1d<int,cusp::device_memory> IndexArray;
+    typedef cusp::array1d<float,cusp::device_memory> ValueArray;
+    typedef typename IndexArray::view IndexArrayView;
+    typedef typename ValueArray::view ValueArrayView;
+    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspA(m,n,nnzA);
+    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspB(n,k,nnzB);
+    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspC(m,k,nnzC);
+
+    float *deviceTotal;
+    CUDA_RUNTIME(cudaMallocManaged(&deviceTotal, sizeof(*deviceTotal)));
+    *deviceTotal = 0;
+
+    // Determine temporary device storage requirements
+    LOG(debug, "device reduction");
+    void     *d_temp_storage = nullptr;
+    size_t   temp_storage_bytes = 0;
+    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC, deviceTotal, nnzC);
+    // Allocate temporary storage
+    LOG(trace, "allocating {} B for temporary reduction storage", temp_storage_bytes);
+    CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+    // Run sum-reduction
+    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC, deviceTotal, nnzC);
+    CUDA_RUNTIME(cudaFree(d_temp_storage));
+    
+    uint64_t total = *deviceTotal;
+    LOG(debug, "total is {}", total);
+    
+    
     LOG(debug, "destroy matrix descriptions");
     CUSPARSE(cusparseDestroyMatDescr(descrA));
     CUSPARSE(cusparseDestroyMatDescr(descrB));
     CUSPARSE(cusparseDestroyMatDescr(descrC));
+    
 
-    return 0;
+    CUDA_RUNTIME(cudaFree(deviceTotal));
+    return total;
 }
 
 CusparseTC::~CusparseTC() {
