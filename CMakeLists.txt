@@ -114,6 +114,8 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/dense/cuda_managed_vector.hpp
     include/pangolin/dense/cuda_zero_copy_vector.hpp
     include/pangolin/sparse/dag2019.hpp
+    include/pangolin/sparse/gpu_csr.hpp
+    include/pangolin/sparse/gpu_csr-impl.hpp
     include/pangolin/sparse/unified_memory_csr.hpp
     include/pangolin/reader/bel_reader.hpp
     include/pangolin/reader/edge_list_reader.hpp
@@ -144,7 +146,7 @@ set(PANGOLIN_CU_SOURCES
 
 set(PANGOLIN_CU_HEADERS
   include/pangolin/sparse/cusparse_csr.hu
-  include/pangolin/sparse/gpu_csr.hu
+
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
 )

@@ -61,6 +61,7 @@ size_t CusparseTC::count()
     const int m = checked_narrow(A_.num_rows());
     const int n = checked_narrow(A_.max_col());
     const int k = checked_narrow(B_.max_col());
+    LOG(debug, "CUSparse product m={} n={} k={}", m, n, k);
 
     const cusparseOperation_t transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
     const cusparseOperation_t transB = CUSPARSE_OPERATION_NON_TRANSPOSE;
@@ -76,13 +77,14 @@ size_t CusparseTC::count()
     CUSPARSE(cusparseCreateMatDescr(&descrC));
 
     const int nnzA = checked_narrow(A_.nnz());
-    const int nnzB = checked_narrow(B_.nnz());
-
     const int *csrRowPtrA = A_.deviceRowPtr();
     const int *csrColIndA = A_.deviceColInd();
+    assert(nnzA == csrRowPtrA[m] - csrRowPtrA[0]);
 
+    const int nnzB = checked_narrow(B_.nnz());
     const int *csrRowPtrB = B_.deviceRowPtr();
     const int *csrColIndB = B_.deviceRowPtr();
+    assert(nnzB == csrRowPtrB[m] - csrRowPtrB[0]);
 
     int *csrRowPtrC = nullptr;
     LOG(debug, "allocate {} rows for C", A_.num_rows());
@@ -90,59 +92,52 @@ size_t CusparseTC::count()
     
     LOG(debug, "compute C nnzs");
     int nnzC;
+    int baseC;
+    int *nnzTotalDevHostPtr = &nnzC;
+    cusparseSetPointerMode(handle_, CUSPARSE_POINTER_MODE_HOST);
 cusparseXcsrgemmNnz(handle_, transA, transB, m, n, k, 
         descrA, nnzA, csrRowPtrA, csrColIndA,
         descrB, nnzB, csrRowPtrB, csrColIndB,
-        descrC, csrRowPtrC, &nnzC );
+        descrC, csrRowPtrC, nnzTotalDevHostPtr);
+    CUDA_RUNTIME(cudaDeviceSynchronize());
+    if (nullptr != nnzTotalDevHostPtr){
+        nnzC = *nnzTotalDevHostPtr;
+    } else {
+        nnzC = csrRowPtrC[m];
+        baseC = csrRowPtrC[0];
+        // cudaMemcpy(&nnzC, csrRowPtrC+m, sizeof(int), cudaMemcpyDeviceToHost);
+        // cudaMemcpy(&baseC, csrRowPtrC, sizeof(int), cudaMemcpyDeviceToHost);
+        nnzC -= baseC;
+    }
     LOG(debug, "C has {} nonzeros", nnzC);
-/*
-int baseC, nnzC;
-// nnzTotalDevHostPtr points to host memory
-int *nnzTotalDevHostPtr = &nnzC;
-cusparseSetPointerMode(handle, CUSPARSE_POINTER_MODE_HOST);
-cudaMalloc((void**)&csrRowPtrC, sizeof(int)*(m+1));
-cusparseXcsrgemmNnz(handle, transA, transB, m, n, k, 
-        descrA, nnzA, csrRowPtrA, csrColIndA,
-        descrB, nnzB, csrRowPtrB, csrColIndB,
-        descrC, csrRowPtrC, nnzTotalDevHostPtr );
-if (NULL != nnzTotalDevHostPtr){
-    nnzC = *nnzTotalDevHostPtr;
-}else{
-    cudaMemcpy(&nnzC, csrRowPtrC+m, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&baseC, csrRowPtrC, sizeof(int), cudaMemcpyDeviceToHost);
-    nnzC -= baseC;
-}
-cudaMalloc((void**)&csrColIndC, sizeof(int)*nnzC);
-cudaMalloc((void**)&csrValC, sizeof(float)*nnzC);
-cusparseScsrgemm(handle, transA, transB, m, n, k,
+
+    int *csrColIndC = nullptr;
+    float *csrValC = nullptr;
+    LOG(debug, "allocate {} B for csrColIndC", sizeof(int) * nnzC);
+    CUDA_RUNTIME(cudaMallocManaged(&csrColIndC, sizeof(int) * nnzC));
+    LOG(debug, "allocate {} B for csrValC", sizeof(float) * nnzC);
+    CUDA_RUNTIME(cudaMallocManaged(&csrValC, sizeof(float) * nnzC));
+
+
+    float *csrValA = nullptr;
+    float *csrValB = nullptr;
+    LOG(debug, "allocate/fill {} B for A csrValA", sizeof(float) * nnzA);
+    CUDA_RUNTIME(cudaMallocManaged(&csrValA, sizeof(float) * nnzA));
+    std::fill(csrValA, csrValA + nnzA, 1.0f);
+    LOG(debug, "allocate/fill {} B for B csrValB", sizeof(float) * nnzB);
+    CUDA_RUNTIME(cudaMallocManaged(&csrValB, sizeof(float) * nnzB));  
+    std::fill(csrValB, csrValB + nnzB, 1.0f);
+
+    CUSPARSE(cusparseScsrgemm(handle_, transA, transB, m, n, k,
         descrA, nnzA,
         csrValA, csrRowPtrA, csrColIndA,
         descrB, nnzB,
         csrValB, csrRowPtrB, csrColIndB,
         descrC,
-        csrValC, csrRowPtrC, csrColIndC);
-*/
+        csrValC, csrRowPtrC, csrColIndC
+    ));
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    // CUSPARSE(
-    //     cusparseXcsrgemmNnz(cusparseHandle_t handle_,
-    //         transA, 
-    //         transB,
-    //         int m, 
-    //         int n, 
-    //         int k,
-    //         const cusparseMatDescr_t descrA_, 
-    //         const int nnzA,                                     
-    //         const int *rowPtrA_, 
-    //         const int *colIndA_,
-    //         const cusparseMatDescr_t descrB_, 
-    //         const int nnzB,                                     
-    //         const int *rowPtrB_, 
-    //         const int *colIndB_,
-    //         const cusparseMatDescr_t descrC, 
-    //         int *csrRowPtrC,
-    //         int *nnzTotalDevHostPtr 
-    //     )
-    // );
 
     LOG(debug, "destroy matrix descriptions");
     CUSPARSE(cusparseDestroyMatDescr(descrA));
