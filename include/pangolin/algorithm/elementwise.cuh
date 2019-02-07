@@ -2,32 +2,40 @@
 
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE
+PANGOLIN_NAMESPACE_BEGIN
 
 
-/*! \brief return 1, index) if search_val is in array between left and right, inclusive
+/*! \brief return (1, index) if search_val is in array between left and right, inclusive
 return (0, -1) otherwise
 */
-template< typename IndexType>
-__device__ static ulonglong2 binary_search(const IndexType *const array, size_t left,
-    size_t right, const IndexType search_val) {
+template<typename T>
+__device__ static ulonglong2 binary_search(const T *const array, 
+    size_t left,
+    size_t right,
+    const T search_val
+) {
     while (left <= right) {
+        printf("searching between %lu and %lu\n", left, right);
         size_t mid = (left + right) / 2;
-        Int val = array[mid];
+        printf("%lu\n", mid);
+        printf("array[%lu] = ...\n", mid);
+        T val = array[mid];
+        printf("          = %d\n", val);
         if (val < search_val) {
             left = mid + 1;
         } else if (val > search_val) {
-            right = mid - 1;
+            right = mid - 1; // FIXME: rollover when mid = 0 and right becomes unsigned max
         } else { // val == search_val
             return make_ulonglong2(1, mid);
         }
     }
-    return make_ulonglong2(0, -1);
+    return make_ulonglong2(0, (unsigned long long)(-1));
 }
 
 
 /*! non-zero elements in outer product of two sparse vectors
 */
+/*
 template <IndexType, size_t BLOCK_DIM_X, size_t BLOCK_DIM_Y>
 __device__ outer_product_size_block(const IndexType colIndA,
   const IndexType nA,
@@ -70,14 +78,14 @@ __device__ outer_product_size_block(const IndexType colIndA,
     }
 
  }
-
+*/
 
 /*! inner product of sparse A and B in-place in A
 
 may put zeros into A
 
 */
-template <size_t BLOCK_DIM_X, typename IndexType>
+template <size_t BLOCK_DIM_X, typename IndexType, typename ValueType>
 __device__ void inner_product_inplace_block(
     const IndexType *indA,
     ValueType *valA,
@@ -89,7 +97,7 @@ __device__ void inner_product_inplace_block(
 {
     // One thread per element of A
      for (IndexType i = threadIdx.x; i < nA; i += BLOCK_DIM_X) {
-
+        printf("searching for %d between 0 and %d\n", indA[i], nB-1);
         ulonglong2 t = binary_search(indB, 0, nB-1, indA[i]);
         bool found = t.x;
         IndexType loc = t.y;
@@ -110,34 +118,34 @@ A = A .* B
 may put zeros into A's rows
 
 */
-template <size_t BLOCK_DIM_X, typename IndexType>
+template <size_t BLOCK_DIM_X, typename IndexType, typename ValueType>
 __global__ void csr_elementwise_inplace( const IndexType *csrRowPtrA,
              const IndexType *csrColIndA,  
              ValueType *csrValA,
              const IndexType *csrRowPtrB,
              const IndexType *csrColIndB,
              const ValueType *csrValB,
-             const IndexType numRows, //<! number of rows in A and B
+             const IndexType numRows //<! number of rows in A and B
            ) {
-    const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
-    const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
-
-  // determine the size of each combined row
+    // const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
+    // const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
 
   // one threadblock per row
     for (IndexType row = blockIdx.x; row < numRows; row += gridDim.x) {
+        printf("row %d\n", row);
         IndexType colStartA = csrRowPtrA[row];
         IndexType colEndA = csrRowPtrA[row + 1];
         IndexType colStartB = csrRowPtrB[row];
         IndexType colEndB = csrRowPtrB[row+1];
+        printf("A: %d-%d B: %d-%d\n", colStartA, colEndA, colStartB, colEndB);
 
         inner_product_inplace_block<BLOCK_DIM_X>(
             &csrColIndA[colStartA],
-            csrValA[colStartA],
+            &csrValA[colStartA],
             colEndA-colStartA,
             &csrColIndB[colStartB],
-            csrValB[colStartB],
-            colEndB - colEndA
+            &csrValB[colStartB],
+            colEndB - colStartB
         );
 
     }
@@ -160,7 +168,7 @@ __global__ void csr_compress( const IndexType *csrRowPtrA,
              const IndexType *csrColIndB,
              const ValueType *csrValB,
              const IndexType numRows, //<! number of rows in A and B
-             void *tmp,
+             void *tmp
            ) {
 
     if (nullptr == tmp) {
@@ -170,4 +178,4 @@ __global__ void csr_compress( const IndexType *csrRowPtrA,
     }
 }
 
-PANGOLIN_END_NAMESPACE
+PANGOLIN_NAMESPACE_END

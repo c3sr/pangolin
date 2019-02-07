@@ -2,7 +2,6 @@
 #include <cmath>
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
-#include <cusp/csr_matrix.h>
 
 #include "pangolin/logger.hpp"
 #include "pangolin/triangle_counter/cusparse_tc.hpp"
@@ -10,6 +9,7 @@
 #include "pangolin/utilities.hpp"
 #include "pangolin/cusparse.hpp"
 #include "pangolin/narrow.hpp"
+#include "pangolin/algorithm/elementwise.cuh"
 
 PANGOLIN_NAMESPACE_BEGIN
 
@@ -144,27 +144,35 @@ size_t CusparseTC::count()
     ));
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    for (size_t i = 0; i < nnzC; ++i) {
+    printf("csrValC:\n");
+    for (int i = 0; i < nnzC; ++i) {
         printf("%f ", csrValC[i]);
     }
     printf("\n");
 
-    // do element-wise multiplication
-    pangolin::csr_elementwise_inplace(csrRowPtrC, csrColIndC, csrColValC, csrRowPtrA, csrColIndA, csrValA, m);
+    printf("csrColIndB: %p\n", csrColIndB);
+    for (int i = 0; i < m; ++i) {
+        printf("%d ", csrColIndB[i]);
+    }
+    printf("\n");
 
-    // compress CSR
-    // pangolin::csr_compress()
-
-
-
-    // use CUSP for element-wise multiplication
-    typedef cusp::array1d<int,cusp::device_memory> IndexArray;
-    typedef cusp::array1d<float,cusp::device_memory> ValueArray;
-    typedef typename IndexArray::view IndexArrayView;
-    typedef typename ValueArray::view ValueArrayView;
-    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspA(m,n,nnzA);
-    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspB(n,k,nnzB);
-    cusp::csr_matrix_view<IndexArrayView,IndexArrayView,ValueArrayView> cuspC(m,k,nnzC);
+    LOG(debug, "hadamard product");
+    // c .*= A
+    // constexpr size_t dimBlockX = 256;
+    // const size_t dimGridX = (m + dimBlockX - 1) / dimBlockX;
+    constexpr size_t dimBlockX = 1;
+    const size_t dimGridX = 1;
+    
+    pangolin::csr_elementwise_inplace<dimBlockX><<<dimGridX, dimBlockX>>>(
+        csrRowPtrC,
+        csrColIndC,
+        csrValC,
+        csrRowPtrA,
+        csrColIndA,
+        csrValA,
+        m
+    );
+    CUDA_RUNTIME(cudaGetLastError());
 
     float *deviceTotal;
     CUDA_RUNTIME(cudaMallocManaged(&deviceTotal, sizeof(*deviceTotal)));
@@ -175,6 +183,7 @@ size_t CusparseTC::count()
     void     *d_temp_storage = nullptr;
     size_t   temp_storage_bytes = 0;
     cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC, deviceTotal, nnzC);
+    CUDA_RUNTIME(cudaGetLastError());
     // Allocate temporary storage
     LOG(trace, "allocating {} B for temporary reduction storage", temp_storage_bytes);
     CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
