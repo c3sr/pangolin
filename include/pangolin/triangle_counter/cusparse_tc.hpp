@@ -7,16 +7,27 @@
 #include "pangolin/sparse/gpu_csr.hpp"
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_NAMESPACE_BEGIN
+PANGOLIN_NAMESPACE_BEGIN()
 
+/*! Count triangles with CUSparse cusparseScsrgemm
+
+Create a lower-triangular matrix A, and count triangles with (A x A .* A).
+
+A x A = C
+C .*= A
+
+
+*/
 class CusparseTC : public TriangleCounter
 {
 private:
   int gpu_;
+
   cusparseHandle_t handle_;
+  cusparseMatDescr_t descrA_;
+  cusparseMatDescr_t descrC_;
 
   GPUCSR<int> A_;
-  GPUCSR<int> B_;
 
 public:
   CusparseTC(Config &c);
@@ -27,4 +38,4 @@ public:
   virtual uint64_t num_edges() override {return A_.nnz(); }
 };
 
-PANGOLIN_NAMESPACE_END
+PANGOLIN_NAMESPACE_END()

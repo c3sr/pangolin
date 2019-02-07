@@ -149,6 +149,9 @@ set(PANGOLIN_CU_HEADERS
   include/pangolin/sparse/cusparse_csr.hu  
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
+  include/pangolin/algorithm/elementwise.cuh
+  include/pangolin/algorithm/fill.cuh
+  include/pangolin/algorithm/search.cuh
 )
 
 

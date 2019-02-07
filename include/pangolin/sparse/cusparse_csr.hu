@@ -12,7 +12,7 @@ Routines for interacting with CUSparse
 
 
 
-PANGOLIN_NAMESPACE_BEGIN
+PANGOLIN_NAMESPACE_BEGIN()
 
 class CusparseCSR {
  public:
@@ -30,4 +30,4 @@ class CusparseCSR {
 };
 
 
-PANGOLIN_NAMESPACE_END
+PANGOLIN_NAMESPACE_END()
