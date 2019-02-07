@@ -46,9 +46,13 @@ void CusparseTC::read_data(const std::string &path)
         LOG(warn, "empty edge list");
     }
     LOG(debug, "building A");
-    A_ = GPUCSR<int>::from_edgelist(edgeList);
+    A_ = GPUCSR<int>::from_edgelist(edgeList, [](const Edge &e) {
+        return e.second >= e.first; // keep src > dst
+    });
     LOG(debug, "building B");
-    B_ = GPUCSR<int>::from_edgelist(edgeList);
+    B_ = GPUCSR<int>::from_edgelist(edgeList, [](const Edge &e) {
+        return e.second >= e.first; // keep src > dst
+    });
     nvtxRangePop();
 }
 
