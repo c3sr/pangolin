@@ -4,9 +4,12 @@
 
 PANGOLIN_BEGIN_NAMESPACE
 
-// return 1 if search_val is in array between offets left and right, inclusive
+
+/*! \brief return 1, index) if search_val is in array between left and right, inclusive
+return (0, -1) otherwise
+*/
 template< typename IndexType>
-__device__ static bool binary_search(const IndexType *const array, size_t left,
+__device__ static ulonglong2 binary_search(const IndexType *const array, size_t left,
     size_t right, const IndexType search_val) {
     while (left <= right) {
         size_t mid = (left + right) / 2;
@@ -16,17 +19,17 @@ __device__ static bool binary_search(const IndexType *const array, size_t left,
         } else if (val > search_val) {
             right = mid - 1;
         } else { // val == search_val
-            return 1;
+            return make_ulonglong2(1, mid);
         }
     }
-    return 0;
+    return make_ulonglong2(0, -1);
 }
 
 
 /*! non-zero elements in outer product of two sparse vectors
 */
 template <IndexType, size_t BLOCK_DIM_X, size_t BLOCK_DIM_Y>
-__device__ outer_product_size_block( const IndexType colIndA,
+__device__ outer_product_size_block(const IndexType colIndA,
   const IndexType nA,
   const IndexType colIndB,
   const IndexType nB
@@ -68,35 +71,103 @@ __device__ outer_product_size_block( const IndexType colIndA,
 
  }
 
-/*! \brief CSR elementwise matrix multiplication
+
+/*! inner product of sparse A and B in-place in A
+
+may put zeros into A
+
 */
-template <IndexType>
-__global__ void elementwise( const IndexType *csrRowPtrA,
+template <size_t BLOCK_DIM_X, typename IndexType>
+__device__ void inner_product_inplace_block(
+    const IndexType *indA,
+    ValueType *valA,
+    const IndexType nA,
+    const IndexType *indB,
+    const ValueType *valB,
+    const IndexType nB
+)
+{
+    // One thread per element of A
+     for (IndexType i = threadIdx.x; i < nA; i += BLOCK_DIM_X) {
+
+        ulonglong2 t = binary_search(indB, 0, nB-1, indA[i]);
+        bool found = t.x;
+        IndexType loc = t.y;
+
+        if (found) {
+            valA[i] *= valB[loc];
+        } else {
+            valA[i] = 0;
+        }
+     }
+}
+
+
+/*! \brief CSR elementwise matrix multiplication in-place
+
+A = A .* B
+
+may put zeros into A's rows
+
+*/
+template <size_t BLOCK_DIM_X, typename IndexType>
+__global__ void csr_elementwise_inplace( const IndexType *csrRowPtrA,
+             const IndexType *csrColIndA,  
+             ValueType *csrValA,
+             const IndexType *csrRowPtrB,
+             const IndexType *csrColIndB,
+             const ValueType *csrValB,
+             const IndexType numRows, //<! number of rows in A and B
+           ) {
+    const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
+    const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
+
+  // determine the size of each combined row
+
+  // one threadblock per row
+    for (IndexType row = blockIdx.x; row < numRows; row += gridDim.x) {
+        IndexType colStartA = csrRowPtrA[row];
+        IndexType colEndA = csrRowPtrA[row + 1];
+        IndexType colStartB = csrRowPtrB[row];
+        IndexType colEndB = csrRowPtrB[row+1];
+
+        inner_product_inplace_block<BLOCK_DIM_X>(
+            &csrColIndA[colStartA],
+            csrValA[colStartA],
+            colEndA-colStartA,
+            &csrColIndB[colStartB],
+            csrValB[colStartB],
+            colEndB - colEndA
+        );
+
+    }
+}
+
+
+/*! \brief Compress CSR
+
+if tmp == nullptr, figures out how much tmp storage to allocate
+
+else, compress the CSR
+
+
+*/
+template <typename IndexType, typename ValueType>
+__global__ void csr_compress( const IndexType *csrRowPtrA,
              const IndexType *csrColIndA,  
              const ValueType *csrValA,
              const IndexType *csrRowPtrB,
              const IndexType *csrColIndB,
              const ValueType *csrValB,
              const IndexType numRows, //<! number of rows in A and B
-             const IndexType *scratch, //<! at least numRows temporary storage required
+             void *tmp,
            ) {
-  const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
-  const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
 
-  // determine the size of each combined row
+    if (nullptr == tmp) {
 
-  // one threadblock per row
-  for (IndexType row = blockIdx.x; row < numRows; row += gridDim.x) {
-      IndexType colStartA = csrColIndA[row];
-      IndexType colEndA = csrColIndA[row + 1];
-    for (IndexType colIndA = colStartA + threadIdx.x; colIndA < colEndA; colIndA += blockDim.x) {
-      IndexType colA = csrColIndA[colIndA];
+    } else {
+
     }
-  }
-
-
-
-
-           }
+}
 
 PANGOLIN_END_NAMESPACE

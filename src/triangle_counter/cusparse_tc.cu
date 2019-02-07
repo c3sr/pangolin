@@ -149,6 +149,13 @@ size_t CusparseTC::count()
     }
     printf("\n");
 
+    // do element-wise multiplication
+    pangolin::csr_elementwise_inplace(csrRowPtrC, csrColIndC, csrColValC, csrRowPtrA, csrColIndA, csrValA, m);
+
+    // compress CSR
+    // pangolin::csr_compress()
+
+
 
     // use CUSP for element-wise multiplication
     typedef cusp::array1d<int,cusp::device_memory> IndexArray;
