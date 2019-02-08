@@ -24,7 +24,7 @@ public:
   virtual size_t count() = 0;
 
   // available after read_data()
-  virtual size_t num_edges() = 0;
+  virtual uint64_t num_edges() = 0; //<! number of edges traversed during triangle counting
 
   /*! Create a triangle counter
 

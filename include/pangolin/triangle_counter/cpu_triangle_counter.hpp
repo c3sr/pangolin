@@ -17,5 +17,5 @@ class CPUTriangleCounter : public TriangleCounter
 	CPUTriangleCounter(const Config &c);
 	virtual void read_data(const std::string &path) override;
 	virtual size_t count() override;
-	virtual size_t num_edges() override { return dag_.num_edges(); }
+	virtual uint64_t num_edges() override { return dag_.num_edges(); }
 };

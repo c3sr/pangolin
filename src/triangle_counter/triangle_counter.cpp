@@ -1,5 +1,6 @@
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/triangle_counter/cudamemcpy_tc.hpp"
+#include "pangolin/triangle_counter/cusparse_tc.hpp"
 #include "pangolin/triangle_counter/edge_tc.hpp"
 #include "pangolin/triangle_counter/hu_tc.hpp"
 #include "pangolin/triangle_counter/impact_2018_tc.hpp"
@@ -62,6 +63,9 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     }
     else if (c.type_ == "spmm") {
         return new SpmmTC(c);
+    }
+    else if (c.type_ == "cusparse") {
+        return new pangolin::CusparseTC(c);
     }
     else
     {

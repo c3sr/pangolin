@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pangolin/triangle_counter/cuda_triangle_counter.hpp"
-#include "pangolin/sparse/gpu_csr.hu"
+#include "pangolin/sparse/gpu_csr.hpp"
 
 #include <iostream>
 
@@ -24,6 +24,6 @@ class SpmmTC : public CUDATriangleCounter
 	virtual void read_data(const std::string &path) override;
 	virtual void setup_data() override;
 	virtual size_t count() override;
-	virtual size_t num_edges() override { return aL_.nnz(); }
+	virtual uint64_t num_edges() override { return aL_.nnz(); }
 	virtual size_t num_nodes() override { return aL_.num_nodes(); }
 };

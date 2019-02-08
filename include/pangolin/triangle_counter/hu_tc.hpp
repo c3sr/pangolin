@@ -19,6 +19,6 @@ class Hu2018TC : public CUDATriangleCounter
 	virtual void read_data(const std::string &path) override;
 	virtual void setup_data() override;
 	virtual size_t count() override;
-	virtual size_t num_edges() override { return hostDAG_.num_edges(); }
+	virtual uint64_t num_edges() override { return hostDAG_.num_edges(); }
 	virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
