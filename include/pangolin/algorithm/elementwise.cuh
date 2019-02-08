@@ -71,7 +71,7 @@ __device__ void inner_product_inplace_block(
 {
     // One thread per element of A
      for (IndexType i = threadIdx.x; i < nA; i += BLOCK_DIM_X) {
-        ulonglong2 t = binary_search(indB, 0, nB-1, indA[i]);
+        ulonglong2 t = serial_sorted_search_binary(indB, 0, nB-1, indA[i]);
         bool found = t.x;
         IndexType loc = t.y;
 

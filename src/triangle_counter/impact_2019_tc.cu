@@ -1,57 +1,16 @@
 /// \file
 
+
 #include "pangolin/triangle_counter/impact_2019_tc.hpp"
+
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
+#include "pangolin/algorithm/search.cuh"
 #include "pangolin/reader/gc_tsv_reader.hpp"
 
 #include <nvToolsExt.h>
 #include <limits>
 #include <cub/cub.cuh>
-
-__device__ static size_t linear_intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd) {
-    size_t count = 0;
-    const Int *ap = aBegin;
-    const Int *bp = bBegin;
-
-    if (ap < aEnd && bp < bEnd) {
-
-        bool loadA = false;
-        bool loadB = false;
-        Int a = *ap;
-        Int b = *bp;
-        
-        while (ap < aEnd && bp < bEnd) {
-            
-            if (loadA) {
-                a = *ap;
-                loadA = false;
-            }
-            if (loadB) {
-                b = *bp;
-                loadB = false;
-            }
-
-          if (a == b) {
-              ++count;
-              ++ap;
-              ++bp;
-              loadA = true;
-              loadB = true;
-          }
-          else if (a < b){
-              ++ap;
-              loadA = true;
-          }
-          else {
-              ++bp;
-              loadB = true;
-          }
-      }
-    }
-    return count;
-}
-
 
 /*! Count triangles
 
@@ -81,29 +40,12 @@ __global__ static void kernel_tc(
         const Int dst_edge = nodes[dst];
         const Int dst_edge_end = nodes[dst + 1];
 
-        size_t count = linear_intersection_count(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
+        size_t count = pangolin::sorted_count_serial_linear(&edgeDst[src_edge], &edgeDst[src_edge_end], &edgeDst[dst_edge], &edgeDst[dst_edge_end]);
 
         triangleCounts[i] = count;
     }
 }
 
-
-// return 1 if search_val is in array between offets left and right, inclusive
-__device__ static bool binary_search(const Int *const array, size_t left,
-    size_t right, const Int search_val) {
-    while (left <= right) {
-        size_t mid = (left + right) / 2;
-        Int val = array[mid];
-        if (val < search_val) {
-            left = mid + 1;
-        } else if (val > search_val) {
-            right = mid - 1;
-        } else { // val == search_val
-            return 1;
-        }
-    }
-    return 0;
-}
 
 /*! Count triangles
 
@@ -155,14 +97,14 @@ kernel_binary(
     if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
         for (const Int *u = &edgeDst[headOffStart] + laneIdx;
             u < &edgeDst[headOffEnd]; u += 32) {
-        count +=
-            binary_search(edgeDst, tailOffStart, tailOffEnd - 1, *u);
+            ulonglong2 uu = pangolin::serial_sorted_search_binary(edgeDst, tailOffStart, tailOffEnd - 1, *u);
+            count += uu.x;
         }
     } else {
         for (const Int *u = &edgeDst[tailOffStart] + laneIdx;
             u < &edgeDst[tailOffEnd]; u += 32) {
-        count +=
-            binary_search(edgeDst, headOffStart, headOffEnd - 1, *u);
+            ulonglong2 uu = pangolin::serial_sorted_search_binary(edgeDst, headOffStart, headOffEnd - 1, *u);
+            count += uu.x;
         }
     }
 
