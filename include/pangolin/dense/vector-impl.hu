@@ -15,13 +15,13 @@ namespace pangolin
 
 // default constructor
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE>::Vector() : capacity_(0), size_(0), data_(nullptr)
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector() : capacity_(0), size_(0), data_(nullptr)
 {
 }
 
 // move constructor
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capacity_), size_(other.size_), data_(other.data_)
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capacity_), size_(other.size_), data_(other.data_)
 {
     TRACE("move ctor");
     other.capacity_ = 0;
@@ -31,7 +31,7 @@ __host__ Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capacity_)
 
 // copy constructor
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
     TRACE("copy ctor");
     reserve(other.capacity_);
     std::memcpy(data_, other.data_, other.size_ * sizeof(value_type));
@@ -40,7 +40,7 @@ __host__ Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
 
 // destructor
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE>::~Vector()
+PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector()
 {
     TRACE("dtor");
     if (data_)
@@ -59,7 +59,7 @@ __host__ Vector<VALUE_TYPE>::~Vector()
 
 // move-assignment
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
+PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
     TRACE("move assignment");
 
     // take ownership of other vector
@@ -76,7 +76,7 @@ __host__ Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
 }
 
 template <typename VALUE_TYPE>
-__host__ Vector<VALUE_TYPE>::Vector(size_t n)
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n)
 {
     reserve(n);
     for (size_t i = 0; i < size_; ++i)
@@ -86,19 +86,19 @@ __host__ Vector<VALUE_TYPE>::Vector(size_t n)
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline typename Vector<VALUE_TYPE>::value_type *Vector<VALUE_TYPE>::data() noexcept
+PANGOLIN_HOST_DEVICE inline typename Vector<VALUE_TYPE>::value_type *Vector<VALUE_TYPE>::data() noexcept
 {
     return data_;
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline const typename Vector<VALUE_TYPE>::value_type *Vector<VALUE_TYPE>::data() const noexcept
+PANGOLIN_HOST_DEVICE inline const typename Vector<VALUE_TYPE>::value_type *Vector<VALUE_TYPE>::data() const noexcept
 {
     return data_;
 }
 
 template <typename VALUE_TYPE>
-__host__ void Vector<VALUE_TYPE>::push_back(const Vector<VALUE_TYPE>::value_type &val)
+PANGOLIN_HOST void Vector<VALUE_TYPE>::push_back(const Vector<VALUE_TYPE>::value_type &val)
 {
     if (0 == size_)
     {
@@ -114,7 +114,7 @@ __host__ void Vector<VALUE_TYPE>::push_back(const Vector<VALUE_TYPE>::value_type
 }
 
 template <typename VALUE_TYPE>
-__host__ void Vector<VALUE_TYPE>::reserve(size_t n)
+PANGOLIN_HOST void Vector<VALUE_TYPE>::reserve(size_t n)
 {
     if (n > capacity_)
     {
@@ -128,7 +128,7 @@ __host__ void Vector<VALUE_TYPE>::reserve(size_t n)
 }
 
 template <typename VALUE_TYPE>
-__host__ void Vector<VALUE_TYPE>::resize(size_t n)
+PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(size_t n)
 {
     if (n < size_)
     {
@@ -148,7 +148,7 @@ __host__ void Vector<VALUE_TYPE>::resize(size_t n)
 }
 
 template <typename VALUE_TYPE>
-__host__ void Vector<VALUE_TYPE>::resize(size_t n, const value_type& val)
+PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(size_t n, const value_type& val)
 {
     if (n < size_)
     {
@@ -168,7 +168,7 @@ __host__ void Vector<VALUE_TYPE>::resize(size_t n, const value_type& val)
 }
 
 template <typename VALUE_TYPE>
-__host__ void Vector<VALUE_TYPE>::shrink_to_fit()
+PANGOLIN_HOST void Vector<VALUE_TYPE>::shrink_to_fit()
 {
     assert(capacity_ >= size_);
     if (capacity_ > size_) {
@@ -182,31 +182,31 @@ __host__ void Vector<VALUE_TYPE>::shrink_to_fit()
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline size_t Vector<VALUE_TYPE>::capacity() const noexcept
+PANGOLIN_HOST_DEVICE inline size_t Vector<VALUE_TYPE>::capacity() const noexcept
 {
     return capacity_;
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline size_t Vector<VALUE_TYPE>::size() const noexcept
+PANGOLIN_HOST_DEVICE inline size_t Vector<VALUE_TYPE>::size() const noexcept
 {
     return size_;
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline bool Vector<VALUE_TYPE>::empty() const noexcept
+PANGOLIN_HOST_DEVICE inline bool Vector<VALUE_TYPE>::empty() const noexcept
 {
     return 0 == size_;
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline typename Vector<VALUE_TYPE>::reference Vector<VALUE_TYPE>::operator[](size_t n)
+PANGOLIN_HOST_DEVICE inline typename Vector<VALUE_TYPE>::reference Vector<VALUE_TYPE>::operator[](size_t n)
 {
     return data_[n];
 }
 
 template <typename VALUE_TYPE>
-__host__ __device__ inline typename Vector<VALUE_TYPE>::const_reference Vector<VALUE_TYPE>::operator[](size_t n) const
+PANGOLIN_HOST_DEVICE inline typename Vector<VALUE_TYPE>::const_reference Vector<VALUE_TYPE>::operator[](size_t n) const
 {
     return data_[n];
 }

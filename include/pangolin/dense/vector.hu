@@ -1,15 +1,17 @@
 #pragma once
 
 #ifdef __CUDACC__
-#define PANGOLIN_CUDA_MEMBER __host__ __device__
+#define PANGOLIN_HOST_DEVICE __host__ __device__
+#define PANGOLIN_HOST __host__
 #else
-#define PANGOLIN_CUDA_MEMBER
+#define PANGOLIN_HOST_DEVICE
+#define PANGOLIN_HOST
 #endif 
 
 namespace pangolin
 {
 template <typename VALUE_TYPE>
-__device__ __host__ 
+PANGOLIN_HOST_DEVICE
 class Vector
 {
   public:
@@ -24,50 +26,53 @@ class Vector
 
   public:
     // default constructor
-    __host__ explicit Vector();
+    PANGOLIN_HOST explicit Vector();
 
     // move constructor
-    __host__ Vector(Vector &&other);
+    PANGOLIN_HOST Vector(Vector &&other);
 
     // copy constructor
-    __host__ Vector(const Vector &other);
+    PANGOLIN_HOST Vector(const Vector &other);
 
     // destructor
-    __host__ ~Vector();
+    PANGOLIN_HOST ~Vector();
 
     // move-assignment
-    __host__ Vector &operator=(Vector &&other);
+    PANGOLIN_HOST Vector &operator=(Vector &&other);
 
     
-    __host__ explicit Vector(size_t n);
+    PANGOLIN_HOST explicit Vector(size_t n);
 
-    PANGOLIN_CUDA_MEMBER inline value_type *data() noexcept;
-    PANGOLIN_CUDA_MEMBER inline const value_type *data() const noexcept;
+    PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
+    PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;
 
-    __host__ void push_back(const value_type &val);
+    PANGOLIN_HOST void push_back(const value_type &val);
 
-    __host__ void reserve(size_t n);
+    PANGOLIN_HOST void reserve(size_t n);
 
-    __host__ void resize(size_t n);
-
-
-    __host__ void resize(size_t n, const value_type& val);
+    PANGOLIN_HOST void resize(size_t n);
 
 
-    __host__ void shrink_to_fit();
+    PANGOLIN_HOST void resize(size_t n, const value_type& val);
 
-    PANGOLIN_CUDA_MEMBER inline size_t capacity() const noexcept;
-    PANGOLIN_CUDA_MEMBER inline size_t size() const noexcept;
-    PANGOLIN_CUDA_MEMBER inline bool empty() const noexcept;
 
-    PANGOLIN_CUDA_MEMBER inline reference operator[](size_t n);
-    PANGOLIN_CUDA_MEMBER inline const_reference operator[](size_t n) const;
+    PANGOLIN_HOST void shrink_to_fit();
+
+    PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
+    PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;
+    PANGOLIN_HOST_DEVICE inline bool empty() const noexcept;
+
+    PANGOLIN_HOST_DEVICE inline reference operator[](size_t n);
+    PANGOLIN_HOST_DEVICE inline const_reference operator[](size_t n) const;
 };
 
 } // namespace pangolin
 
-#ifdef PANGOLIN_CUDA_MEMBER
-#undef PANGOLIN_CUDA_MEMBER
-#endif
+
+
+
 
 #include "vector-impl.hu"
+
+#undef PANGOLIN_HOST_DEVICE
+#undef PANGOLIN_HOST
