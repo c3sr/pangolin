@@ -91,8 +91,12 @@ commands:
         or_die rai -d -v -p . -q rai_ppc64le_osu
     fi
 else
+    if [[ -z ${DOCKER_CUDA+x} ]]; then
+        echo "please set DOCKER_CUDA"
+        exit 1
+    fi
     docker build -f $ARCH.cuda${DOCKER_CUDA}.Dockerfile -t $REPO:$ARCH-cuda${DOCKER_CUDA}-$TAG .
-    docker push $REPO
+    docker push ${REPO}:${ARCH}-cuda${DOCKER_CUDA}-$TAG
 fi
 
 set +x
