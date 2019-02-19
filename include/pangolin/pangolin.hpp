@@ -1,7 +1,11 @@
 #pragma once
 
-#include "logger.hpp"
 #include "configure.hpp"
-#include "types.hpp"
+#include "dense/vector.hu"
 #include "edge_list.hpp"
+#include "logger.hpp"
+#include "reader/bel_reader.hpp"
+#include "reader/gc_tsv_reader.hpp"
+#include "triangle_counter/cpu_triangle_counter.hpp"
 #include "triangle_counter/nvgraph_triangle_counter.hpp"
+#include "types.hpp"
