@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# To run from command line, ensure DOCKER_CUDA variable is set first
+
 set -x
 
 function or_die () {
@@ -88,6 +90,9 @@ commands:
         echo "$rai_build" > rai_build.yml
         or_die rai -d -v -p . -q rai_ppc64le_osu
     fi
+else
+    docker build -f $ARCH.cuda${DOCKER_CUDA}.Dockerfile -t $REPO:$ARCH-cuda${DOCKER_CUDA}-$TAG .
+    docker push $REPO
 fi
 
 set +x
