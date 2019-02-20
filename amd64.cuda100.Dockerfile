@@ -23,6 +23,7 @@ RUN make -j`nproc` install
 # only keep the pangolin install directory from the build
 FROM nvidia/cuda:10.0-devel-ubuntu18.04
 ENV PANGOLIN_INSTALL_DIR=/opt/pangolin
+ENV PATH=$PANGOLIN_INSTALL_DIR/bin:$PATH
 COPY --from=builder $PANGOLIN_INSTALL_DIR $PANGOLIN_INSTALL_DIR
 RUN ldconfig -n $PANGOLIN_INSTALL_DIR/lib/libpangolin32.so
 RUN ldconfig -n $PANGOLIN_INSTALL_DIR/lib/libpangolin64.so
