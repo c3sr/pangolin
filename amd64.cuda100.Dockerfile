@@ -25,7 +25,7 @@ COPY --from=builder $PANGOLIN_INSTALL_DIR $PANGOLIN_INSTALL_DIR
 RUN ldconfig -n $PANGOLIN_INSTALL_DIR/lib/libpangolin32.so
 RUN ldconfig -n $PANGOLIN_INSTALL_DIR/lib/libpangolin64.so
 
-# install python3 for the pangolin tools
+# install python for the pangolin tools
 RUN apt-get update && apt-get install -y --no-install-suggests --no-install-recommends \
-    python3 \
+    python \
 && rm -rf /var/lib/apt/lists/*
