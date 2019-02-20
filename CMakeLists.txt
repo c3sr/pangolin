@@ -381,7 +381,7 @@ if(DOXYGEN_FOUND)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating API documentation with Doxygen" VERBATIM
   )
-  # install docs
+  # install docs if they exist
   install(
     DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}/docs/
@@ -389,6 +389,7 @@ if(DOXYGEN_FOUND)
       docs
     COMPONENT
       docs
+    OPTIONAL
 )
 endif(DOXYGEN_FOUND)
 
