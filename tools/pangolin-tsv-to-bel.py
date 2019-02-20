@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 '''convert a graph challenge tsv ascii edge list to binary format (.bel)
 the binary format is for each edge
 * 64-bit integer dst
