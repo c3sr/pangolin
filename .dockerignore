@@ -10,6 +10,8 @@
 !README.md
 !src
 !tools
+!.git
+!.gitignore
 
 # but do ignore
 tools/*.tsv
