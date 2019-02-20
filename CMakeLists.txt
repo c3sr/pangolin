@@ -230,6 +230,7 @@ include(GenerateExportHeader)
 generate_export_header(pangolin32)
 generate_export_header(pangolin64)
 
+set(bin_install_dir "bin")
 set(include_install_dir "include")
 set(lib_install_dir "lib")
 set(config_install_dir "${lib_install_dir}/cmake/${PROJECT_NAME}")
@@ -296,13 +297,19 @@ install(
     INCLUDES DESTINATION "${include_install_dir}"
     LIBRARY DESTINATION "${lib_install_dir}"
     ARCHIVE DESTINATION "${lib_install_dir}"
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION "${bin_install_dir}"
 )
 
 install(
     EXPORT "${targets_export_name}"
     NAMESPACE "${namespace}"
     DESTINATION "${config_install_dir}"
+)
+
+# install pangolin tools
+install(
+    FILES tools/pangolin-tsv-to-bel.py
+    DESTINATION "${bin_install_dir}"
 )
 
 
