@@ -16,11 +16,33 @@ xxd -c 24 <file> to see one edge per line
 from __future__ import print_function
 import sys
 import struct
-with open(sys.argv[1], 'rb') as inf:
-    with open(sys.argv[2], 'wb') as outf:
-        for line in inf:
-            dst, src, weight = line.split()
+import os
+
+tsv_path = sys.argv[1]
+if len(sys.argv) > 2:
+    bel_path = sys.argv[2]
+else:
+    assert tsv_path.endswith(".tsv")
+    bel_path = tsv_path[:-4] + ".bel"
+
+# tsv path and bel path should not be the same
+assert tsv_path != bel_path
+
+if os.path.isfile(bel_path):
+    print("{} alread exists".format(bel_path))
+    sys.exit(1)
+
+with open(tsv_path, 'rb') as inf, open(bel_path, 'wb') as outf:
+    for line in inf:
+        dst, src, weight = line.split()
+        try:
             dstBytes = struct.pack("<Q", int(dst))
             srcBytes = struct.pack("<Q", int(src))
             weightBytes = struct.pack("<Q", int(weight))
-            outf.write(dstBytes + srcBytes + weightBytes)
+        except ValueError as e:
+            print("error while converting {} to {}: {}".format(tsv_bath, bel_path, e))
+            sys.exit(1)
+        outf.write(dstBytes + srcBytes + weightBytes)
+
+# the bel file should be some multiple of 24 bytes
+assert os.path.getsize(bel_path) % 24 == 0
