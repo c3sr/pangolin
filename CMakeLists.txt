@@ -308,7 +308,7 @@ install(
 
 # install pangolin tools
 install(
-    FILES tools/pangolin-tsv-to-bel.py
+    PROGRAMS tools/pangolin-tsv-to-bel.py
     DESTINATION "${bin_install_dir}"
 )
 
