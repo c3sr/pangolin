@@ -64,7 +64,7 @@ void CPUTriangleCounter::read_data(const std::string &path)
 
     LOG(info, "reading {}", path);
     auto *reader = pangolin::EdgeListReader::from_file(path);
-    auto edgeList = reader->read();
+    auto edgeList = reader->read_all();
     LOG(debug, "building DAG");
     dag_ = DAG2019::from_edgelist(edgeList);
 

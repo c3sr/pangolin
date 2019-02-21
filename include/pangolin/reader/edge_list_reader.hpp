@@ -76,21 +76,7 @@ public:
   }
 
   // read all edges from the file
-  EdgeList read()
-  {
-    const size_t bufSize = 10;
-    EdgeList edgeList, buf(bufSize);
-    while (true)
-    {
-      const size_t numRead = read(buf.data(), 10);
-      if (0 == numRead)
-      {
-        break;
-      }
-      edgeList.insert(edgeList.end(), buf.begin(), buf.begin() + numRead);
-    }
-    return edgeList;
-  }
+  EdgeList read_all();
 
   // construct an edge list reader based on the file type of path
   static EdgeListReader *from_file(const std::string &path);

@@ -49,7 +49,7 @@ void CusparseTC::read_data(const std::string &path)
     nvtxRangePush(__PRETTY_FUNCTION__);
     LOG(info, "reading {}", path);
     auto *reader = pangolin::EdgeListReader::from_file(path);
-    auto edgeList = reader->read();
+    auto edgeList = reader->read_all();
     if (edgeList.size() == 0) {
         LOG(warn, "empty edge list");
     }

@@ -12,8 +12,8 @@ static bool endswith(const std::string &base, const std::string &suffix)
     return 0 == base.compare(base.size() - suffix.size(), suffix.size(), suffix);
 }
 
-namespace pangolin
-{
+PANGOLIN_BEGIN_NAMESPACE()
+
 EdgeListReader *EdgeListReader::from_file(const std::string &path)
 {
     if (endswith(path, ".bel"))
@@ -32,4 +32,24 @@ EdgeListReader *EdgeListReader::from_file(const std::string &path)
         exit(-1);
     }
 }
-} // namespace pangolin
+
+
+  // read all edges from the file
+EdgeList EdgeListReader::read_all()
+{
+const size_t bufSize = 10;
+EdgeList edgeList, buf(bufSize);
+while (true)
+{
+    const size_t numRead = read(buf.data(), 10);
+    if (0 == numRead)
+    {
+    break;
+    }
+    edgeList.insert(edgeList.end(), buf.begin(), buf.begin() + numRead);
+}
+return edgeList;
+}
+
+
+PANGOLIN_END_NAMESPACE()

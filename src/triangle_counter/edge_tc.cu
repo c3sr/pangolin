@@ -189,7 +189,7 @@ void EdgeTC::read_data(const std::string &path) {
 
   LOG(info, "EdgeTC::read_data(): reading {}", path);
   auto *reader = pangolin::EdgeListReader::from_file(path);
-  auto edgeList = reader->read();
+  auto edgeList = reader->read_all();
 
   // turn into DAG with src < dst
   EdgeList filtered;
