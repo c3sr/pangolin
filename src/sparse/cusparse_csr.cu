@@ -1,7 +1,7 @@
 #include "pangolin/sparse/cusparse_csr.hu"
 #include "pangolin/cusparse.hpp"
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 CusparseCSR::CusparseCSR() : descr_(nullptr) {}
 
@@ -47,4 +47,4 @@ return csr;
 }
 
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()

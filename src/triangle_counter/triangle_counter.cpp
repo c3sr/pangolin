@@ -10,6 +10,9 @@
 #include "pangolin/triangle_counter/spmm_tc.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
 
+
+PANGOLIN_BEGIN_NAMESPACE()
+
 TriangleCounter::~TriangleCounter() {}
 
 void TriangleCounter::setup_data()
@@ -73,3 +76,5 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
         exit(-1);
     }
 }
+
+PANGOLIN_END_NAMESPACE()

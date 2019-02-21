@@ -2,7 +2,7 @@
 
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 /*! \brief return (1, index) if search_val is in array between left and right, inclusive
 return (0, -1) otherwise
@@ -84,4 +84,4 @@ __device__ static size_t sorted_count_serial_linear(
 }
 
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()

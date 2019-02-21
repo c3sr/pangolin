@@ -5,6 +5,8 @@
 
 #define __TRI_SANITY_CHECK
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 ParGraph ParGraph::from_edges(const std::set<Edge> &local, const std::set<Edge> &remote)
 {
     EdgeList localList, remoteList;
@@ -258,3 +260,5 @@ std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
 }
 
 #undef __TRI_SANITY_CHECK
+
+PANGOLIN_END_NAMESPACE()

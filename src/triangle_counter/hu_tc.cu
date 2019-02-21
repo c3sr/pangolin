@@ -7,6 +7,9 @@
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
+
 __device__ static bool binary_search(const Int* const array, Int left, Int right, const Int search_val) {
     while(left <= right) {
         int mid = (left + right)/2;
@@ -208,3 +211,5 @@ size_t Hu2018TC::count() {
     nvtxRangePop();
     return total;
 }
+
+PANGOLIN_END_NAMESPACE()

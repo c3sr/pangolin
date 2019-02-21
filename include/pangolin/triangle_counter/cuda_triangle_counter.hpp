@@ -8,6 +8,9 @@
 
 #include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/config.hpp"
+#include "pangolin/namespace.hpp"
+
+PANGOLIN_BEGIN_NAMESPACE()
 
 class CUDATriangleCounter : public TriangleCounter
 {
@@ -31,3 +34,5 @@ public:
   // available after read_data()
   virtual size_t num_nodes() = 0;
 };
+
+PANGOLIN_END_NAMESPACE()

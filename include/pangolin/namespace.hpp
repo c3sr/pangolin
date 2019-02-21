@@ -1,8 +1,8 @@
 #pragma once
 
-#ifdef PANGOLIN_NAMESPACE_BEGIN
-#error PANGOLIN_NAMESPACE_BEGIN already defined
+#ifdef PANGOLIN_BEGIN_NAMESPACE
+#error PANGOLIN_BEGIN_NAMESPACE already defined
 #endif
 
-#define PANGOLIN_NAMESPACE_BEGIN() namespace pangolin {
-#define PANGOLIN_NAMESPACE_END() } // namespce pangolin
+#define PANGOLIN_BEGIN_NAMESPACE() namespace pangolin {
+#define PANGOLIN_END_NAMESPACE() } // namespce pangolin

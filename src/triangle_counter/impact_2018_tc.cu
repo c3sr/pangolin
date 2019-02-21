@@ -6,6 +6,8 @@
 #include <nvToolsExt.h>
 #include <limits>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 __global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edgeDst, Int *nodes, size_t edgeOffset, size_t numEdges){
      
     const Int gx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -208,3 +210,6 @@ size_t IMPACT2018TC::count() {
     nvtxRangePop();
     return total;
 }
+
+
+PANGOLIN_END_NAMESPACE()

@@ -9,6 +9,8 @@
 #include <limits>
 #include <cub/cub.cuh>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 /*!
   return the number of common elements between sorted lists a and b
 */
@@ -208,3 +210,6 @@ size_t SpmmTC::count() {
     nvtxRangePop();
     return final_total;
 }
+
+
+PANGOLIN_END_NAMESPACE()

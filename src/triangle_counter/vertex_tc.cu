@@ -6,6 +6,8 @@
 
 #include <cub/cub.cuh>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 // count intersections between sorted lists a and b
 __device__ static size_t linear_intersection_count(const Uint *const aBegin,
                                                    const Uint *const aEnd,
@@ -420,3 +422,5 @@ size_t VertexTC::count() {
 
   return total;
 }
+
+PANGOLIN_END_NAMESPACE()

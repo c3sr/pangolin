@@ -3,7 +3,7 @@
 #include "pangolin/namespace.hpp"
 #include "search.cuh"
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 
 
@@ -150,4 +150,4 @@ __global__ void csr_compress( const IndexType *csrRowPtrA,
     }
 }
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()

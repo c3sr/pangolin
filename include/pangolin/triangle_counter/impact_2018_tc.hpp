@@ -5,6 +5,8 @@
 
 #include <iostream>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class IMPACT2018TC : public CUDATriangleCounter
 {
 
@@ -33,3 +35,5 @@ class IMPACT2018TC : public CUDATriangleCounter
 	virtual uint64_t num_edges() override { return hostDAG_.num_edges(); }
 	virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
+
+PANGOLIN_END_NAMESPACE()

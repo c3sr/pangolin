@@ -8,6 +8,8 @@
 
 #include <nvToolsExt.h>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c)
 {
     if (c.gpus_.size() > 1)
@@ -87,3 +89,6 @@ size_t NvGraphTriangleCounter::count()
 
     return trcount;
 }
+
+
+PANGOLIN_END_NAMESPACE()

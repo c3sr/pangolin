@@ -7,6 +7,8 @@
 #include <vector>
 #include <iostream>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class CPUTriangleCounter : public TriangleCounter
 {
   private:
@@ -19,3 +21,5 @@ class CPUTriangleCounter : public TriangleCounter
 	virtual size_t count() override;
 	virtual uint64_t num_edges() override { return dag_.num_edges(); }
 };
+
+PANGOLIN_END_NAMESPACE()

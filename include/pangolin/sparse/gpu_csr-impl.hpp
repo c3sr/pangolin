@@ -11,7 +11,7 @@
 #define PANGOLIN_CUDA_MEMBER
 #endif 
 
-namespace pangolin {
+PANGOLIN_BEGIN_NAMESPACE()
 
 template<typename Index>
 GPUCSR<Index>::GPUCSR() : maxCol_(0) { 
@@ -97,7 +97,6 @@ GPUCSRView<Index> GPUCSR<Index>::view() const {
 }
 
 
-} // namespace pangolin
-#ifdef PANGOLIN_CUDA_MEMBER
+PANGOLIN_END_NAMESPACE()
+
 #undef PANGOLIN_CUDA_MEMBER
-#endif

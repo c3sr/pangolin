@@ -5,6 +5,8 @@
 #include "pangolin/types.hpp"
 #include "pangolin/utilities.hpp"
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 CUDATriangleCounter::CUDATriangleCounter(Config &c) : gpus_(c.gpus_), unique_gpus_(gpus_.begin(), gpus_.end())
 {
     nvtxRangePush(__PRETTY_FUNCTION__);
@@ -28,3 +30,5 @@ CUDATriangleCounter::CUDATriangleCounter(Config &c) : gpus_(c.gpus_), unique_gpu
     }
     nvtxRangePop();
 }
+
+PANGOLIN_END_NAMESPACE()

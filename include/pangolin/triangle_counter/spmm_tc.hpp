@@ -5,6 +5,8 @@
 
 #include <iostream>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 /*! The 2019 IMPACT Triangle Counter
 
 */
@@ -27,3 +29,5 @@ class SpmmTC : public CUDATriangleCounter
 	virtual uint64_t num_edges() override { return aL_.nnz(); }
 	virtual size_t num_nodes() override { return aL_.num_nodes(); }
 };
+
+PANGOLIN_END_NAMESPACE()

@@ -4,6 +4,8 @@
 #include "pangolin/sparse/dag2019.hpp"
 #include "pangolin/config.hpp"
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class Hu2018TC : public CUDATriangleCounter
 {
   private:
@@ -22,3 +24,5 @@ class Hu2018TC : public CUDATriangleCounter
 	virtual uint64_t num_edges() override { return hostDAG_.num_edges(); }
 	virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
+
+PANGOLIN_END_NAMESPACE()

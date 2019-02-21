@@ -6,6 +6,8 @@
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/logger.hpp"
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin, const Int *const bEnd)
 {
     size_t count = 0;
@@ -99,3 +101,5 @@ size_t CPUTriangleCounter::count()
 
     return total;
 }
+
+PANGOLIN_END_NAMESPACE()

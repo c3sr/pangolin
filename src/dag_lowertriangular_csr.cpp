@@ -3,6 +3,8 @@
 #include <map>
 #include <set>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
 {
     DAGLowerTriangularCSR dag;
@@ -56,3 +58,6 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l)
 
     return dag;
 }
+
+
+PANGOLIN_END_NAMESPACE()

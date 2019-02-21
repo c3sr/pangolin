@@ -10,7 +10,7 @@
 #define PANGOLIN_CUDA_MEMBER
 #endif 
 
-namespace pangolin {
+PANGOLIN_BEGIN_NAMESPACE()
 
 template<typename Index>
 class GPUCSR;
@@ -63,10 +63,10 @@ private:
 
 
 
-} // namespace pangolin
+PANGOLIN_END_NAMESPACE()
     
-#ifdef PANGOLIN_CUDA_MEMBER
+
 #undef PANGOLIN_CUDA_MEMBER
-#endif
+
 
 #include "gpu_csr-impl.hpp"

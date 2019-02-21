@@ -10,6 +10,8 @@
 
 #define __TRI_SANITY_CHECK
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class ParGraph
 {
   public:
@@ -51,3 +53,5 @@ class ParGraph
 };
 
 #undef __TRI_SANITY_CHECK
+
+PANGOLIN_END_NAMESPACE()

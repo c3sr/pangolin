@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 /*! The 2019 IMPACT Triangle Counter
 
 */
@@ -45,3 +47,5 @@ class IMPACT2019TC : public CUDATriangleCounter
 	virtual uint64_t num_edges() override { return hostDAG_.num_edges(); }
 	virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
+
+PANGOLIN_END_NAMESPACE()

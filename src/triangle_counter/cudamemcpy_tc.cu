@@ -61,6 +61,8 @@ These edges are needed to correctly count local triangles, but should not be cou
     }
 }
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 CudaMemcpyTC::CudaMemcpyTC() {
     LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
 
@@ -155,3 +157,5 @@ size_t CudaMemcpyTC::count() {
 
     return total;
 }
+
+PANGOLIN_END_NAMESPACE()

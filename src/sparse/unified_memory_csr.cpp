@@ -3,6 +3,8 @@
 #include <cassert>
 #include <set>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 /*
 Expect the incoming edge list to be sorted in increasing order of src.
 Within each src, dst should be in increasing order
@@ -202,3 +204,5 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
     }
     return ret;
 }
+
+PANGOLIN_END_NAMESPACE()

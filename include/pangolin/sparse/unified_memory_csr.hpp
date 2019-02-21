@@ -6,6 +6,8 @@
 #include "pangolin/dense/cuda_managed_vector.hpp"
 #include "pangolin/edge_list.hpp"
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class UnifiedMemoryCSR : public CSR<Uint>
 {
   private:
@@ -68,3 +70,5 @@ class UnifiedMemoryCSR : public CSR<Uint>
     static UnifiedMemoryCSR from_sorted_edgelist(const EdgeList &local, const EdgeList &remote = EdgeList());
     std::vector<UnifiedMemoryCSR> partition_nonzeros(const size_t numPartitions) const;
 };
+
+PANGOLIN_END_NAMESPACE()

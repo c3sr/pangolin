@@ -1,6 +1,6 @@
 #pragma once
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 template<typename T>
 __global__ void kernel_fill(T *a, const size_t n, const T val) {
@@ -16,4 +16,4 @@ void device_fill(T *d_a, const size_t n, const T val) {
     kernel_fill<<<dimGridX, dimBlockX>>>(d_a, n, val);
 }
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()

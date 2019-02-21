@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 
+#include "namespace.hpp"
+
+PANGOLIN_BEGIN_NAMESPACE()
+
 struct Config
 {
     std::string type_;
@@ -13,3 +17,5 @@ struct Config
     std::string kernel_; // which kernel to use, if there are multiple choices
     bool hints_ = 0;         // use unified memory hints
 };
+
+PANGOLIN_END_NAMESPACE()

@@ -7,7 +7,7 @@
 #include "pangolin/sparse/gpu_csr.hpp"
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 /*! Count triangles with CUSparse cusparseScsrgemm
 
@@ -38,4 +38,4 @@ public:
   virtual uint64_t num_edges() override {return A_.nnz(); }
 };
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()

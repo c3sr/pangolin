@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cuda_runtime.h>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 class EdgeTC : public CUDATriangleCounter
 {
 private:
@@ -49,3 +51,5 @@ public:
   virtual uint64_t num_edges() override { return numEdges_; }
   virtual size_t num_nodes() { return numNodes_; }
 };
+
+PANGOLIN_END_NAMESPACE()

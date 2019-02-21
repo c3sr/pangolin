@@ -12,6 +12,8 @@
 #include <limits>
 #include <cub/cub.cuh>
 
+PANGOLIN_BEGIN_NAMESPACE()
+
 /*! Count triangles
 
 Use one thread per edge to count triangles.
@@ -338,3 +340,6 @@ size_t IMPACT2019TC::count() {
     nvtxRangePop();
     return final_total;
 }
+
+
+PANGOLIN_END_NAMESPACE()

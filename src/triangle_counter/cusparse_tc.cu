@@ -12,7 +12,7 @@
 #include "pangolin/algorithm/elementwise.cuh"
 #include "pangolin/algorithm/fill.cuh"
 
-PANGOLIN_NAMESPACE_BEGIN()
+PANGOLIN_BEGIN_NAMESPACE()
 
 
 
@@ -184,4 +184,4 @@ CusparseTC::~CusparseTC() {
     CUSPARSE(cusparseDestroy(handle_));
 }
 
-PANGOLIN_NAMESPACE_END()
+PANGOLIN_END_NAMESPACE()
