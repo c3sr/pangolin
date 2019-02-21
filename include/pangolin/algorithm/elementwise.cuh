@@ -98,7 +98,7 @@ __global__ void csr_elementwise_inplace( const IndexType *csrRowPtrA,
              const IndexType *csrRowPtrB,
              const IndexType *csrColIndB,
              const ValueType *csrValB,
-             const IndexType numRows //<! number of rows in A and B
+             const IndexType numRows //!< number of rows in A and B
            ) {
     // const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
     // const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
@@ -139,7 +139,7 @@ __global__ void csr_compress( const IndexType *csrRowPtrA,
              const IndexType *csrRowPtrB,
              const IndexType *csrColIndB,
              const ValueType *csrValB,
-             const IndexType numRows, //<! number of rows in A and B
+             const IndexType numRows, //!< number of rows in A and B
              void *tmp
            ) {
 

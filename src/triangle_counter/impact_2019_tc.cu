@@ -58,12 +58,12 @@ Compare neighbor lists in parallel with a binary search of the longer list
 template <size_t BLOCK_DIM_X>
 __global__ static void
 kernel_binary(
-    uint64_t *__restrict__ edgeTriangleCounts, //<! per-edge triangle count
-    const Int *edgeSrc, //<!list of edge sources
-    const Int *edgeDst, //<! list of edge destinations
-    const Int *rowStarts, //<! offset in edgeSrc/edgeDst where each row starts
-    const Int edgeOffset, //<! which edge this kernel should start at
-    const Int numEdges //<! how many edges to work on
+    uint64_t *__restrict__ edgeTriangleCounts, //!< per-edge triangle count
+    const Int *edgeSrc, //!<list of edge sources
+    const Int *edgeDst, //!< list of edge destinations
+    const Int *rowStarts, //!< offset in edgeSrc/edgeDst where each row starts
+    const Int edgeOffset, //!< which edge this kernel should start at
+    const Int numEdges //!< how many edges to work on
 ) {
 
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;

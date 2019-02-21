@@ -13,11 +13,11 @@ PANGOLIN_BEGIN_NAMESPACE()
 class SpmmTC : public CUDATriangleCounter
 {
   private:
-	uint64_t *edgeCnt_; //<! per-edge triangle counts
-	Uint *edgeSrc_; //<! src of edge i
-	Uint *edgeDst_; //<! dst of edge i
-	pangolin::GPUCSR<Uint> aL_; //<! lower-triangular adjacency matrix
-	pangolin::GPUCSR<Uint> aU_; //<! upper-triangular adjacency matrix
+	uint64_t *edgeCnt_; //!< per-edge triangle counts
+	Uint *edgeSrc_; //!< src of edge i
+	Uint *edgeDst_; //!< dst of edge i
+	pangolin::GPUCSR<Uint> aL_; //!< lower-triangular adjacency matrix
+	pangolin::GPUCSR<Uint> aU_; //!< upper-triangular adjacency matrix
 	uint64_t *nextEdge_; // next edge that GPU counter should write an edge count to
 
   public:

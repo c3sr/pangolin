@@ -30,13 +30,13 @@ class IMPACT2019TC : public CUDATriangleCounter
 
   private:
 	DAG2019 hostDAG_;
-	size_t *triangleCounts_; //<! per-edge triangle counts
-	Int *edgeSrc_d_; //<! device edge srcs
-	Int *edgeDst_d_; //<! device edge dsts
-	Int *cols_d_; //<! device CSR column offsets in edgeDst_d_
-	bool unifiedMemoryHints_; //<! whether to use unified memory hints
-	GPUMemoryKind GPUMemoryKind_; //<! which kind of GPU memory to use to hold the data
-	KernelKind kernelKind_; //<! which kernel to use to count triangles
+	size_t *triangleCounts_; //!< per-edge triangle counts
+	Int *edgeSrc_d_; //!< device edge srcs
+	Int *edgeDst_d_; //!< device edge dsts
+	Int *cols_d_; //!< device CSR column offsets in edgeDst_d_
+	bool unifiedMemoryHints_; //!< whether to use unified memory hints
+	GPUMemoryKind GPUMemoryKind_; //!< which kind of GPU memory to use to hold the data
+	KernelKind kernelKind_; //!< which kernel to use to count triangles
 
   public:
 	IMPACT2019TC(Config &c);

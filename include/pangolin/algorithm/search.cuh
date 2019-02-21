@@ -36,10 +36,10 @@ __device__ static ulonglong2 serial_sorted_search_binary(const T *const array,
 */
 template <typename T>
 __device__ static size_t sorted_count_serial_linear(
-    const T *const aBegin, //<! beginning of a
-    const T *const aEnd, //<! end of a
-    const T *const bBegin, //<! beginning of b
-    const T *const bEnd //<! end of b
+    const T *const aBegin, //!< beginning of a
+    const T *const aEnd, //!< end of a
+    const T *const bBegin, //!< beginning of b
+    const T *const bEnd //!< end of b
 ) {
     size_t count = 0;
     const T *ap = aBegin;

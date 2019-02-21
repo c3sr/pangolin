@@ -16,10 +16,10 @@ PANGOLIN_BEGIN_NAMESPACE()
 */
 template<typename U>
 __device__ static uint64_t intersection_count(
-    const U* ab, //<! beginning of a
-    const U* ae, //<! end of a
-    const U* bb, //<! beginning of b
-    const U* be //<! end of b
+    const U* ab, //!< beginning of a
+    const U* ae, //!< end of a
+    const U* bb, //!< beginning of b
+    const U* be //!< end of b
 ) {
     const U *a = ab;
     const U *b = bb;
@@ -45,12 +45,12 @@ __device__ static uint64_t intersection_count(
 One thread per row
 */
 template<typename Index>
-__global__ void spmm_csr_csr(Index *edgeSrc, //<! src of edge (at least # edges long)
-                             Index *edgeDst, //<! dst of edge (at least # edges long)
-                             uint64_t *edgeCnt, //<! tri count of edge (at least # edges long)
-                             uint64_t *nextEdge, //<! pointer to next available edge
-                             const pangolin::GPUCSRView<Index> aL, //<! aL*aU, lower-triangular
-                             const pangolin::GPUCSRView<Index> aU //<! aL*aU, upper-triagular
+__global__ void spmm_csr_csr(Index *edgeSrc, //!< src of edge (at least # edges long)
+                             Index *edgeDst, //!< dst of edge (at least # edges long)
+                             uint64_t *edgeCnt, //!< tri count of edge (at least # edges long)
+                             uint64_t *nextEdge, //!< pointer to next available edge
+                             const pangolin::GPUCSRView<Index> aL, //!< aL*aU, lower-triangular
+                             const pangolin::GPUCSRView<Index> aU //!< aL*aU, upper-triagular
 ) {
     static_assert(sizeof(long long unsigned) == sizeof(uint64_t), "");
     const size_t num_rows = aL.num_rows();

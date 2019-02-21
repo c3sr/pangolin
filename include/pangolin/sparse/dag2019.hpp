@@ -16,9 +16,9 @@ PANGOLIN_BEGIN_NAMESPACE()
 class DAG2019
 {
   public:
-    std::vector<Int> edgeSrc_; //<! the node that edge I starts with
-    std::vector<Int> edgeDst_; //<! the node that edge I ends with
-    std::vector<Int> nodes_;   //<! where node i's edges start in edgeSrc and edgeDst
+    std::vector<Int> edgeSrc_; //!< the node that edge I starts with
+    std::vector<Int> edgeDst_; //!< the node that edge I ends with
+    std::vector<Int> nodes_;   //!< where node i's edges start in edgeSrc and edgeDst
 
   public:
     DAG2019() {}
