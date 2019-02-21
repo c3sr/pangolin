@@ -37,10 +37,22 @@ EdgeListReader *BELReader::clone()
     return reader;
 }
 
+/*! read edges into a buffer
+
+\param ptr pointer to at least num * sizeof(Edge) bytes
+\param num number of edges to read
+\returns number of edges read
+*/
 size_t BELReader::read(Edge *ptr, const size_t num)
 {
-    assert(fp_ != nullptr);
-    assert(ptr != nullptr);
+    if (fp_ == nullptr) {
+        LOG(error, "error reading {} or file was already closed ", path_);
+        return 0;
+    }
+    if (ptr == nullptr) {
+        LOG(error, "buffer is a nullptr");
+        return 0;
+    }
     char *buf = new char[num * 24];
     const size_t numRead = fread(buf, 24, num, fp_);
 
