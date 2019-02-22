@@ -6,6 +6,7 @@
 #include "logger.hpp"
 #include "reader/bel_reader.hpp"
 #include "reader/gc_tsv_reader.hpp"
+#include "sparse/coo.hpp"
 #include "sparse/gpu_csr.hpp"
 #include "triangle_counter/cpu_triangle_counter.hpp"
 #include "triangle_counter/nvgraph_triangle_counter.hpp"
