@@ -8,6 +8,8 @@
 #define PANGOLIN_HOST
 #endif 
 
+#include <cstdlib>
+
 namespace pangolin
 {
 template <typename VALUE_TYPE>
@@ -27,6 +29,8 @@ class Vector
   public:
     // default constructor
     PANGOLIN_HOST explicit Vector();
+
+    PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
 
     // move constructor
     PANGOLIN_HOST Vector(Vector &&other);

@@ -19,6 +19,17 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector() : capacity_(0), size_(0), data_(nullp
 {
 }
 
+/*! Constructs the container with count copies of elements with value value
+*/
+template <typename VALUE_TYPE>
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t count, const_reference value) : Vector() {
+    resize(count);
+    for (size_t i = 0; i < size(); ++i) {
+        data_[i] = value;
+    }
+}
+
+
 // move constructor
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capacity_), size_(other.size_), data_(other.data_)
@@ -78,7 +89,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) 
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n)
 {
-    reserve(n);
+    resize(n);
     for (size_t i = 0; i < size_; ++i)
     {
         new (&data_[i]) value_type;
@@ -140,10 +151,12 @@ PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(size_t n)
     } else if (n > size_) {
         size_t initialSize = size_;
         reserve(n);
+        size_ = n;
         for (size_t i = initialSize; i < n; ++i)
         {
             new (&data_[i]) value_type(); // new elements are value-initialized
         }
+        
     }
 }
 
