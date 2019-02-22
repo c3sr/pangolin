@@ -252,7 +252,7 @@ VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
   } else if (kernel == "hash") {
     kernel_ = Kernel::HASH;
   } else {
-    LOG(critical, "Unknown triangle counting kernel \"{}\" for VertexTC",
+    LOG(critical , "Unknown triangle counting kernel \"{}\" for VertexTC",
         c.kernel_);
     exit(-1);
   }
@@ -281,9 +281,9 @@ void VertexTC::read_data(const std::string &path) {
     }
   }
 
-  TRACE("filtered edge list has {} entries", filtered.size());
+  SPDLOG_TRACE(logger::console, "filtered edge list has {} entries", filtered.size());
 
-  LOG(debug, "building DAG");
+  SPDLOG_DEBUG(logger::console, "building DAG");
   // for singe dag, no remote edges
   auto graph = UnifiedMemoryCSR::from_sorted_edgelist(filtered);
 
@@ -341,7 +341,7 @@ void VertexTC::setup_data() {
   }
 
   for (const auto i : gpus_) {
-    TRACE("synchronizing GPU {}", i);
+    SPDLOG_TRACE(logger::console, "synchronizing GPU {}", i);
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
@@ -357,10 +357,10 @@ size_t VertexTC::count() {
 
     switch (kernel_) {
     case Kernel::LINEAR: {
-      LOG(debug, "linear search kernel");
+      SPDLOG_DEBUG(logger::console, "linear search kernel");
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
-      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
       kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -368,10 +368,10 @@ size_t VertexTC::count() {
       break;
     }
     case Kernel::LINEAR_SHARED: {
-      LOG(debug, "linear_shared search kernel");
+      SPDLOG_DEBUG(logger::console, "linear_shared search kernel");
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
-      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
       kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -379,11 +379,11 @@ size_t VertexTC::count() {
       break;
     }
     case Kernel::BINARY: {
-      LOG(debug, "binary search kernel");
+      SPDLOG_DEBUG(logger::console, "binary search kernel");
       const size_t BLOCK_DIM_X = 512;
       dim3 dimBlock(BLOCK_DIM_X);
       dim3 dimGrid(graph.num_rows());
-      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
       kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -391,12 +391,12 @@ size_t VertexTC::count() {
       break;
     }
     case Kernel::HASH: {
-      LOG(critical, "hash kernel unimplmeneted");
+      LOG(critical , "hash kernel unimplmeneted");
       exit(-1);
       break;
     }
     default: {
-      LOG(critical, "unexpected kernel type.");
+      LOG(critical , "unexpected kernel type.");
       exit(-1);
     }
     }
@@ -407,16 +407,16 @@ size_t VertexTC::count() {
   for (size_t i = 0; i < graphs_.size(); ++i) {
     const int &dev = gpus_[i];
     const dim3 &dimGrid = dimGrids_[i];
-    LOG(debug, "waiting for GPU {}", dev);
+    SPDLOG_DEBUG(logger::console, "waiting for GPU {}", dev);
     CUDA_RUNTIME(cudaSetDevice(dev));
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
     Uint partitionTotal = 0;
-    LOG(debug, "cpu reduction for GPU {}", dev);
+    SPDLOG_DEBUG(logger::console, "cpu reduction for GPU {}", dev);
     for (size_t j = 0; j < dimGrid.x; ++j) {
       partitionTotal += triangleCounts_[i][j];
     }
-    LOG(debug, "partition had {} triangles", partitionTotal);
+    SPDLOG_DEBUG(logger::console, "partition had {} triangles", partitionTotal);
     total += partitionTotal;
   }
 

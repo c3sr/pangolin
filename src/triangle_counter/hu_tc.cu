@@ -122,7 +122,7 @@ void Hu2018TC::read_data(const std::string &path) {
     LOG(info, "reading {}", path);
     auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read_all();
-    LOG(debug, "building DAG");
+    SPDLOG_DEBUG(logger::console, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
 
     LOG(info, "{} nodes", hostDAG_.num_nodes());
@@ -141,13 +141,13 @@ void Hu2018TC::setup_data() {
     const size_t nodeBytes = hostDAG_.nodes_.size() * sizeof(Int);
     const size_t countBytes = hostDAG_.num_edges() * sizeof(*triangleCounts_);
 
-    LOG(debug, "allocating unified memory");
+    SPDLOG_DEBUG(logger::console, "allocating unified memory");
     CUDA_RUNTIME(cudaMallocManaged(&edgeSrc_d_, edgeBytes));
     CUDA_RUNTIME(cudaMallocManaged(&edgeDst_d_, edgeBytes));
     CUDA_RUNTIME(cudaMallocManaged(&nodes_d_, nodeBytes));
     CUDA_RUNTIME(cudaMallocManaged(&triangleCounts_, countBytes));
 
-    LOG(debug, "copying to unified memory");
+    SPDLOG_DEBUG(logger::console, "copying to unified memory");
     CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
     CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault)); 
     CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
@@ -174,27 +174,27 @@ size_t Hu2018TC::count() {
 
     // split edges among devices
     size_t edgesPerDevice = (hostDAG_.num_edges() + numDev - 1) / numDev;
-    LOG(debug, "{} edges per GPU", edgesPerDevice);
+    SPDLOG_DEBUG(logger::console, "{} edges per GPU", edgesPerDevice);
 
     size_t edgeOffset = 0;
     for (int i : gpus_) {
         CUDA_RUNTIME(cudaSetDevice(i));
 
         size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
-        LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
+        SPDLOG_DEBUG(logger::console, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
         const size_t BLOCK_SIZE = 128;
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid((edgeCount + dimBlock.x - 1) / dimBlock.x);
     
-        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+        SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
         kernel_tc<BLOCK_SIZE><<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     
     for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
         CUDA_RUNTIME(cudaSetDevice(i));
-        LOG(debug, "Waiting for GPU {}", i);
+        SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
         CUDA_RUNTIME(cudaDeviceSynchronize());
     }
 
@@ -206,7 +206,7 @@ size_t Hu2018TC::count() {
     }
     auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
     nvtxRangePop();
-    LOG(debug, "CPU reduction {}s", elapsed);
+    SPDLOG_DEBUG(logger::console, "CPU reduction {}s", elapsed);
 
     nvtxRangePop();
     return total;

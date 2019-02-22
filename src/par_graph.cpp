@@ -29,7 +29,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 
     // rename node ids to be consecutive 0 -> n-1
     // order by src in local and remote and then dst in local and remote
-    LOG(debug, "building rename map");
+    SPDLOG_DEBUG(logger::console, "building rename map");
     std::map<Int, Int> rename;
     Int nextId = 0;
     for (const auto &e : local)
@@ -62,7 +62,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     }
 
     // apply rename operation
-    LOG(debug, "renaming");
+    SPDLOG_DEBUG(logger::console, "renaming");
     for (auto &e : sortedLocal)
     {
         e.first = rename[e.first];
@@ -75,7 +75,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     }
 
     // sort local and remote by src id
-    LOG(debug, "sorting");
+    SPDLOG_DEBUG(logger::console, "sorting");
     std::sort(sortedLocal.begin(), sortedLocal.end(), [&](const Edge &a, const Edge &b) {
         if (a.first == b.first)
         {
@@ -131,10 +131,10 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 
         maxDst = std::max(edge.second, maxDst);
 
-        TRACE("edge {} -> {} local={}", edge.first, edge.second, edgeIsLocal);
+        SPDLOG_TRACE(logger::console, "edge {} -> {} local={}", edge.first, edge.second, edgeIsLocal);
         if (graph.rowStarts_.size() != edge.first + 1)
         {
-            TRACE("new row {} at {}", edge.first, graph.nonZeros_.size());
+            SPDLOG_TRACE(logger::console, "new row {} at {}", edge.first, graph.nonZeros_.size());
             assert(graph.rowStarts_.size() == edge.first);
             graph.rowStarts_.push_back(graph.nonZeros_.size());
         }
@@ -146,12 +146,12 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
     // fill up to maxDst
     while (graph.rowStarts_.size() < maxDst + 1)
     {
-        TRACE("adding node {} with 0 out degree", graph.rowStarts_.size());
+        SPDLOG_TRACE(logger::console, "adding node {} with 0 out degree", graph.rowStarts_.size());
         graph.rowStarts_.push_back(graph.nonZeros_.size());
     }
 
     graph.rowStarts_.push_back(graph.nonZeros_.size());
-    TRACE("final rowStarts length is {}", graph.rowStarts_.size());
+    SPDLOG_TRACE(logger::console, "final rowStarts length is {}", graph.rowStarts_.size());
 
 #ifdef __TRI_SANITY_CHECK
     assert(graph.isLocalNonZero_.size() == graph.nonZeros_.size());
@@ -163,7 +163,7 @@ ParGraph ParGraph::from_edges(const EdgeList &local, const EdgeList &remote)
 std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
 {
     size_t targetNumNonZeros = (nnz() + numParts - 1) / numParts;
-    LOG(debug, "partitioning into {} graphs with nnz ~= {}", numParts, targetNumNonZeros);
+    SPDLOG_DEBUG(logger::console, "partitioning into {} graphs with nnz ~= {}", numParts, targetNumNonZeros);
     std::vector<ParGraph> graphs;
 
     // Iterate over edges
@@ -211,15 +211,15 @@ std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
                     }
                 }
 
-                LOG(debug, "local set with {} edges", localSet.size());
-                LOG(debug, "remote set with {} edges", remoteSet.size());
+                SPDLOG_DEBUG(logger::console, "local set with {} edges", localSet.size());
+                SPDLOG_DEBUG(logger::console, "remote set with {} edges", remoteSet.size());
                 for (const auto &e : localSet)
                 {
-                    TRACE("local edge {} -> {}", e.first, e.second);
+                    SPDLOG_TRACE(logger::console, "local edge {} -> {}", e.first, e.second);
                 }
                 for (const auto &e : remoteSet)
                 {
-                    TRACE("remote edge {} -> {}", e.first, e.second);
+                    SPDLOG_TRACE(logger::console, "remote edge {} -> {}", e.first, e.second);
                 }
 
                 graphs.push_back(ParGraph::from_edges(localSet, remoteSet));
@@ -241,15 +241,15 @@ std::vector<ParGraph> ParGraph::partition_nonzeros(const size_t numParts) const
             }
         }
 
-        LOG(debug, "local set with {} edges", localSet.size());
-        LOG(debug, "remote set with {} edges", remoteSet.size());
+        SPDLOG_DEBUG(logger::console, "local set with {} edges", localSet.size());
+        SPDLOG_DEBUG(logger::console, "remote set with {} edges", remoteSet.size());
         for (const auto &e : localSet)
         {
-            TRACE("local edge {} -> {}", e.first, e.second);
+            SPDLOG_TRACE(logger::console, "local edge {} -> {}", e.first, e.second);
         }
         for (const auto &e : remoteSet)
         {
-            TRACE("remote edge {} -> {}", e.first, e.second);
+            SPDLOG_TRACE(logger::console, "remote edge {} -> {}", e.first, e.second);
         }
 
         graphs.push_back(ParGraph::from_edges(localSet, remoteSet));

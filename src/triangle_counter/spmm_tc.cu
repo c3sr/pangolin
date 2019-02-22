@@ -120,7 +120,7 @@ void SpmmTC::read_data(const std::string &path) {
     if (edgeList.size() == 0) {
         LOG(warn, "empty edge list");
     }
-    LOG(debug, "building GPUCSR");
+    SPDLOG_DEBUG(logger::console, "building GPUCSR");
     aL_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {return e.first <= e.second; })); // keep src > dst
     aU_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {return e.first >= e.second; })); // keep src < dst
 
@@ -138,13 +138,13 @@ void SpmmTC::setup_data() {
     const size_t edgeSrcBytes = edgeCount * sizeof(*edgeSrc_);
     const size_t edgeDstBytes = edgeCount * sizeof(*edgeDst_);
     const size_t edgeCntBytes = edgeCount * sizeof(*edgeCnt_);
-    LOG(debug, "allocating {}B for edge sources", edgeSrcBytes);
+    SPDLOG_DEBUG(logger::console, "allocating {}B for edge sources", edgeSrcBytes);
     CUDA_RUNTIME(cudaMallocManaged(&edgeSrc_, edgeSrcBytes));
-    LOG(debug, "allocating {}B for edge destinations", edgeDstBytes);
+    SPDLOG_DEBUG(logger::console, "allocating {}B for edge destinations", edgeDstBytes);
     CUDA_RUNTIME(cudaMallocManaged(&edgeDst_, edgeDstBytes));
-    LOG(debug, "allocating {}B for edge triangle counts", edgeCntBytes);
+    SPDLOG_DEBUG(logger::console, "allocating {}B for edge triangle counts", edgeCntBytes);
     CUDA_RUNTIME(cudaMallocManaged(&edgeCnt_, edgeCntBytes));
-    LOG(debug, "allocating {}B for next edge offset counter", sizeof(*nextEdge_));
+    SPDLOG_DEBUG(logger::console, "allocating {}B for next edge offset counter", sizeof(*nextEdge_));
     CUDA_RUNTIME(cudaMallocManaged(&nextEdge_, sizeof(*nextEdge_)));
     nvtxRangePop();
 }
@@ -164,14 +164,14 @@ size_t SpmmTC::count() {
     dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
     // dim3 dimBlock(1);
     // dim3 dimGrid(1);
-    LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+    SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
     spmm_csr_csr<<<dimGrid, dimBlock>>>(edgeSrc_, edgeDst_, edgeCnt_, nextEdge_, aL_.view(), aU_.view());
-    LOG(debug, "launched kernel");
+    SPDLOG_DEBUG(logger::console, "launched kernel");
     CUDA_RUNTIME(cudaGetLastError());
     
     for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
         CUDA_RUNTIME(cudaSetDevice(i));
-        LOG(debug, "Waiting for GPU {}", i);
+        SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
         CUDA_RUNTIME(cudaDeviceSynchronize());
     }
 
@@ -180,21 +180,21 @@ size_t SpmmTC::count() {
     auto start = std::chrono::system_clock::now();
     if (1) // CPU
     {
-        LOG(debug, "CPU reduction");
+        SPDLOG_DEBUG(logger::console, "CPU reduction");
         size_t total = 0;
         for(size_t i = 0; i < aL_.nnz(); ++i) {
             total += edgeCnt_[i];
         }
         final_total = total;
     } else { // GPU
-        LOG(debug, "GPU reduction");
+        SPDLOG_DEBUG(logger::console, "GPU reduction");
         size_t *total;
         CUDA_RUNTIME(cudaMallocManaged(&total, sizeof(*total)));
         void     *d_temp_storage = nullptr;
         size_t   temp_storage_bytes = 0;
         cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total, aL_.nnz());
         // Allocate temporary storage
-        LOG(debug, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
+        SPDLOG_DEBUG(logger::console, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
         CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
         // Run sum-reduction
         cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total, aL_.nnz());
@@ -205,7 +205,7 @@ size_t SpmmTC::count() {
     }
     auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
     nvtxRangePop(); // final reduction
-    LOG(debug, "Final reduction {}s", elapsed);
+    SPDLOG_DEBUG(logger::console, "Final reduction {}s", elapsed);
 
     nvtxRangePop();
     return final_total;

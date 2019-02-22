@@ -18,17 +18,17 @@ EdgeListReader *EdgeListReader::from_file(const std::string &path)
 {
     if (endswith(path, ".bel"))
     {
-        LOG(debug, "creating BELReader");
+        SPDLOG_DEBUG(logger::console, "creating BELReader");
         return new BELReader(path);
     }
     else if (endswith(path, ".tsv"))
     {
-        LOG(debug, "creating GraphChallengeTSVReader");
+        SPDLOG_DEBUG(logger::console, "creating GraphChallengeTSVReader");
         return new GraphChallengeTSVReader(path);
     }
     else
     {
-        LOG(critical, "Unknown reader for file \"{}\"", path);
+        LOG(critical , "Unknown reader for file \"{}\"", path);
         exit(-1);
     }
 }

@@ -1,5 +1,11 @@
 # Pangolin
 
+## Controlling Logging
+
+```c++
+pangolin::logger->set_level(spdlog::level::critial)
+```
+
 ## Building Pangolin from Source
 
 ### Prerequisites

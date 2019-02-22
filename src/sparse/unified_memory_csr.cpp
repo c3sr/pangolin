@@ -47,10 +47,10 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, c
     }
 
     // add empty rows until firstRow
-    LOG(debug, "smallest row was {}", firstRow);
+    SPDLOG_DEBUG(logger::console, "smallest row was {}", firstRow);
     for (Uint i = 0; i < firstRow; ++i)
     {
-        TRACE("added empty row {} before smallest row id", i);
+        SPDLOG_TRACE(logger::console, "added empty row {} before smallest row id", i);
         csr.rowOffsets_.push_back(0);
     }
 
@@ -101,7 +101,7 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, c
     }
 
     // add final nodes with 0 out-degree
-    LOG(debug, "max node id was {}", maxNode);
+    SPDLOG_DEBUG(logger::console, "max node id was {}", maxNode);
     while (csr.rowOffsets_.size() < maxNode + 1)
     {
         csr.rowOffsets_.push_back(csr.data_.size());
@@ -110,8 +110,8 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, c
     // add  the last entry to give a length on the last row
     csr.rowOffsets_.push_back(csr.data_.size());
 
-    LOG(debug, "rowOffsets is length {}", csr.rowOffsets_.size());
-    LOG(debug, "data is length {}", csr.data_.size());
+    SPDLOG_DEBUG(logger::console, "rowOffsets is length {}", csr.rowOffsets_.size());
+    SPDLOG_DEBUG(logger::console, "data is length {}", csr.data_.size());
 
     return csr;
 }
@@ -119,12 +119,12 @@ UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, c
 std::vector<UnifiedMemoryCSR>
 UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
 {
-    LOG(debug, "paritioning into {} graphs", numPartitions);
+    SPDLOG_DEBUG(logger::console, "paritioning into {} graphs", numPartitions);
     std::vector<std::set<Edge>> localEdges(numPartitions);  // local edges for each partition
     std::vector<std::set<Edge>> remoteEdges(numPartitions); // remote edges for each partitions
 
     const uint64_t nnzPerPartition = (nnz() + numPartitions - 1) / numPartitions;
-    LOG(debug, "targeting {} nnz per partition", nnzPerPartition);
+    SPDLOG_DEBUG(logger::console, "targeting {} nnz per partition", nnzPerPartition);
 
     // evenly distribute local edges
     size_t currentPartitionIdx = 0;
@@ -139,7 +139,7 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
             Edge e(head, tail);
             assert(currentPartitionIdx < localEdges.size());
             localEdges[currentPartitionIdx].insert(std::move(e));
-            TRACE("added local edge {} {} to partition {}", e.first, e.second, currentPartitionIdx);
+            SPDLOG_TRACE(logger::console, "added local edge {} {} to partition {}", e.first, e.second, currentPartitionIdx);
             if (localEdges[currentPartitionIdx].size() >= nnzPerPartition)
             {
                 ++currentPartitionIdx;
@@ -161,12 +161,12 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
 
                 if (0 == local.count(tailEdge))
                 {
-                    TRACE("adding remote edge {} {} to parition {}", tailEdge.first, tailEdge.second, i);
+                    SPDLOG_TRACE(logger::console, "adding remote edge {} {} to parition {}", tailEdge.first, tailEdge.second, i);
                     remote.insert(tailEdge);
                 }
                 else
                 {
-                    TRACE("edge {} {} is already local in parition {}", tailEdge.first, tailEdge.second, i);
+                    SPDLOG_TRACE(logger::console, "edge {} {} is already local in parition {}", tailEdge.first, tailEdge.second, i);
                 }
             }
         }
@@ -179,7 +179,7 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const
         auto &localSet = localEdges[i];
         auto &remoteSet = remoteEdges[i];
 
-        TRACE("building CSR from {} local and {} remote edges", localSet.size(), remoteSet.size());
+        SPDLOG_TRACE(logger::console, "building CSR from {} local and {} remote edges", localSet.size(), remoteSet.size());
 
         EdgeList localList(localSet.begin(), localSet.end());
         EdgeList remoteList(remoteSet.begin(), remoteSet.end());

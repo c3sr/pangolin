@@ -86,7 +86,7 @@ size_t BELReader::read(Edge *ptr, const size_t num)
 
     // for (size_t i = 0; i < numRead; ++i)
     // {
-    //     LOG(debug, "{} {}", ptr[i].first, ptr[i].second);
+    //     SPDLOG_DEBUG(logger::console, "{} {}", ptr[i].first, ptr[i].second);
     // }
     // exit(0);
 

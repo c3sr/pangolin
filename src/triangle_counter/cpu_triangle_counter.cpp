@@ -38,7 +38,7 @@ static size_t intersection_count(const Int *const aBegin, const Int *const aEnd,
 CPUTriangleCounter::CPUTriangleCounter(const Config &c)
 {
     numThreads_ = c.numCPUThreads_;
-    LOG(debug, "config requested {} threads", numThreads_);
+    SPDLOG_DEBUG(logger::console, "config requested {} threads", numThreads_);
 
 #if USE_OPENMP
     const size_t max_threads = omp_get_max_threads();
@@ -65,7 +65,7 @@ void CPUTriangleCounter::read_data(const std::string &path)
     LOG(info, "reading {}", path);
     auto *reader = pangolin::EdgeListReader::from_file(path);
     auto edgeList = reader->read_all();
-    LOG(debug, "building DAG");
+    SPDLOG_DEBUG(logger::console, "building DAG");
     dag_ = DAG2019::from_edgelist(edgeList);
 
     LOG(info, "{} nodes", dag_.num_nodes());

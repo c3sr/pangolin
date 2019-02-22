@@ -22,7 +22,7 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
 
     // ensure node IDs are 0 - whatever
     const auto smallest = l.begin()->first;
-    LOG(debug, "smallest node was {}", smallest);
+    SPDLOG_DEBUG(logger::console, "smallest node was {}", smallest);
     for (auto &e : l)
     {
         e.first -= smallest;
@@ -38,7 +38,7 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         if (dag.nodes_.size() != size_t(edge.first + 1))
         {
             assert(edge.first == dag.nodes_.size());
-            // TRACE("node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
+            // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_, dag.edgeSrc_.size());
             dag.nodes_.push_back(dag.edgeSrc_.size());
         }
 
@@ -47,11 +47,11 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
         {
             dag.edgeSrc_.push_back(edge.first);
             dag.edgeDst_.push_back(edge.second);
-            // TRACE("added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
+            // SPDLOG_TRACE(logger::console, "added edge {} ({} -> {})", dag.num_edges() - 1, edge.src_, edge.dst_);
         }
     }
     dag.nodes_.push_back(dag.edgeSrc_.size());
-    // TRACE("final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
+    // SPDLOG_TRACE(logger::console, "final node idx {} points to {} ", dag.nodes_.size() - 1, dag.edgeSrc_.size());
 
     // // check that all nodes point to an edge or one past the end of the edge arrays
     // for (const auto n : dag.nodes_)
@@ -70,7 +70,7 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l)
     // {
     //     if (d >= dag.nodes_.size())
     //     {
-    //         LOG(critical, "edge dst {} is larger than the largest node {}", d, dag.nodes_.size());
+    //         LOG(critical , "edge dst {} is larger than the largest node {}", d, dag.nodes_.size());
     //     }
     //     assert(d < dag.nodes_.size());
     //     assert(d >= 0);

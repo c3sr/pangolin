@@ -23,7 +23,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector() : capacity_(0), size_(0), data_(nullp
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capacity_), size_(other.size_), data_(other.data_)
 {
-    TRACE("move ctor");
+    SPDLOG_TRACE(logger::console, "move ctor");
     other.capacity_ = 0;
     other.size_ = 0;
     other.data_ = nullptr;
@@ -32,7 +32,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other) : capacity_(other.capac
 // copy constructor
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
-    TRACE("copy ctor");
+    SPDLOG_TRACE(logger::console, "copy ctor");
     reserve(other.capacity_);
     std::memcpy(data_, other.data_, other.size_ * sizeof(value_type));
     size_ = other.size_;
@@ -42,7 +42,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector()
 {
-    TRACE("dtor");
+    SPDLOG_TRACE(logger::console, "dtor");
     if (data_)
     {
         for (size_t i = 0; i < size_; ++i)
@@ -60,7 +60,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector()
 // move-assignment
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
-    TRACE("move assignment");
+    SPDLOG_TRACE(logger::console, "move assignment");
 
     // take ownership of other vector
     capacity_ = other.capacity_;
@@ -106,7 +106,7 @@ PANGOLIN_HOST void Vector<VALUE_TYPE>::push_back(const Vector<VALUE_TYPE>::value
     }
     else if (size_ == capacity_)
     {
-        TRACE("resize from {} -> {}", capacity_, capacity_ * 2);
+        SPDLOG_TRACE(logger::console, "resize from {} -> {}", capacity_, capacity_ * 2);
         reserve(capacity_ * 2);
     }
     data_[size_] = val;

@@ -53,14 +53,14 @@ __global__ static void kernel_tc(size_t * triangleCounts, Int *edgeSrc, Int *edg
 
 IMPACT2018TC::IMPACT2018TC(Config &c)  : CUDATriangleCounter(c) {
     nvtxRangePush(__PRETTY_FUNCTION__);
-    LOG(debug, "IMPACT 2018 TC, sizeof(Int) = {}", sizeof(Int));
+    SPDLOG_DEBUG(logger::console, "IMPACT 2018 TC, sizeof(Int) = {}", sizeof(Int));
 
     if (c.storage_ == "um") {
         GPUMemoryKind_ = GPUMemoryKind::Unified;
     } else if (c.storage_ == "zc") {
         GPUMemoryKind_ = GPUMemoryKind::ZeroCopy;
     } else {
-        LOG(critical, "unknown gpu storage kind \"{}\"", c.storage_);
+        LOG(critical , "unknown gpu storage kind \"{}\"", c.storage_);
         exit(-1);
     }
 
@@ -97,7 +97,7 @@ void IMPACT2018TC::read_data(const std::string &path) {
     LOG(info, "reading {}", path);
     pangolin::GraphChallengeTSVReader reader(path);
     auto edgeList = reader.read_edges();
-    LOG(debug, "building DAG");
+    SPDLOG_DEBUG(logger::console, "building DAG");
     hostDAG_ = DAG2019::from_edgelist(edgeList);
 
     LOG(info, "{} nodes", hostDAG_.num_nodes());
@@ -119,7 +119,7 @@ void IMPACT2018TC::setup_data() {
             CUDA_RUNTIME(cudaMallocManaged(&nodes_d_, nodeBytes));
             CUDA_RUNTIME(cudaMallocManaged(&triangleCounts_, countBytes));
 
-            LOG(debug, "copying to unified memory");
+            SPDLOG_DEBUG(logger::console, "copying to unified memory");
             CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
             CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault)); 
             CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
@@ -159,7 +159,7 @@ void IMPACT2018TC::setup_data() {
             break;
         }
         default: {
-            LOG(critical, "unhandled value for gpu memory kind");
+            LOG(critical , "unhandled value for gpu memory kind");
             exit(-1);
         }
     }
@@ -173,27 +173,27 @@ size_t IMPACT2018TC::count() {
 
     // split edges among devices
     size_t edgesPerDevice = (hostDAG_.num_edges() + numDev - 1) / numDev;
-    LOG(debug, "{} edges per GPU", edgesPerDevice);
+    SPDLOG_DEBUG(logger::console, "{} edges per GPU", edgesPerDevice);
 
     size_t edgeOffset = 0;
     for (int i : gpus_) {
         CUDA_RUNTIME(cudaSetDevice(i));
 
         size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
-        LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
+        SPDLOG_DEBUG(logger::console, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
         dim3 dimBlock(256);
         size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
         dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
     
-        LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+        SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
         kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, edgeOffset, edgeCount);
         edgeOffset += edgesPerDevice;
     }
     
     for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
         CUDA_RUNTIME(cudaSetDevice(i));
-        LOG(debug, "Waiting for GPU {}", i);
+        SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
         CUDA_RUNTIME(cudaDeviceSynchronize());
     }
 
@@ -205,7 +205,7 @@ size_t IMPACT2018TC::count() {
     }
     auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
     nvtxRangePop();
-    LOG(debug, "CPU reduction {}s", elapsed);
+    SPDLOG_DEBUG(logger::console, "CPU reduction {}s", elapsed);
 
     nvtxRangePop();
     return total;

@@ -17,14 +17,14 @@ TriangleCounter::~TriangleCounter() {}
 
 void TriangleCounter::setup_data()
 {
-    LOG(debug, "triangle counter setup_data is a no-op");
+    SPDLOG_DEBUG(logger::console, "triangle counter setup_data is a no-op");
 }
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
 {
     if (c.type_ == "")
     {
-        LOG(critical, "no counting method provided. Use -m flag");
+        LOG(critical , "no counting method provided. Use -m flag");
         exit(-1);
     }
     else if (c.type_ == "impact2018")
@@ -47,7 +47,7 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     {
         if (sizeof(Int) != sizeof(int))
         {
-            LOG(critical, "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
+            LOG(critical , "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
             exit(-1);
         }
         return new NvGraphTriangleCounter(c);
@@ -72,7 +72,7 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c)
     }
     else
     {
-        LOG(critical, "unhandled triangle counter type: {}", c.type_);
+        LOG(critical , "unhandled triangle counter type: {}", c.type_);
         exit(-1);
     }
 }

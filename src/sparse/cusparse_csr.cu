@@ -28,7 +28,7 @@ for (const auto &edge : es) {
         // expecting inputs to be sorted by src, so it should be at least
         // as big as the current largest row we have recored
         assert(edge.first >= csr.csrRowPtr_.size());
-        // TRACE("node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
+        // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
         csr.csrRowPtr_.push_back(csr.csrColInd_.size());
     }
 

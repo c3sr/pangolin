@@ -67,7 +67,7 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter
             // expecting inputs to be sorted by src, so it should be at least
             // as big as the current largest row we have recored
             assert(src >= csr.rowOffset_.size());
-            // TRACE("node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
+            // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_, csr.edgeSrc_.size());
             csr.rowOffset_.push_back(csr.col_.size());
         }
 

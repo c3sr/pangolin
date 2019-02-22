@@ -368,8 +368,11 @@ pangolin_include_directories(PUBLIC
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Setting verbose build during Debug")
   set(CMAKE_VERBOSE_MAKEFILE ON)
+  pangolin_compile_definitions(PRIVATE -DSPDLOG_TRACE_ON)
+  pangolin_compile_definitions(PRIVATE -DSPDLOG_DEBUG_ON)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
   pangolin_compile_definitions(PRIVATE -DNDEBUG)
+  pangolin_compile_definitions(PRIVATE -DSPDLOG_DEBUG_ON)
 endif()
 
 # Add a target to generate API documentation
