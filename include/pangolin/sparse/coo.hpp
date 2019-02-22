@@ -30,15 +30,15 @@ private:
 
 public:
  const Index *rowPtr_; //!< offset in col_ that each row starts at
- const Index *rowInd_; //!N non-zero row indices
+ const Index *rowInd_; //!< non-zero row indices
  const Index *colInd_; //!< non-zero column indices
 
  HOST DEVICE uint64_t nnz() const {return nnz_; }
  HOST DEVICE uint64_t num_rows() const {return num_rows_; }
 
- const Index *row_ptr() { return rowPtr_; } //!< row offset array
- const Index *col_ind() { return colInd_; } //!< column index array
- const Index *row_ind() { return rowInd_; } //<! row index array
+ const Index *row_ptr() const { return rowPtr_; } //!< row offset array
+ const Index *col_ind() const { return colInd_; } //!< column index array
+ const Index *row_ind() const { return rowInd_; } //<! row index array
 
 };
 
