@@ -3,8 +3,10 @@
 ## Controlling Logging
 
 ```c++
-pangolin::logger->set_level(spdlog::level::critial)
+pangolin::logger::set_level(pangolin::Level::ERR)
 ```
+
+Allowed values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERR`, `CRITICAL`.
 
 ## Building Pangolin from Source
 
