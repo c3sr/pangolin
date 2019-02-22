@@ -115,6 +115,8 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
     include/pangolin/sparse/gpu_csr-impl.hpp
+    include/pangolin/sparse/coo.hpp
+    include/pangolin/sparse/coo-impl.hpp
     include/pangolin/sparse/unified_memory_csr.hpp
     include/pangolin/reader/bel_reader.hpp
     include/pangolin/reader/edge_list_reader.hpp
@@ -396,3 +398,5 @@ if(DOXYGEN_FOUND)
 )
 endif(DOXYGEN_FOUND)
 
+enable_testing() # "this command should be in the source directory root for CTest to find the test file"
+add_subdirectory(test)

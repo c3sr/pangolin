@@ -37,6 +37,7 @@ If doxygen is installed, building pangolin will also create API documentation.
     cd build
     cmake ..
     make
+    make tests
 
 This will produce two libraries: `pangolin32` and `pangolin64`.
 Both have equivalent functionality, but use 32-bit and 64-bit values for graph vertex/edge IDs respectively.
