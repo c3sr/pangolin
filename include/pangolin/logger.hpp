@@ -2,14 +2,24 @@
 #pragma once
 
 #include <spdlog/spdlog.h>
+#include "namespace.hpp"
+
+PANGOLIN_BEGIN_NAMESPACE()
 
 namespace logger
 {
 extern std::shared_ptr<spdlog::logger> console;
 
+/*!
+Log levels used by pangolin's internal logger.
+
+Trace-level messages are disabled during release builds.
+*/
 enum Level {TRACE, DEBUG, INFO, WARN, ERR, CRITICAL};
 void set_level(const Level &level);
 
 } // namespace logger
 
-#define LOG(level, ...) logger::console->level(__VA_ARGS__)
+PANGOLIN_END_NAMESPACE()
+
+#define LOG(level, ...) pangolin::logger::console->level(__VA_ARGS__)
