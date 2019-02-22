@@ -9,6 +9,7 @@
 !include
 !README.md
 !src
+!test
 !tools
 !.git
 !.gitignore
