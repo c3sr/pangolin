@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.23.55.tar.gz"
-    SHA1 "da31d97da47cdde05f958786b6729ba9b773bb17"
+    URL "https://github.com/ruslo/hunter/archive/v0.23.115.tar.gz"
+    SHA1 "1b3f3addc801405769edbb7ebbe701223db3efa6"
     LOCAL
 )
 
