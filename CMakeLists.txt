@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+# 3.8+ for project(LANGUAGES CUDA)
+# 3.9+ for OpenMP::OpenMP_CXX
+# 3.10+ findopenmp gained support for language-specific components
+# 3.11+ for CMake not to add -fopenmp to the nvcc flags
 
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 # set(
 #     CMAKE_TOOLCHAIN_FILE
