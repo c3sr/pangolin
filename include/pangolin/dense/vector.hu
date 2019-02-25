@@ -65,7 +65,7 @@ public:
 
 } // namespace pangolin
 
-#include "vector-impl.hu"
-
 #undef PANGOLIN_HOST_DEVICE
 #undef PANGOLIN_HOST
+
+#include "vector-impl.hu"
