@@ -8,7 +8,7 @@
 #include <limits>
 #include <nvToolsExt.h>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*!
   return the number of common elements between sorted lists a and b
@@ -219,4 +219,4 @@ size_t SpmmTC::count() {
   return final_total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

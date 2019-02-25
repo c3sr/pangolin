@@ -10,7 +10,7 @@
 #include "pangolin/triangle_counter/spmm_tc.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 TriangleCounter::~TriangleCounter() {}
 
@@ -52,4 +52,4 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c) {
   }
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

@@ -8,7 +8,7 @@
 #include "pangolin/edge_list.hpp"
 #include "pangolin/logger.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 struct VertexSet {
   typedef std::set<Int> container_t;
@@ -54,4 +54,4 @@ public:
   static DAGLowerTriangularCSR from_edgelist(EdgeList &l);
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

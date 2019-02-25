@@ -57,7 +57,7 @@ kernel_tc(size_t *__restrict__ triangleCounts, const Int *edgeSrc,
   }
 }
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 CudaMemcpyTC::CudaMemcpyTC() {
   SPDLOG_DEBUG(logger::console, "ctor GPU triangle counter, sizeof(Int) = {}",
@@ -156,4 +156,4 @@ size_t CudaMemcpyTC::count() {
   return total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

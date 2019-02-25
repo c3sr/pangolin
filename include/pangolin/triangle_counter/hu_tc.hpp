@@ -4,7 +4,7 @@
 #include "pangolin/sparse/dag2019.hpp"
 #include "pangolin/triangle_counter/cuda_triangle_counter.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class Hu2018TC : public CUDATriangleCounter {
 private:
@@ -24,4 +24,4 @@ public:
   virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

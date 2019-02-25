@@ -5,7 +5,7 @@
 
 #include "namespace.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 struct Config {
   std::string type_;
@@ -18,4 +18,4 @@ struct Config {
   bool hints_ = 0;     // use unified memory hints
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

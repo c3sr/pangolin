@@ -5,7 +5,7 @@
 #include "pangolin/dag_lowertriangular_csr.hpp"
 #include "pangolin/triangle_counter/triangle_counter.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class NvGraphTriangleCounter : public TriangleCounter {
 private:
@@ -21,4 +21,4 @@ public:
   virtual uint64_t num_edges() override { return dag_.num_edges(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

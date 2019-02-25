@@ -1,6 +1,6 @@
 #include "pangolin/sparse/dag2019.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 DAG2019 DAG2019::from_edgelist(EdgeList &l) {
   DAG2019 dag;
@@ -79,4 +79,4 @@ DAG2019 DAG2019::from_edgelist(EdgeList &l) {
   return dag;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

@@ -10,7 +10,7 @@
 #define PANGOLIN_CUDA_MEMBER
 #endif
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 template <typename Index> class GPUCSR;
 
@@ -82,7 +82,7 @@ public:
   } //!< column index array, valid on device
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin
 
 #undef PANGOLIN_CUDA_MEMBER
 

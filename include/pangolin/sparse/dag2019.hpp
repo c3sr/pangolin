@@ -8,7 +8,7 @@
 #include "pangolin/edge_list.hpp"
 #include "pangolin/logger.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*! A CSR with additional edge source vector
 
@@ -36,4 +36,4 @@ public:
   static DAG2019 from_edgelist(EdgeList &l);
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

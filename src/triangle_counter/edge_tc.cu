@@ -6,7 +6,7 @@
 
 #include <cub/cub.cuh>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 // count intersections between sorted lists a and b
 __device__ static size_t linear_intersection_count(const Uint *const aBegin,
@@ -343,4 +343,4 @@ size_t EdgeTC::count() {
   return total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

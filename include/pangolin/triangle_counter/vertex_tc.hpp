@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class VertexTC : public CUDATriangleCounter {
 private:
@@ -43,4 +43,4 @@ public:
   virtual size_t num_nodes() { return numNodes_; }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

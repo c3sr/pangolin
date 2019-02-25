@@ -10,7 +10,7 @@ static bool endswith(const std::string &base, const std::string &suffix) {
   return 0 == base.compare(base.size() - suffix.size(), suffix.size(), suffix);
 }
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 EdgeListReader *EdgeListReader::from_file(const std::string &path) {
   if (endswith(path, ".bel")) {
@@ -39,4 +39,4 @@ EdgeList EdgeListReader::read_all() {
   return edgeList;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

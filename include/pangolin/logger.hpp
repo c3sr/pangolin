@@ -4,7 +4,7 @@
 #include "namespace.hpp"
 #include <spdlog/spdlog.h>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 namespace logger {
 extern std::shared_ptr<spdlog::logger> console;
@@ -19,6 +19,6 @@ void set_level(const Level &level);
 
 } // namespace logger
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin
 
 #define LOG(level, ...) pangolin::logger::console->level(__VA_ARGS__)

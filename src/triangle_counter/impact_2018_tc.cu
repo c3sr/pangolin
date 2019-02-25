@@ -6,7 +6,7 @@
 #include <limits>
 #include <nvToolsExt.h>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 __global__ static void kernel_tc(size_t *triangleCounts, Int *edgeSrc,
                                  Int *edgeDst, Int *nodes, size_t edgeOffset,
@@ -239,4 +239,4 @@ size_t IMPACT2018TC::count() {
   return total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

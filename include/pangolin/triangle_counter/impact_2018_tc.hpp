@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class IMPACT2018TC : public CUDATriangleCounter {
 
@@ -31,4 +31,4 @@ public:
   virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

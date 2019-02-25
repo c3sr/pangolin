@@ -11,7 +11,7 @@
 #include <limits>
 #include <nvToolsExt.h>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*! Count triangles
 
@@ -370,4 +370,4 @@ size_t IMPACT2019TC::count() {
   return final_total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

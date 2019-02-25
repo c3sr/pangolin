@@ -12,7 +12,7 @@
 #include "pangolin/triangle_counter/cusparse_tc.hpp"
 #include "pangolin/utilities.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 CusparseTC::CusparseTC(Config &c) : descrA_(nullptr), descrC_(nullptr) {
 
@@ -160,4 +160,4 @@ CusparseTC::~CusparseTC() {
   CUSPARSE(cusparseDestroy(handle_));
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

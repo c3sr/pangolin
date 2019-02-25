@@ -13,7 +13,7 @@
 #define DEVICE
 #endif
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 template <typename Index> COO<Index>::COO() {}
 
@@ -94,7 +94,7 @@ template <typename Index> COOView<Index> COO<Index>::view() const {
   return view;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin
 
 #undef HOST
 #undef DEVICE

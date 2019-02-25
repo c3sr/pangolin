@@ -5,7 +5,7 @@
 
 #define __TRI_SANITY_CHECK
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 ParGraph ParGraph::from_edges(const std::set<Edge> &local,
                               const std::set<Edge> &remote) {
@@ -238,4 +238,4 @@ ParGraph::partition_nonzeros(const size_t numParts) const {
 
 #undef __TRI_SANITY_CHECK
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

@@ -5,7 +5,7 @@
 #include "namespace.hpp"
 #include "types.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*! A directed edge is a std::pair
 
@@ -13,4 +13,4 @@ PANGOLIN_BEGIN_NAMESPACE()
 */
 typedef std::pair<Uint, Uint> Edge;
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

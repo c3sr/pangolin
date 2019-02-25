@@ -5,6 +5,6 @@
 #include "pangolin/edge.hpp"
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 typedef std::vector<Edge> EdgeList;
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

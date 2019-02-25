@@ -12,7 +12,7 @@
 #define DEVICE
 #endif
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 template <typename Index> class COO;
 
@@ -76,7 +76,7 @@ public:
   const Index *row_ind() { return rowInd_.data(); } //<! row index array
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin
 
 #undef HOST
 #undef DEVICE

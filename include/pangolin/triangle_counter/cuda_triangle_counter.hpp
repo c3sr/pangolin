@@ -10,7 +10,7 @@
 #include "pangolin/namespace.hpp"
 #include "pangolin/triangle_counter/triangle_counter.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class CUDATriangleCounter : public TriangleCounter {
 protected:
@@ -34,4 +34,4 @@ public:
   virtual size_t num_nodes() = 0;
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

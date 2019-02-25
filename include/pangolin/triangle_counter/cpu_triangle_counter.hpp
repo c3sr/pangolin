@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class CPUTriangleCounter : public TriangleCounter {
 private:
@@ -21,4 +21,4 @@ public:
   virtual uint64_t num_edges() override { return dag_.num_edges(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

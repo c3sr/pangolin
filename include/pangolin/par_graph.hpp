@@ -10,7 +10,7 @@
 
 #define __TRI_SANITY_CHECK
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class ParGraph {
 public:
@@ -48,4 +48,4 @@ public:
 
 #undef __TRI_SANITY_CHECK
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

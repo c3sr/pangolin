@@ -1,7 +1,7 @@
 #include "pangolin/logger.hpp"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-PANGOLIN_BEGIN_NAMESPACE();
+namespace pangolin {
 
 std::shared_ptr<spdlog::logger> logger::console =
     spdlog::stderr_color_mt("pangolin");
@@ -38,4 +38,4 @@ void set_level(const Level &level) {
 }
 } // namespace logger
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

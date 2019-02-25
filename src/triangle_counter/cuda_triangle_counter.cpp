@@ -5,7 +5,7 @@
 #include "pangolin/types.hpp"
 #include "pangolin/utilities.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 CUDATriangleCounter::CUDATriangleCounter(Config &c)
     : gpus_(c.gpus_), unique_gpus_(gpus_.begin(), gpus_.end()) {
@@ -29,4 +29,4 @@ CUDATriangleCounter::CUDATriangleCounter(Config &c)
   nvtxRangePop();
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

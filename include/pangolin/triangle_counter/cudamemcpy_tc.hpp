@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class CudaMemcpyTC : public TriangleCounter {
 private:
@@ -25,4 +25,4 @@ public:
   virtual uint64_t num_edges() override { return hostDAG_.num_edges(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

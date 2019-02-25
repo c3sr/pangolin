@@ -6,7 +6,7 @@
 #include "pangolin/edge_list.hpp"
 #include "pangolin/sparse/csr.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class UnifiedMemoryCSR : public CSR<Uint> {
 private:
@@ -58,4 +58,4 @@ public:
   partition_nonzeros(const size_t numPartitions) const;
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

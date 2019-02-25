@@ -1,7 +1,7 @@
 #include "pangolin/cusparse.hpp"
 #include "pangolin/sparse/cusparse_csr.hu"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 CusparseCSR::CusparseCSR() : descr_(nullptr) {}
 
@@ -46,4 +46,4 @@ CusparseCSR CusparseCSR::from_edgelist(const EdgeList &es,
   return csr;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

@@ -6,7 +6,7 @@
 #include "pangolin/reader/gc_tsv_reader.hpp"
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 static size_t intersection_count(const Int *const aBegin, const Int *const aEnd,
                                  const Int *const bBegin,
@@ -91,4 +91,4 @@ size_t CPUTriangleCounter::count() {
   return total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

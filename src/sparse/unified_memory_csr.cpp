@@ -3,7 +3,7 @@
 #include <cassert>
 #include <set>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*
 Expect the incoming edge list to be sorted in increasing order of src.
@@ -199,4 +199,4 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
   return ret;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

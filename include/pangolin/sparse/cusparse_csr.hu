@@ -10,7 +10,7 @@ Routines for interacting with CUSparse
 #include "pangolin/edge_list.hpp"
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 class CusparseCSR {
 public:
@@ -28,4 +28,4 @@ public:
                                    bool (*edgeFilter)(const Edge &));
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

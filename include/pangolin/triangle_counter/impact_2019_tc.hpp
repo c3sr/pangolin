@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*! The 2019 IMPACT Triangle Counter
 
@@ -38,4 +38,4 @@ public:
   virtual size_t num_nodes() override { return hostDAG_.num_nodes(); }
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

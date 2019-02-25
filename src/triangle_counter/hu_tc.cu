@@ -7,7 +7,7 @@
 #include <cub/cub.cuh>
 #include <nvToolsExt.h>
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 __device__ static bool binary_search(const Int *const array, Int left,
                                      Int right, const Int search_val) {
@@ -231,4 +231,4 @@ size_t Hu2018TC::count() {
   return total;
 }
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin

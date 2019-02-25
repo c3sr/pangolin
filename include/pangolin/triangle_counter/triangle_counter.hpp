@@ -11,7 +11,7 @@
 #include "pangolin/config.hpp"
 #include "pangolin/namespace.hpp"
 
-PANGOLIN_BEGIN_NAMESPACE()
+namespace pangolin {
 
 /*! An interface for all triangle counters */
 class TriangleCounter {
@@ -35,4 +35,4 @@ public:
   static TriangleCounter *CreateTriangleCounter(Config &config);
 };
 
-PANGOLIN_END_NAMESPACE()
+} // namespace pangolin
