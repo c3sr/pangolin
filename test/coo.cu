@@ -1,6 +1,8 @@
+#define CATCH_CONFIG_MAIN
+#include <catch.hpp>
+
 #include "pangolin/pangolin.hpp"
 
-#include <catch.hpp>
 using namespace pangolin;
 
 TEST_CASE("COO<int>::from_edgelist") {
