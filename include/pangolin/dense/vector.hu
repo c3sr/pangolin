@@ -6,75 +6,64 @@
 #else
 #define PANGOLIN_HOST_DEVICE
 #define PANGOLIN_HOST
-#endif 
+#endif
 
 #include <cstdlib>
 
-namespace pangolin
-{
-template <typename VALUE_TYPE>
-PANGOLIN_HOST_DEVICE
-class Vector
-{
-  public:
-    typedef VALUE_TYPE value_type;
-    typedef value_type &reference;
-    typedef const value_type &const_reference;
+namespace pangolin {
+template <typename VALUE_TYPE> PANGOLIN_HOST_DEVICE class Vector {
+public:
+  typedef VALUE_TYPE value_type;
+  typedef value_type &reference;
+  typedef const value_type &const_reference;
 
-  private:
-    size_t capacity_;
-    size_t size_;
-    value_type *data_;
+private:
+  size_t capacity_;
+  size_t size_;
+  value_type *data_;
 
-  public:
-    // default constructor
-    PANGOLIN_HOST explicit Vector();
+public:
+  // default constructor
+  PANGOLIN_HOST explicit Vector();
 
-    PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
+  PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
 
-    // move constructor
-    PANGOLIN_HOST Vector(Vector &&other);
+  // move constructor
+  PANGOLIN_HOST Vector(Vector &&other);
 
-    // copy constructor
-    PANGOLIN_HOST Vector(const Vector &other);
+  // copy constructor
+  PANGOLIN_HOST Vector(const Vector &other);
 
-    // destructor
-    PANGOLIN_HOST ~Vector();
+  // destructor
+  PANGOLIN_HOST ~Vector();
 
-    // move-assignment
-    PANGOLIN_HOST Vector &operator=(Vector &&other);
+  // move-assignment
+  PANGOLIN_HOST Vector &operator=(Vector &&other);
 
-    
-    PANGOLIN_HOST explicit Vector(size_t n);
+  PANGOLIN_HOST explicit Vector(size_t n);
 
-    PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
-    PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;
+  PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
+  PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;
 
-    PANGOLIN_HOST void push_back(const value_type &val);
+  PANGOLIN_HOST void push_back(const value_type &val);
 
-    PANGOLIN_HOST void reserve(size_t n);
+  PANGOLIN_HOST void reserve(size_t n);
 
-    PANGOLIN_HOST void resize(size_t n);
+  PANGOLIN_HOST void resize(size_t n);
 
+  PANGOLIN_HOST void resize(size_t n, const value_type &val);
 
-    PANGOLIN_HOST void resize(size_t n, const value_type& val);
+  PANGOLIN_HOST void shrink_to_fit();
 
+  PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
+  PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;
+  PANGOLIN_HOST_DEVICE inline bool empty() const noexcept;
 
-    PANGOLIN_HOST void shrink_to_fit();
-
-    PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
-    PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;
-    PANGOLIN_HOST_DEVICE inline bool empty() const noexcept;
-
-    PANGOLIN_HOST_DEVICE inline reference operator[](size_t n);
-    PANGOLIN_HOST_DEVICE inline const_reference operator[](size_t n) const;
+  PANGOLIN_HOST_DEVICE inline reference operator[](size_t n);
+  PANGOLIN_HOST_DEVICE inline const_reference operator[](size_t n) const;
 };
 
 } // namespace pangolin
-
-
-
-
 
 #include "vector-impl.hu"
 

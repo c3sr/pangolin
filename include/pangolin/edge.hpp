@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "types.hpp"
 #include "namespace.hpp"
+#include "types.hpp"
 
 PANGOLIN_BEGIN_NAMESPACE()
 

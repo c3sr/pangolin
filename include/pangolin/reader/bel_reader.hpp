@@ -5,16 +5,14 @@ Reader for Binary edge list format
 each edge is 8 bytes integer little-endian of dst, src, weight
 */
 
-#include <cstring>
 #include <cassert>
+#include <cstring>
 
 #include "pangolin/reader/edge_list_reader.hpp"
 
-namespace pangolin
-{
+namespace pangolin {
 
-class BELReader : public EdgeListReader
-{
+class BELReader : public EdgeListReader {
 
 private:
   FILE *fp_;

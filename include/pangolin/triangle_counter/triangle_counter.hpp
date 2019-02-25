@@ -1,6 +1,6 @@
 /*! \file triangle_counter.hpp
     \brief A Documented file.
-    
+
     Details.
 */
 
@@ -14,8 +14,7 @@
 PANGOLIN_BEGIN_NAMESPACE()
 
 /*! An interface for all triangle counters */
-class TriangleCounter
-{
+class TriangleCounter {
 
 public:
   virtual ~TriangleCounter();
@@ -27,7 +26,8 @@ public:
   virtual size_t count() = 0;
 
   // available after read_data()
-  virtual uint64_t num_edges() = 0; //!< number of edges traversed during triangle counting
+  virtual uint64_t
+  num_edges() = 0; //!< number of edges traversed during triangle counting
 
   /*! Create a triangle counter
 

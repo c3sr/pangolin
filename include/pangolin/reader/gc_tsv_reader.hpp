@@ -6,25 +6,22 @@ Each line should be ASCII tab-separated dst, src, weight,
 sorted with increasing src, and within each src increasing dst
 */
 
-#include <iterator>
-#include <string>
-#include <sstream>
-#include <fstream>
 #include <cassert>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <sstream>
+#include <string>
 
 #include "pangolin/reader/edge_list_reader.hpp"
 
-namespace pangolin
-{
-class TSVIterator : public std::iterator<std::input_iterator_tag, Edge>
-{
+namespace pangolin {
+class TSVIterator : public std::iterator<std::input_iterator_tag, Edge> {
 private:
   std::istream *is_;
   Edge value_;
 
-  void read_next_value()
-  {
+  void read_next_value() {
     std::string line;
     assert(is_ != nullptr);
     std::getline(*is_, line);
@@ -35,40 +32,32 @@ private:
     iss >> src64;
 
     // no characters extracted or parsing error
-    if (iss.fail())
-    {
+    if (iss.fail()) {
       is_ = nullptr;
-    }
-    else
-    {
+    } else {
       value_ = Edge(src64, dst64);
     }
   }
 
 public:
   TSVIterator() : is_(nullptr) {}
-  TSVIterator(std::istream &is) : is_(&is)
-  {
+  TSVIterator(std::istream &is) : is_(&is) {
     // immediately read a value so *iterator.begin() returns the first Edge
     assert(is_ != nullptr);
     read_next_value();
   }
-  const Edge &operator*() const
-  {
+  const Edge &operator*() const {
     assert(is_ != nullptr);
     return value_;
   }
-  const Edge *operator->() const
-  {
+  const Edge *operator->() const {
     assert(is_ != nullptr);
     return &value_;
   }
 
-  TSVIterator &operator++()
-  {
+  TSVIterator &operator++() {
     assert(is_ != nullptr);
-    if (is_->eof())
-    {
+    if (is_->eof()) {
       is_ = nullptr;
       return *this;
     }
@@ -78,19 +67,12 @@ public:
     return *this;
   }
 
-  bool operator!=(const TSVIterator &other) const
-  {
-    return is_ != other.is_;
-  }
+  bool operator!=(const TSVIterator &other) const { return is_ != other.is_; }
 
-  bool operator==(const TSVIterator &other) const
-  {
-    return !(*this != other);
-  }
+  bool operator==(const TSVIterator &other) const { return !(*this != other); }
 };
 
-class GraphChallengeTSVReader : public EdgeListReader
-{
+class GraphChallengeTSVReader : public EdgeListReader {
 
 private:
   FILE *fp_;

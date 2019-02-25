@@ -1,8 +1,8 @@
 #include "pangolin/logger.hpp"
 #include "pangolin/par_graph.hpp"
 #include "pangolin/reader/gc_tsv_reader.hpp"
-#include "pangolin/utilities.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
+#include "pangolin/utilities.hpp"
 
 #include <cub/cub.cuh>
 
@@ -172,8 +172,8 @@ kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
               const Uint *rowStarts, const Uint *nonZeros,
               const char *isLocalNonZero, const size_t numRows) {
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
-  static_assert(BLOCK_DIM_X % 32 ==
-                0, "expect integer number of warps per block");
+  static_assert(BLOCK_DIM_X % 32 == 0,
+                "expect integer number of warps per block");
 
   const int warpIdx = threadIdx.x / 32; // which warp in thread block
   const int laneIdx = threadIdx.x % 32; // which thread in warp
@@ -252,7 +252,7 @@ VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
   } else if (kernel == "hash") {
     kernel_ = Kernel::HASH;
   } else {
-    LOG(critical , "Unknown triangle counting kernel \"{}\" for VertexTC",
+    LOG(critical, "Unknown triangle counting kernel \"{}\" for VertexTC",
         c.kernel_);
     exit(-1);
   }
@@ -281,7 +281,8 @@ void VertexTC::read_data(const std::string &path) {
     }
   }
 
-  SPDLOG_TRACE(logger::console, "filtered edge list has {} entries", filtered.size());
+  SPDLOG_TRACE(logger::console, "filtered edge list has {} entries",
+               filtered.size());
 
   SPDLOG_DEBUG(logger::console, "building DAG");
   // for singe dag, no remote edges
@@ -360,7 +361,8 @@ size_t VertexTC::count() {
       SPDLOG_DEBUG(logger::console, "linear search kernel");
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x,
+                   dimBlock.x);
       kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -371,7 +373,8 @@ size_t VertexTC::count() {
       SPDLOG_DEBUG(logger::console, "linear_shared search kernel");
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x,
+                   dimBlock.x);
       kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -383,7 +386,8 @@ size_t VertexTC::count() {
       const size_t BLOCK_DIM_X = 512;
       dim3 dimBlock(BLOCK_DIM_X);
       dim3 dimGrid(graph.num_rows());
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x,
+                   dimBlock.x);
       kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
           triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
           isLocalNonZero_d_[i], numRows);
@@ -391,12 +395,12 @@ size_t VertexTC::count() {
       break;
     }
     case Kernel::HASH: {
-      LOG(critical , "hash kernel unimplmeneted");
+      LOG(critical, "hash kernel unimplmeneted");
       exit(-1);
       break;
     }
     default: {
-      LOG(critical , "unexpected kernel type.");
+      LOG(critical, "unexpected kernel type.");
       exit(-1);
     }
     }

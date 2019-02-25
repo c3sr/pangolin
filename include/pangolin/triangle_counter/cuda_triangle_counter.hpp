@@ -1,19 +1,18 @@
 #pragma once
 
+#include <map>
 #include <set>
 #include <vector>
-#include <map>
 
 #include <cuda_runtime.h>
 
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/config.hpp"
 #include "pangolin/namespace.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 
 PANGOLIN_BEGIN_NAMESPACE()
 
-class CUDATriangleCounter : public TriangleCounter
-{
+class CUDATriangleCounter : public TriangleCounter {
 protected:
   // treat each of these as a separate GPU (even if there are duplicates)
   std::vector<int> gpus_;

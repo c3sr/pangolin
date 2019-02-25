@@ -2,13 +2,12 @@
 
 #include <nvgraph.h>
 
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/dag_lowertriangular_csr.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 
 PANGOLIN_BEGIN_NAMESPACE()
 
-class NvGraphTriangleCounter : public TriangleCounter
-{
+class NvGraphTriangleCounter : public TriangleCounter {
 private:
   int gpu_;
   DAGLowerTriangularCSR dag_;
