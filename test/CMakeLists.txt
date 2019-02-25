@@ -12,7 +12,7 @@ function(pangolin_add_test)
   message(STATUS ${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin32)
-  target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch)
+  target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch2)
   add_test(NAME ${PARSED_ARGS_NAME} COMMAND ${PARSED_ARGS_NAME} -a)
 endfunction()
 
