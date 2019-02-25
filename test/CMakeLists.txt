@@ -9,7 +9,6 @@ function(pangolin_add_test)
     "SRCS" # list of names of nuluti-valued arguments
     ${ARGN} # arguments of the function to parse
   )
-  message(STATUS ${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin32)
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch2)
