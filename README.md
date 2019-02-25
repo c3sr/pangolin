@@ -12,11 +12,21 @@ Allowed values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERR`, `CRITICAL`.
 
 ### Prerequisites
 
+| Dockerfile | cpu | CUDA | c++ | CMake | Builds |
+|-|-|-|-|-|-|
+| test_cuda92-ubuntu1804.Dockerfile  | amd64  | 9.2     | g++ 7.3.0   | 3.11.0 | &#9745; |
+| test_cuda100-ubuntu1804.Dockerfile | amd64  | 10.0    | g++ 7.3.0   | 3.11.0 | &#9745; |
+|                                    | POWER9 | 9.2.148 | clang 5.0.0 | 3.12.0 | &#9745; |
+| test_cuda80-ubuntu1404.Dockerfile  | amd64  | 8.0.61  | g++ 4.8.4   | 3.11.0 | x |
+| test_cuda80-ubuntu1404-clang38.Dockerfile  | amd64  | 8.0.61     | clang 3.8.0 | 3.11.0 | x |
+| test_cuda80-ubuntu1604.Dockerfile  | amd64  | 8.0.61  | g++ 5.4.0   | 3.11.0 | x |
+
+
 1. Install CUDA
 
 Instructions for installing CUDA on supported systems may be obtained from Nvidia's website.
 
-2. Install CMake 3.12+
+2. Install CMake 3.11+
 
 On x86 linux, CMake provides prebuilt binaries with a shell script.
 On POWER, you will need to build CMake from source.
