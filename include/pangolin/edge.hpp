@@ -13,4 +13,10 @@ namespace pangolin {
 */
 typedef std::pair<Uint, Uint> Edge;
 
+/*! A directed edge is a std::pair
+
+    first() is src, second() is dst
+*/
+template <typename NodeTy> using EdgeTy = std::pair<NodeTy, NodeTy>;
+
 } // namespace pangolin

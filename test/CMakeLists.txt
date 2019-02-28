@@ -25,3 +25,8 @@ pangolin_add_test(
   NAME vector
   SRCS vector.cu
 )
+
+pangolin_add_test(
+  NAME fc
+  SRCS fc.cpp
+)
