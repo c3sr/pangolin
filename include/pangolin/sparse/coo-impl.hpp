@@ -84,6 +84,56 @@ COO<Index> COO<Index>::from_edgelist(const EdgeList &es,
   return csr;
 }
 
+
+  /*! Build a COO from a sequence of edges
+
+  */
+template <typename Index>
+template <typename EdgeIter>
+COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(EdgeTy<Index>)> f) {
+  COO<Index> coo;
+
+  if (begin == end) {
+    LOG(warn, "constructing from empty edge sequence");
+    return coo;
+  }
+
+  for (auto ei = begin; ei != end; ++ei) {
+    EdgeTy<Index> edge = *ei;
+    const Index src = edge.first;
+    const Index dst = edge.second;
+
+    // edge has a new src and should be in a new row
+    // even if the edge is filtered out, we need to add empty rows
+    while (coo.rowPtr_.size() != size_t(src + 1)) {
+      // expecting inputs to be sorted by src, so it should be at least
+      // as big as the current largest row we have recored
+      assert(src >= coo.rowPtr_.size());
+      // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_,
+      // coo.edgeSrc_.size());
+      coo.rowPtr_.push_back(coo.colInd_.size());
+    }
+
+    if (f(edge)) {
+      coo.rowInd_.push_back(src);
+      coo.colInd_.push_back(dst);
+    } else {
+      continue;
+    }
+
+  }
+
+  // add the final length of the non-zeros to the offset array
+  coo.rowPtr_.push_back(coo.colInd_.size());
+
+  assert(coo.rowInd_.size() == coo.colInd_.size());
+  return coo;
+}
+
+
+
+
+
 template <typename Index> COOView<Index> COO<Index>::view() const {
   COOView<Index> view;
   view.nnz_ = nnz();

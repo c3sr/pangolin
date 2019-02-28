@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "pangolin/dense/vector.hu"
 #include "pangolin/edge_list.hpp"
 #include "pangolin/types.hpp"
@@ -29,6 +31,7 @@ private:
   uint64_t num_rows_; //!< length of rowOffset - 1
 
 public:
+  typedef Index index_type;
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *rowInd_; //!< non-zero row indices
   const Index *colInd_; //!< non-zero column indices
@@ -36,9 +39,12 @@ public:
   HOST DEVICE uint64_t nnz() const { return nnz_; }
   HOST DEVICE uint64_t num_rows() const { return num_rows_; }
 
-  const Index *row_ptr() const { return rowPtr_; } //!< row offset array
-  const Index *col_ind() const { return colInd_; } //!< column index array
-  const Index *row_ind() const { return rowInd_; } //<! row index array
+  const Index *row_ptr() const { return rowPtr_; }              //!< row offset array
+  const Index *col_ind() const { return colInd_; }              //!< column index array
+  const Index *row_ind() const { return rowInd_; }              //<! row index array
+  HOST DEVICE const Index *device_row_ptr() { return rowPtr_; } //!< row offset array
+  HOST DEVICE const Index *device_col_ind() { return colInd_; } //!< column index array
+  HOST DEVICE const Index *device_row_ind() { return rowInd_; } //<! row index array
 };
 
 /*! \brief A COO matrix backed by CUDA Unified Memory, with a CSR rowPtr
@@ -52,6 +58,7 @@ private:
   Index maxCol_;
 
 public:
+  typedef Index index_type;
   COO();                 //!< empty CSR
   Vector<Index> rowPtr_; //!< offset in col_ that each row starts at
   Vector<Index> colInd_; //!< non-zero column indices
@@ -67,13 +74,26 @@ public:
 
   Do not include edges where edgeFilter(edge) returns true
   */
-  static COO<Index> from_edgelist(const EdgeList &es,
-                                  bool (*edgeFilter)(const Edge &) = nullptr);
+  static COO<Index> from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &) = nullptr);
+
+  /*! Build a COO from a sequence of edges
+
+    Only include edges where f is true (default = all edges)
+
+  */
+  template <typename EdgeIter>
+  static COO<Index> from_edges(EdgeIter begin, EdgeIter end,
+                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
+
   COOView<Index> view() const; //!< create a COOView for this COO
 
   const Index *row_ptr() { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() { return colInd_.data(); } //!< column index array
   const Index *row_ind() { return rowInd_.data(); } //<! row index array
+
+  HOST DEVICE const Index *device_row_ptr() { return rowPtr_.data(); } //!< row offset array
+  HOST DEVICE const Index *device_col_ind() { return colInd_.data(); } //!< column index array
+  HOST DEVICE const Index *device_row_ind() { return rowInd_.data(); } //<! row index array
 };
 
 } // namespace pangolin

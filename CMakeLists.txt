@@ -116,6 +116,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/allocator/cuda_zero_copy.hpp
     include/pangolin/dense/cuda_managed_vector.hpp
     include/pangolin/dense/cuda_zero_copy_vector.hpp
+    include/pangolin/generator/complete.hpp
     include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
     include/pangolin/sparse/gpu_csr-impl.hpp
@@ -152,6 +153,7 @@ set(PANGOLIN_CU_SOURCES
 )
     
 set(PANGOLIN_CU_HEADERS
+  include/pangolin/pangolin.cuh
   include/pangolin/sparse/cusparse_csr.hu  
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
@@ -183,8 +185,15 @@ pangolin_compile_options(
   -Xcompiler=-Wfloat-equal;
   -Xcompiler=-Wundef;
   -Xcompiler=-Wvla;
-  -Xcompiler=-Wshadow>
+  -Xcompiler=-Wshadow;>
 )
+pangolin_compile_options(
+  PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:
+  -arch=sm_35;>
+)
+
+set_pangolin_properties(PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   pangolin_compile_options(

@@ -10,6 +10,10 @@ function(pangolin_add_test)
     ${ARGN} # arguments of the function to parse
   )
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
+  set_target_properties(${PARSED_ARGS_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  target_compile_options(${PARSED_ARGS_NAME}
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+  )
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin32)
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch2)
   add_test(NAME ${PARSED_ARGS_NAME} COMMAND ${PARSED_ARGS_NAME} -a)
@@ -29,4 +33,9 @@ pangolin_add_test(
 pangolin_add_test(
   NAME fc
   SRCS fc.cpp
+)
+
+pangolin_add_test(
+  NAME tc_coo
+  SRCS tc_coo.cu
 )
