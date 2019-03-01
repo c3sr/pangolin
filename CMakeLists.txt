@@ -172,7 +172,16 @@ add_library(pangolin::pangolin64 ALIAS pangolin64)
 # need to add the arch flags to the device link step as well
 # there is no way to do this through targets, so we do it
 # the old fashioned way
-set(CMAKE_CUDA_FLAGS "-arch=sm_61")
+# include PTX for at least dynamic paralellism, plus binaries for Pascal, Volta, and Turing as supported
+if (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 10)
+set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61,sm_70,sm_75")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 9)
+set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61,sm_70")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 8)
+set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61")
+else()
+set(CMAKE_CUDA_FLAGS "-arch=compute_35")
+endif()
 
 ## Add CUDA flags
 pangolin_compile_options(
