@@ -2,7 +2,7 @@
 
 #include <cub/cub.cuh>
 
-#include "pangolin/atomic_add.cuh"
+#include "count.cuh"
 #include "pangolin/dense/vector.hu"
 #include "search.cuh"
 
@@ -10,42 +10,27 @@ namespace pangolin {
 
 /*! \brief count of elements in A that appear in B
 
-    @param[inout] count pointer to the count. caller should initialize to 0.
-    \param        A     the array of needles
-    \param        aSz   the number of elements in A
-    \param        B     the haystack
-    \param        bSz   the number of elements in B
+    @param[inout] count       pointer to the count. caller should initialize to 0.
+    \param        A           the array of needles
+    \param        aSz         the number of elements in A
+    \param        B           the haystack
+    \param        bSz         the number of elements in B
+    \tparam       BLOCK_DIM_X the dimension of the thread block
 */
 template <size_t BLOCK_DIM_X, typename T>
 __global__ void kernel_sorted_count_binary(uint64_t *count, const T *const A, const size_t aSz, const T *const B,
                                            const size_t bSz) {
-
-  // Specialize BlockReduce for a 1D block of 128 threads on type int
-  typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
-  // Allocate shared memory for BlockReduce
-  __shared__ typename BlockReduce::TempStorage tempStorage;
-
-  int gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-
-  uint64_t threadCount = 0;
-
-  for (size_t i = gx; i < aSz; i += gridDim.x * BLOCK_DIM_X) {
-    // printf("looking for %d from 0 to %lu\n", A[i], bSz);
-    ulonglong2 t = serial_sorted_search_binary_exclusive(B, 0, bSz, A[i]);
-    threadCount += t.x;
-  }
-
-  // aggregate all counts found by this block
-  uint64_t aggregate = BlockReduce(tempStorage).Sum(threadCount);
-
-  // Add to total count
-  if (0 == threadIdx.x) {
-    // printf("found %lu\n", aggregate);
-    atomicAdd(count, aggregate);
-  }
+  grid_sorted_count_binary<BLOCK_DIM_X>(count, A, aSz, B, bSz);
 }
 
-template <typename CsrCooMatrix> __global__ void launcher(uint64_t *tempStorage, CsrCooMatrix csr) {
+/*! \brief Count triangles in a CSR/COO hybrid matrix
+
+    @param[out] edgeTriangleCounts array of number of non-zeros per-edge triangle counts
+    @param[in]  csr                A CSR/COO matrix
+
+    Produce a per-edge triangle count using CUDA dynamic parallelism
+*/
+template <typename CsrCooMatrix> __global__ void kernel_edgetc_dynpar(uint64_t *edgeTriangleCounts, CsrCooMatrix csr) {
   using Index = typename CsrCooMatrix::index_type;
 
   const int gx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -67,7 +52,7 @@ template <typename CsrCooMatrix> __global__ void launcher(uint64_t *tempStorage,
     const size_t dstSz = dstStop - dstStart;
 
     constexpr size_t dimBlock = 256;
-    uint64_t *edgeCount = &tempStorage[i];
+    uint64_t *edgeCount = &edgeTriangleCounts[i];
     if (srcSz > dstSz) { // src has more neighbors than dst, search for srcs in parallel
       const size_t dimGrid = (srcSz + dimBlock - 1) / dimBlock;
       kernel_sorted_count_binary<dimBlock><<<dimGrid, dimBlock>>>(edgeCount, srcBegin, srcSz, dstBegin, dstSz);
@@ -78,7 +63,11 @@ template <typename CsrCooMatrix> __global__ void launcher(uint64_t *tempStorage,
   }
 }
 
-template <typename CsrCooMatrix> uint64_t triangle_count(const CsrCooMatrix &csr) {
+/*! \brief Count triangles
+
+  \tparam CsrCooMatrix a DAG in hybrid CSR/COO format
+ */
+template <typename CsrCooMatrix> uint64_t tc_edge_dynpar(const CsrCooMatrix &csr) {
 
   // allocate space for the total count
   uint64_t *count = nullptr;
@@ -86,27 +75,24 @@ template <typename CsrCooMatrix> uint64_t triangle_count(const CsrCooMatrix &csr
   *count = 0;
 
   // allocate temporary storage of one count per edge
-  // SPDLOG_TRACE(logger::console, "csr has {} non-zeros", csr.nnz());
-  Vector<uint64_t> tempStorage(csr.nnz());
+  Vector<uint64_t> edgeTriangleCounts(csr.nnz());
 
   // one thread per non-zero (edge)
   constexpr size_t dimBlock = 512;
   const size_t dimGrid = (csr.nnz() + dimBlock - 1) / dimBlock;
   // constexpr size_t dimBlock = 1;
   // const size_t dimGrid = 1;
-  // SPDLOG_TRACE(logger::console, "{}x{}", dimGrid, dimBlock);
 
   // count triangles on the device
-  launcher<<<dimGrid, dimBlock>>>(tempStorage.data(), csr.view());
+  kernel_edgetc_dynpar<<<dimGrid, dimBlock>>>(edgeTriangleCounts.data(), csr.view());
   CUDA_RUNTIME(cudaDeviceSynchronize());
-  // SPDLOG_TRACE(logger::console, "{} {} {}", tempStorage[0], tempStorage[1], tempStorage[2]);
 
   // reduction
   void *d_temp_storage = NULL;
   size_t temp_storage_bytes = 0;
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, tempStorage.data(), count, csr.nnz());
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeTriangleCounts.data(), count, csr.nnz());
   CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, tempStorage.data(), count, csr.nnz());
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeTriangleCounts.data(), count, csr.nnz());
   CUDA_RUNTIME(cudaDeviceSynchronize());
 
   CUDA_RUNTIME(cudaFree(d_temp_storage));

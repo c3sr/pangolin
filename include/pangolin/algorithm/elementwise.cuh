@@ -58,13 +58,11 @@ may put zeros into A
 
 */
 template <size_t BLOCK_DIM_X, typename IndexType, typename ValueType>
-__device__ void
-inner_product_inplace_block(const IndexType *indA, ValueType *valA,
-                            const IndexType nA, const IndexType *indB,
-                            const ValueType *valB, const IndexType nB) {
+__device__ void inner_product_inplace_block(const IndexType *indA, ValueType *valA, const IndexType nA,
+                                            const IndexType *indB, const ValueType *valB, const IndexType nB) {
   // One thread per element of A
   for (IndexType i = threadIdx.x; i < nA; i += BLOCK_DIM_X) {
-    ulonglong2 t = serial_sorted_search_binary(indB, 0, nB - 1, indA[i]);
+    ulonglong2 t = serial_sorted_search_binary(indB, 0, nB, indA[i]);
     bool found = t.x;
     IndexType loc = t.y;
 
@@ -84,12 +82,10 @@ may put zeros into A's rows
 
 */
 template <size_t BLOCK_DIM_X, typename IndexType, typename ValueType>
-__global__ void
-csr_elementwise_inplace(const IndexType *csrRowPtrA,
-                        const IndexType *csrColIndA, ValueType *csrValA,
-                        const IndexType *csrRowPtrB,
-                        const IndexType *csrColIndB, const ValueType *csrValB,
-                        const IndexType numRows //!< number of rows in A and B
+__global__ void csr_elementwise_inplace(const IndexType *csrRowPtrA, const IndexType *csrColIndA, ValueType *csrValA,
+                                        const IndexType *csrRowPtrB, const IndexType *csrColIndB,
+                                        const ValueType *csrValB,
+                                        const IndexType numRows //!< number of rows in A and B
 ) {
   // const IndexType nnzA = csrRowPtrA[numRows] - csrRowPtrA[0];
   // const IndexType nnzB = csrRowPtrB[numRows] - csrRowPtrB[0];
@@ -101,9 +97,8 @@ csr_elementwise_inplace(const IndexType *csrRowPtrA,
     IndexType colStartB = csrRowPtrB[row];
     IndexType colEndB = csrRowPtrB[row + 1];
 
-    inner_product_inplace_block<BLOCK_DIM_X>(
-        &csrColIndA[colStartA], &csrValA[colStartA], colEndA - colStartA,
-        &csrColIndB[colStartB], &csrValB[colStartB], colEndB - colStartB);
+    inner_product_inplace_block<BLOCK_DIM_X>(&csrColIndA[colStartA], &csrValA[colStartA], colEndA - colStartA,
+                                             &csrColIndB[colStartB], &csrValB[colStartB], colEndB - colStartB);
   }
 }
 
@@ -116,12 +111,10 @@ else, compress the CSR
 
 */
 template <typename IndexType, typename ValueType>
-__global__ void
-csr_compress(const IndexType *csrRowPtrA, const IndexType *csrColIndA,
-             const ValueType *csrValA, const IndexType *csrRowPtrB,
-             const IndexType *csrColIndB, const ValueType *csrValB,
-             const IndexType numRows, //!< number of rows in A and B
-             void *tmp) {
+__global__ void csr_compress(const IndexType *csrRowPtrA, const IndexType *csrColIndA, const ValueType *csrValA,
+                             const IndexType *csrRowPtrB, const IndexType *csrColIndB, const ValueType *csrValB,
+                             const IndexType numRows, //!< number of rows in A and B
+                             void *tmp) {
 
   if (nullptr == tmp) {
 
