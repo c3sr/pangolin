@@ -80,23 +80,26 @@ template <typename CsrCooMatrix> __global__ void launcher(uint64_t *tempStorage,
 
 template <typename CsrCooMatrix> uint64_t triangle_count(const CsrCooMatrix &csr) {
 
-  // one thread per non-zero (edge)
-  constexpr size_t dimBlock = 512;
-  const dim3 dimGrid = (csr.nnz() + dimBlock - 1) / dimBlock;
-  // constexpr size_t dimBlock = 1;
-  // const size_t dimGrid = 1;
-
   // allocate space for the total count
   uint64_t *count = nullptr;
   CUDA_RUNTIME(cudaMallocManaged(&count, sizeof(*count)));
   *count = 0;
 
   // allocate temporary storage of one count per edge
+  // SPDLOG_TRACE(logger::console, "csr has {} non-zeros", csr.nnz());
   Vector<uint64_t> tempStorage(csr.nnz());
+
+  // one thread per non-zero (edge)
+  constexpr size_t dimBlock = 512;
+  const size_t dimGrid = (csr.nnz() + dimBlock - 1) / dimBlock;
+  // constexpr size_t dimBlock = 1;
+  // const size_t dimGrid = 1;
+  // SPDLOG_TRACE(logger::console, "{}x{}", dimGrid, dimBlock);
 
   // count triangles on the device
   launcher<<<dimGrid, dimBlock>>>(tempStorage.data(), csr.view());
   CUDA_RUNTIME(cudaDeviceSynchronize());
+  // SPDLOG_TRACE(logger::console, "{} {} {}", tempStorage[0], tempStorage[1], tempStorage[2]);
 
   // reduction
   void *d_temp_storage = NULL;

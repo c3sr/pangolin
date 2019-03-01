@@ -141,6 +141,7 @@ set(PANGOLIN_CPP_HEADERS
 )
 
 set(PANGOLIN_CU_SOURCES
+  src/pangolin.cu
   src/sparse/cusparse_csr.cu
   src/triangle_counter/cudamemcpy_tc.cu
   src/triangle_counter/cusparse_tc.cu
@@ -153,7 +154,6 @@ set(PANGOLIN_CU_SOURCES
 )
     
 set(PANGOLIN_CU_HEADERS
-  include/pangolin/pangolin.cuh
   include/pangolin/sparse/cusparse_csr.hu  
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
@@ -168,6 +168,11 @@ add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${P
 add_library(pangolin64 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
 add_library(pangolin::pangolin32 ALIAS pangolin32)
 add_library(pangolin::pangolin64 ALIAS pangolin64)
+
+# need to add the arch flags to the device link step as well
+# there is no way to do this through targets, so we do it
+# the old fashioned way
+set(CMAKE_CUDA_FLAGS "-arch=sm_61")
 
 ## Add CUDA flags
 pangolin_compile_options(
@@ -187,10 +192,7 @@ pangolin_compile_options(
   -Xcompiler=-Wvla;
   -Xcompiler=-Wshadow;>
 )
-pangolin_compile_options(
-  PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:
-  -arch=sm_35;>
-)
+
 
 set_pangolin_properties(PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 

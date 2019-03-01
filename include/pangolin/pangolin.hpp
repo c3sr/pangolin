@@ -13,3 +13,15 @@
 #include "triangle_counter/nvgraph_triangle_counter.hpp"
 #include "types.hpp"
 #include "utilities.hpp"
+
+namespace pangolin {
+
+enum class GraphFormat { CsrCoo };
+
+struct GraphDescription {
+  GraphFormat format_;
+  int indexSize_;
+};
+
+void triangleCount(uint64_t *result, void *graph, const GraphDescription graphDescr);
+} // namespace pangolin
