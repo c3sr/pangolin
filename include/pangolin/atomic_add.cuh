@@ -1,5 +1,7 @@
 #pragma once
 
+/*! \brief Convenience wrapper for atomicAdd(uint64_t*, uint64_t)
+ */
 __device__ inline uint64_t atomicAdd(uint64_t *p, uint64_t val) {
   static_assert(sizeof(uint64_t) == sizeof(unsigned long long), "expected uint64_t to be unsigned long long");
   return static_cast<unsigned long long>(
