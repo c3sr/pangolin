@@ -26,6 +26,8 @@ public:
   // default constructor
   PANGOLIN_HOST explicit Vector();
 
+  PANGOLIN_HOST explicit Vector(size_t n);
+
   PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
 
   // move constructor
@@ -39,8 +41,6 @@ public:
 
   // move-assignment
   PANGOLIN_HOST Vector &operator=(Vector &&other);
-
-  PANGOLIN_HOST explicit Vector(size_t n);
 
   PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
   PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;
