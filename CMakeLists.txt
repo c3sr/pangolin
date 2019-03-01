@@ -141,7 +141,6 @@ set(PANGOLIN_CPP_HEADERS
 )
 
 set(PANGOLIN_CU_SOURCES
-  src/pangolin.cu
   src/sparse/cusparse_csr.cu
   src/triangle_counter/cudamemcpy_tc.cu
   src/triangle_counter/cusparse_tc.cu
@@ -157,11 +156,9 @@ set(PANGOLIN_CU_HEADERS
   include/pangolin/sparse/cusparse_csr.hu  
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
-  include/pangolin/algorithm/elementwise.cuh
-  include/pangolin/algorithm/fill.cuh
-  include/pangolin/algorithm/search.cuh
 )
-
+add_subdirectory(include)
+message(STATUS ${PANGOLIN_CU_HEADERS})
 
 
 add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
