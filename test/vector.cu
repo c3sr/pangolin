@@ -5,6 +5,11 @@
 
 using namespace pangolin;
 
+TEST_CASE("Vector ctor(1)") {
+  Vector<int> v(10);
+  REQUIRE(v.size() == 10);
+}
+
 TEST_CASE("Vector ctor(2)") {
   Vector<int> v(10, 1);
   REQUIRE(v.size() == 10);
