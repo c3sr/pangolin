@@ -24,3 +24,16 @@ TEST_CASE("Vector reserve") {
   REQUIRE(v.size() == 0);
   REQUIRE(v.capacity() >= 10);
 }
+
+TEST_CASE("initializer-list 3") {
+  Vector<int> v{0, 1, 2};
+  REQUIRE(v.size() == 3);
+  REQUIRE(v[0] == 0);
+  REQUIRE(v[1] == 1);
+  REQUIRE(v[2] == 2);
+}
+
+TEST_CASE("initializer-list 0") {
+  Vector<int> v{};
+  REQUIRE(v.size() == 0);
+}

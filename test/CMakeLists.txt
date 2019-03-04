@@ -39,3 +39,8 @@ pangolin_add_test(
   NAME tc_coo
   SRCS tc_coo.cu
 )
+
+pangolin_add_test(
+  NAME count
+  SRCS count.cu
+)
