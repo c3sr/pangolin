@@ -23,12 +23,18 @@ private:
   value_type *data_;
 
 public:
-  // default constructor
+  /*! default
+   */
   PANGOLIN_HOST explicit Vector();
 
+  /*! fill
+   */
   PANGOLIN_HOST explicit Vector(size_t n);
-
   PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
+
+  /*!  initializer list
+   */
+  PANGOLIN_HOST Vector(std::initializer_list<VALUE_TYPE> il);
 
   // move constructor
   PANGOLIN_HOST Vector(Vector &&other);
