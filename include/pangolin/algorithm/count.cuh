@@ -3,18 +3,19 @@
 #include <cub/cub.cuh>
 
 #include "pangolin/atomic_add.cuh"
+#include "search.cuh"
 
 namespace pangolin {
 
-/*! \brief return the number of common elements between sorted litsts a and b
+/*! \brief return the number of common elements between sorted lists a and b
  */
 template <typename T>
-__device__ static size_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
-                                                    const T *const aEnd,   //!< end of a
-                                                    const T *const bBegin, //!< beginning of b
-                                                    const T *const bEnd    //!< end of b
+__device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
+                                                      const T *const aEnd,   //!< end of a
+                                                      const T *const bBegin, //!< beginning of b
+                                                      const T *const bEnd    //!< end of b
 ) {
-  size_t count = 0;
+  uint64_t count = 0;
   const T *ap = aBegin;
   const T *bp = bBegin;
 
@@ -54,6 +55,16 @@ __device__ static size_t serial_sorted_count_linear(const T *const aBegin, //!< 
   return count;
 }
 
+/*! \brief return the number of common elements between sorted lists A and B
+ */
+template <typename T>
+__device__ static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
+                                                    const size_t aSz,
+                                                    const T *const B, //!< beginning of b
+                                                    const size_t bSz) {
+  return serial_sorted_count_linear(A, &A[aSz], B, &B[bSz]);
+}
+
 /*! \brief return 1 if search_val is in array between [left, right). return 0 otherwise
  */
 template <typename T>
@@ -85,9 +96,7 @@ template <size_t BLOCK_DIM_X, typename T>
 __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, const size_t aSz, const T *const B,
                                          const size_t bSz) {
 
-  // Specialize BlockReduce for a 1D block of 128 threads on type int
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
-  // Allocate shared memory for BlockReduce
   __shared__ typename BlockReduce::TempStorage tempStorage;
 
   int gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
@@ -111,7 +120,7 @@ __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, cons
 
 /*! \brief warp cooperative count of elements in A that appear in B
 
-    @param[inout] count           pointer to the count. caller should initialize to 0.
+    @param[out]   count           pointer to the count
     @param[in]    A               array A
     @param[in]    aSz             the number of elements in A
     @param[in]    B               array B
@@ -133,11 +142,11 @@ __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, cons
 
   uint64_t threadCount = 0;
   if (aSz < bSz) {
-    for (const T *const u = A + laneIdx; u < A + aSz; u += 32) {
+    for (const T *u = A + laneIdx; u < A + aSz; u += 32) {
       threadCount += pangolin::serial_sorted_count_binary(B, 0, bSz, *u);
     }
   } else {
-    for (const T *const u = B + laneIdx; u < B + bSz; u += 32) {
+    for (const T *u = B + laneIdx; u < B + bSz; u += 32) {
       threadCount += pangolin::serial_sorted_count_binary(A, 0, aSz, *u);
     }
   }
@@ -145,6 +154,53 @@ __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, cons
   uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
 
   if (laneIdx == 0) {
+    *count = aggregate;
+  }
+}
+
+/*! \brief threadblock cooperative count of elements in A that appear in B
+
+    @param[out]   count           pointer to the count
+    @param[in]    A               array A
+    @param[in]    aSz             the number of elements in A
+    @param[in]    B               array B
+    @param[in]    bSz             the number of elements in B
+    \tparam C           coarsening factor: elements per thread
+    \tparam BLOCK_DIM_X Threadblock size
+
+    Each thread takes a consective group of elements from A.
+    The lower bound of the first element of that group into B is found with a binary search
+    Then the search is executed in a linear fashion.
+*/
+template <size_t C, size_t BLOCK_DIM_X, typename T>
+__device__ void block_sorted_count_binary(uint64_t *count, const T *const A, const size_t aSz, const T *const B,
+                                          const size_t bSz) {
+
+  static_assert(C != 0, "expect at least 1 element per thread");
+  uint64_t threadCount = 0;
+
+  // cover entirety of A with block
+  for (size_t i = threadIdx.x * C; i < aSz; i += BLOCK_DIM_X * C) {
+
+    const T *aChunkBegin = &A[i];
+    const T *aChunkEnd = &A[i + C];
+    if (aChunkEnd > &A[aSz]) {
+      aChunkEnd = &A[aSz];
+    }
+
+    // find the lower bound of the beginning of the A-chunk in B
+    ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *aChunkBegin);
+    T lowerBound = uu.y;
+
+    // Search for the A chunk in B, starting at the lower bound
+    threadCount += pangolin::serial_sorted_count_linear(aChunkBegin, aChunkEnd, &B[lowerBound], &B[bSz]);
+  }
+
+  typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage tempStorage;
+  uint64_t aggregate = BlockReduce(tempStorage).Sum(threadCount);
+
+  if (threadIdx.x == 0) {
     *count = aggregate;
   }
 }
