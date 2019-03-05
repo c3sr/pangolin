@@ -2,6 +2,7 @@
 
 #include <cub/cub.cuh>
 
+#include "binary_search.cuh"
 #include "pangolin/atomic_add.cuh"
 #include "search.cuh"
 
@@ -153,20 +154,16 @@ __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, cons
       }
 
       // find the lower bound of the beginning of the A-chunk in B
-      ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *chunkBegin);
-      size_t lowerBound = uu.y;
-
-      // the upper bound is the lower-bound of the thread to the right,
-      // the right-most thread's upper bound is bSz
-      // FIXME: the right'most thread's Upper bound is the lower bound of the
-      size_t upperBound = bSz;
-      if (i + C < aSz) {
-        ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, chunkBegin[C]);
-        upperBound = uu.y;
+      size_t lb = pangolin::binary_search<Bounds::LOWER>(B, bSz, chunkBegin[0]);
+      size_t ub;
+      if (chunkBegin == chunkEnd) {
+        ub = lb;
+      } else {
+        ub = pangolin::binary_search<Bounds::UPPER>(B, bSz, *(chunkEnd - 1));
       }
 
       // Search for the A chunk in B, starting at the lower bound
-      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lowerBound], &B[upperBound]);
+      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lb], &B[ub]);
     }
 
   } else { // search for B in A
@@ -182,11 +179,71 @@ __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, cons
 
       // find the lower bound of the beginning of the B-chunk in A
       ulonglong2 uu = pangolin::serial_sorted_search_binary(A, 0, aSz, *chunkBegin);
-      T lowerBound = uu.y;
+      size_t lowerBound = uu.y;
+
+      size_t upperBound = aSz;
+      if (i + C < bSz) {
+        ulonglong2 uu = pangolin::serial_sorted_search_binary(A, 0, aSz, chunkBegin[C]);
+        upperBound = uu.y;
+      }
 
       // Search for the A chunk in B, starting at the lower bound
-      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &A[lowerBound], &A[aSz]);
+      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &A[lowerBound], &A[upperBound]);
     }
+  }
+
+  typedef cub::WarpReduce<uint64_t> WarpReduce;
+  __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
+  uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
+
+  if (laneIdx == 0) {
+    *count = aggregate;
+  }
+}
+
+/*! \brief warp cooperative count of elements in A that appear in B
+
+    @param[out]   count           pointer to the count
+    @param[in]    A               array A
+    @param[in]    aSz             the number of elements in A
+    @param[in]    B               array B
+    @param[in]    bSz             the number of elements in B
+    \tparam       C               coarsening factor: elements per thread
+    \tparam       WARPS_PER_BLOCK the number of warps in the calling threadblock
+
+    The calling threadblock should be made up of a number of complete warps.
+    The longer array is searched in parallel for elements from the shorter array using a binary search.
+*/
+template <size_t C, size_t WARPS_PER_BLOCK, typename T>
+__device__ void warp_sorted_count_binary2(uint64_t *count, const T *const A, const size_t aSz, const T *const B,
+                                          const size_t bSz) {
+
+  static_assert(C != 0, "expect at least 1 element per thread");
+
+  const int warpIdx = threadIdx.x / 32; // which warp in thread block
+  const int laneIdx = threadIdx.x % 32; // which thread in warp
+
+  uint64_t threadCount = 0;
+
+  // cover entirety of A with warp
+  for (size_t i = laneIdx * C; i < aSz; i += 32 * C) {
+    const T *chunkBegin = &A[i];
+    const T *chunkEnd = &A[i + C];
+    if (chunkEnd > &A[aSz]) {
+      chunkEnd = &A[aSz];
+    }
+
+    // find the lower bound of the beginning of the A-chunk in B
+    size_t lb = pangolin::binary_search<Bounds::LOWER>(B, bSz, chunkBegin[0]);
+    size_t ub;
+    if (chunkBegin == chunkEnd) {
+      ub = lb;
+    } else {
+      ub = pangolin::binary_search<Bounds::UPPER>(B, bSz, *(chunkEnd - 1));
+    }
+
+    // Search for the A chunk in B, starting at the lower bound
+    threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lb], &B[ub]);
   }
 
   typedef cub::WarpReduce<uint64_t> WarpReduce;

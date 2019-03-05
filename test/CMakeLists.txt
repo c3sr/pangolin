@@ -44,3 +44,8 @@ pangolin_add_test(
   NAME count
   SRCS count.cu
 )
+
+pangolin_add_test(
+  NAME binary_search
+  SRCS binary_search.cpp
+)
