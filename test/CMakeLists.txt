@@ -49,3 +49,8 @@ pangolin_add_test(
   NAME binary_search
   SRCS binary_search.cpp
 )
+
+pangolin_add_test(
+  NAME merge_path
+  SRCS merge_path.cpp
+)
