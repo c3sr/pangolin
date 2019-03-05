@@ -125,32 +125,69 @@ __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, cons
     @param[in]    aSz             the number of elements in A
     @param[in]    B               array B
     @param[in]    bSz             the number of elements in B
+    \tparam       C               coarsening factor: elements per thread
     \tparam       WARPS_PER_BLOCK the number of warps in the calling threadblock
 
     The calling threadblock should be made up of a number of complete warps.
     The longer array is searched in parallel for elements from the shorter array using a binary search.
 */
-template <size_t WARPS_PER_BLOCK, typename T>
+template <size_t C, size_t WARPS_PER_BLOCK, typename T>
 __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, const size_t aSz, const T *const B,
                                          const size_t bSz) {
 
-  typedef cub::WarpReduce<uint64_t> WarpReduce;
-  __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
+  static_assert(C != 0, "expect at least 1 element per thread");
 
   const int warpIdx = threadIdx.x / 32; // which warp in thread block
   const int laneIdx = threadIdx.x % 32; // which thread in warp
 
   uint64_t threadCount = 0;
-  if (aSz < bSz) {
-    for (const T *u = A + laneIdx; u < A + aSz; u += 32) {
-      threadCount += pangolin::serial_sorted_count_binary(B, 0, bSz, *u);
+  if (aSz < bSz) { // search for A in B
+
+    // cover entirety of A with block
+
+    for (size_t i = laneIdx * C; i < aSz; i += 32 * C) {
+      const T *chunkBegin = &A[i];
+      const T *chunkEnd = &A[i + C];
+      if (chunkEnd > &A[aSz]) {
+        chunkEnd = &A[aSz];
+      }
+
+      // find the lower bound of the beginning of the A-chunk in B
+      ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *chunkBegin);
+      size_t lowerBound = uu.y;
+
+      // the upper bound is the lower-bound of the thread to the right,
+      // the right-most thread's upper bound is bSz
+      // FIXME: the right'most thread's Upper bound is the lower bound of the
+      size_t upperBound = bSz;
+      upperBound = cub::ShuffleDown(lowerBound, 1, 31, 0xffffffff);
+
+      // Search for the A chunk in B, starting at the lower bound
+      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lowerBound], &B[upperBound]);
     }
-  } else {
-    for (const T *u = B + laneIdx; u < B + bSz; u += 32) {
-      threadCount += pangolin::serial_sorted_count_binary(A, 0, aSz, *u);
+
+  } else { // search for B in A
+
+    // cover entirety of B with block
+    for (size_t i = laneIdx * C; i < bSz; i += 32 * C) {
+
+      const T *chunkBegin = &B[i];
+      const T *chunkEnd = &B[i + C];
+      if (chunkEnd > &B[bSz]) {
+        chunkEnd = &B[bSz];
+      }
+
+      // find the lower bound of the beginning of the B-chunk in A
+      ulonglong2 uu = pangolin::serial_sorted_search_binary(A, 0, aSz, *chunkBegin);
+      T lowerBound = uu.y;
+
+      // Search for the A chunk in B, starting at the lower bound
+      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &A[lowerBound], &A[aSz]);
     }
   }
 
+  typedef cub::WarpReduce<uint64_t> WarpReduce;
+  __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
   uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
 
   if (laneIdx == 0) {
