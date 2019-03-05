@@ -160,7 +160,10 @@ __device__ void warp_sorted_count_binary(uint64_t *count, const T *const A, cons
       // the right-most thread's upper bound is bSz
       // FIXME: the right'most thread's Upper bound is the lower bound of the
       size_t upperBound = bSz;
-      upperBound = cub::ShuffleDown(lowerBound, 1, 31, 0xffffffff);
+      if (i + C < aSz) {
+        ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, chunkBegin[C]);
+        upperBound = uu.y;
+      }
 
       // Search for the A chunk in B, starting at the lower bound
       threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lowerBound], &B[upperBound]);

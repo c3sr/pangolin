@@ -81,7 +81,7 @@ TEST_CASE("gscb") {
 
 template <typename T> __global__ void kernel_wscb(uint64_t *count, T *A, size_t aSz, T *B, size_t bSz) {
   if (threadIdx.x < 32 && blockIdx.x == 0) {
-    warp_sorted_count_binary<1>(count, A, aSz, B, bSz);
+    warp_sorted_count_binary<1, 1>(count, A, aSz, B, bSz);
   }
 }
 
