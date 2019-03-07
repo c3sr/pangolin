@@ -116,6 +116,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/allocator/cuda_zero_copy.hpp
     include/pangolin/dense/cuda_managed_vector.hpp
     include/pangolin/dense/cuda_zero_copy_vector.hpp
+    include/pangolin/file/edge_list_file.hpp
     include/pangolin/generator/complete.hpp
     include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
@@ -165,6 +166,7 @@ add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${P
 add_library(pangolin64 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
 add_library(pangolin::pangolin32 ALIAS pangolin32)
 add_library(pangolin::pangolin64 ALIAS pangolin64)
+add_library(pangolin::pangolin ALIAS pangolin32)
 
 # need to add the arch flags to the device link step as well
 # there is no way to do this through targets, so we do it
@@ -391,11 +393,11 @@ pangolin_include_directories(PUBLIC
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Setting verbose build during Debug")
   set(CMAKE_VERBOSE_MAKEFILE ON)
-  pangolin_compile_definitions(PRIVATE -DSPDLOG_TRACE_ON)
-  pangolin_compile_definitions(PRIVATE -DSPDLOG_DEBUG_ON)
+  pangolin_compile_definitions(PUBLIC -DSPDLOG_TRACE_ON)
+  pangolin_compile_definitions(PUBLIC -DSPDLOG_DEBUG_ON)
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
-  pangolin_compile_definitions(PRIVATE -DNDEBUG)
-  pangolin_compile_definitions(PRIVATE -DSPDLOG_DEBUG_ON)
+  pangolin_compile_definitions(PUBLIC -DNDEBUG)
+  pangolin_compile_definitions(PUBLIC -DSPDLOG_DEBUG_ON)
 endif()
 
 # Add a target to generate API documentation

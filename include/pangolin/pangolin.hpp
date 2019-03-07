@@ -3,6 +3,7 @@
 #include "configure.hpp"
 #include "dense/vector.hu"
 #include "edge_list.hpp"
+#include "file/edge_list_file.hpp"
 #include "generator/complete.hpp"
 #include "logger.hpp"
 #include "reader/bel_reader.hpp"
