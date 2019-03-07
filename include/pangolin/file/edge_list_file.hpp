@@ -108,7 +108,11 @@ public:
       edges.resize(numRead);
       return numRead;
     }
-    default: { LOG(critical, "unexpected file type"); }
+    default: {
+      LOG(critical, "unexpected file type");
+      edges.resize(0);
+      return 0;
+    }
     }
   }
 };
