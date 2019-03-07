@@ -1,8 +1,10 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/pangolin.cuh"
-#include "pangolin/pangolin.hpp"
+#include "pangolin/algorithm/count.cuh"
+#include "pangolin/dense/vector.hu"
+#include "pangolin/logger.hpp"
+#include "pangolin/utilities.hpp"
 
 using namespace pangolin;
 

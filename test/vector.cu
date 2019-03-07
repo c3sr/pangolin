@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/pangolin.hpp"
+#include "pangolin/dense/vector.hu"
 
 using namespace pangolin;
 
