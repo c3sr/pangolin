@@ -39,12 +39,12 @@ public:
   HOST DEVICE uint64_t nnz() const { return nnz_; }
   HOST DEVICE uint64_t num_rows() const { return num_rows_; }
 
-  const Index *row_ptr() const { return rowPtr_; }              //!< row offset array
-  const Index *col_ind() const { return colInd_; }              //!< column index array
-  const Index *row_ind() const { return rowInd_; }              //<! row index array
-  HOST DEVICE const Index *device_row_ptr() { return rowPtr_; } //!< row offset array
-  HOST DEVICE const Index *device_col_ind() { return colInd_; } //!< column index array
-  HOST DEVICE const Index *device_row_ind() { return rowInd_; } //<! row index array
+  const Index *row_ptr() const { return rowPtr_; }                    //!< row offset array
+  const Index *col_ind() const { return colInd_; }                    //!< column index array
+  const Index *row_ind() const { return rowInd_; }                    //<! row index array
+  HOST DEVICE const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
+  HOST DEVICE const Index *device_col_ind() const { return colInd_; } //!< column index array
+  HOST DEVICE const Index *device_row_ind() const { return rowInd_; } //<! row index array
 };
 
 /*! \brief A COO matrix backed by CUDA Unified Memory, with a CSR rowPtr
@@ -87,13 +87,13 @@ public:
 
   COOView<Index> view() const; //!< create a COOView for this COO
 
-  const Index *row_ptr() { return rowPtr_.data(); } //!< row offset array
-  const Index *col_ind() { return colInd_.data(); } //!< column index array
-  const Index *row_ind() { return rowInd_.data(); } //<! row index array
+  const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
+  const Index *col_ind() const { return colInd_.data(); } //!< column index array
+  const Index *row_ind() const { return rowInd_.data(); } //<! row index array
 
-  HOST DEVICE const Index *device_row_ptr() { return rowPtr_.data(); } //!< row offset array
-  HOST DEVICE const Index *device_col_ind() { return colInd_.data(); } //!< column index array
-  HOST DEVICE const Index *device_row_ind() { return rowInd_.data(); } //<! row index array
+  HOST DEVICE const Index *device_row_ptr() const { return rowPtr_.data(); } //!< row offset array
+  HOST DEVICE const Index *device_col_ind() const { return colInd_.data(); } //!< column index array
+  HOST DEVICE const Index *device_row_ind() const { return rowInd_.data(); } //<! row index array
 };
 
 } // namespace pangolin
