@@ -10,6 +10,10 @@ namespace pangolin {
     \tparam bounds UPPER or LOWER bound of searchVal in array
     \tparam It     random-access iterator into array
     \tparam T      type of element to search for
+    \return        an index [0, count] where the requested bound was found
+
+    LOWER bound provides the smallest index in array before searchVal could be inserted without breaking the ordering
+    Likewise, UPPER bound provides the largest such index.
  */
 template <Bounds bounds, typename It, typename T>
 PANGOLIN_HOST_DEVICE size_t binary_search(It array,           //!< [in] array to search
