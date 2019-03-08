@@ -66,8 +66,29 @@ private:
   }
 
   template <typename T> size_t read_tsv(EdgeTy<T> *ptr, const size_t n) {
-    LOG(critical, "tsv reading unimplemented");
-    return 0;
+
+    assert(ptr != nullptr);
+    assert(fp_ != nullptr);
+
+    size_t i = 0;
+    for (; i < n; ++i) {
+      long long unsigned dst, src, weight;
+      const size_t numFilled = fscanf(fp_, "%llu %llu %llu", &dst, &src, &weight);
+      if (numFilled != 3) {
+        if (feof(fp_)) {
+          return i;
+        } else if (ferror(fp_)) {
+          LOG(error, "Error while reading {}: {}", path_, strerror(errno));
+          return i;
+        } else {
+          LOG(critical, "Unexpected error while reading {}", path_);
+          exit(-1);
+        }
+      }
+      ptr[i].first = static_cast<T>(src);
+      ptr[i].second = static_cast<T>(dst);
+    }
+    return i;
   }
 
 public:
@@ -79,6 +100,7 @@ public:
       type_ = FileType::TSV;
     } else {
       LOG(critical, "no reader for file {}", path);
+      exit(-1);
     }
 
     fp_ = fopen(path_.c_str(), "r");
@@ -97,23 +119,24 @@ public:
   template <typename T> size_t get_edges(std::vector<EdgeTy<T>> &edges, const size_t n) {
     SPDLOG_TRACE(logger::console, "requested {} edges", n);
     edges.resize(n);
+
+    size_t numRead;
     switch (type_) {
     case FileType::BEL: {
-      size_t numRead = read_bel(edges.data(), n);
-      edges.resize(numRead);
-      return numRead;
+      numRead = read_bel(edges.data(), n);
+      break;
     }
     case FileType::TSV: {
-      size_t numRead = read_tsv(edges.data(), n);
-      edges.resize(numRead);
-      return numRead;
+      numRead = read_tsv(edges.data(), n);
+      break;
     }
     default: {
       LOG(critical, "unexpected file type");
-      edges.resize(0);
-      return 0;
+      exit(-1);
     }
     }
+    edges.resize(numRead);
+    return numRead;
   }
 };
 
