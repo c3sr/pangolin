@@ -87,6 +87,8 @@ public:
 
   COOView<Index> view() const; //!< create a COOView for this COO
 
+  void read_only_and_prefetch(int dev);
+
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
   const Index *row_ind() const { return rowInd_.data(); } //<! row index array

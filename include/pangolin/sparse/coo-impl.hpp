@@ -136,6 +136,12 @@ template <typename Index> COOView<Index> COO<Index>::view() const {
   return view;
 }
 
+template <typename Index> void COO<Index>::read_only_and_prefetch(int dev) {
+  rowPtr_.read_only_prefetch(dev);
+  rowInd_.read_only_prefetch(dev);
+  colInd_.read_only_prefetch(dev);
+}
+
 } // namespace pangolin
 
 #undef HOST
