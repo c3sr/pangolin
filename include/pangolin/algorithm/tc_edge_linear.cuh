@@ -8,13 +8,14 @@
 
 template <size_t BLOCK_DIM_X, typename CsrCoo>
 __global__ void kernel(uint64_t *count, //!< [inout] the count, caller should zero
-                       const CsrCoo &mat, const size_t numEdges, const size_t edgeStart) {
+                       const CsrCoo mat, const size_t numEdges, const size_t edgeStart) {
 
   typedef typename CsrCoo::index_type Index;
 
   size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
   uint64_t threadCount = 0;
-  for (size_t i = gx; i < mat.nnz(); i += BLOCK_DIM_X * gridDim.x) {
+
+  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) {
     const Index src = mat.device_row_ind()[i];
     const Index dst = mat.device_col_ind()[i];
 
@@ -46,21 +47,24 @@ private:
   uint64_t *count_;
 
 public:
-  LinearTC(int dev) : dev_(dev) {
+  LinearTC(int dev) : dev_(dev), count_(nullptr) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
+    *count_ = 0;
   }
 
-  LinearTC() {
-    CUDA_RUNTIME(cudaStreamDestroy(stream_));
-    CUDA_RUNTIME(cudaFree(count_));
-  }
+  LinearTC() : LinearTC(0) {}
 
   template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0) {
+    *count_ = 0;
     constexpr int dimBlock = 512;
-    dim3 dimGrid = (numEdges + dimBlock - 1) / dimBlock;
-    kernel<dimBlock><<<dimGrid, dimBlock>>>(count_, mat, numEdges, edgeOffset);
+    const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
+    assert(edgeOffset + numEdges <= mat.nnz());
+    assert(count_);
+    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
+    CUDA_RUNTIME(cudaSetDevice(dev_));
+    kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
     CUDA_RUNTIME(cudaGetLastError());
   }
 
@@ -73,6 +77,7 @@ public:
   void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
   uint64_t count() const { return *count_; }
+  int device() const { return dev_; }
 };
 
 } // namespace pangolin
