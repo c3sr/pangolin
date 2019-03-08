@@ -54,3 +54,8 @@ pangolin_add_test(
   NAME merge_path
   SRCS merge_path.cpp
 )
+
+pangolin_add_test(
+  NAME test_counter
+  SRCS test_counter.cu
+)
