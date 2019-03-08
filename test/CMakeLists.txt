@@ -41,8 +41,8 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
-  NAME count
-  SRCS count.cu
+  NAME test_count
+  SRCS test_count.cu
 )
 
 pangolin_add_test(
