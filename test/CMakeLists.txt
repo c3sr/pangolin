@@ -59,3 +59,8 @@ pangolin_add_test(
   NAME test_counter
   SRCS test_counter.cu
 )
+
+pangolin_add_test(
+  NAME test_flow
+  SRCS test_flow.cu
+)
