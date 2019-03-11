@@ -64,7 +64,7 @@ public:
     *count_ = 0;
     // create one warp per edge
     constexpr int dimBlock = 512;
-    const int dimGrid = (32 * numEdges + dimBlock - 1) / dimBlock;
+    const int dimGrid = (32 * numEdges + dimBlock - 1) / (dimBlock * c);
     assert(edgeOffset + numEdges <= mat.nnz());
     assert(count_);
     SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
@@ -82,8 +82,11 @@ public:
     case 8:
       kernel<dimBlock, 8><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
       break;
+    case 16:
+      kernel<dimBlock, 16><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
+      break;
     default:
-      LOG(critical, "unsupported coarsening factor, try 1,2,4,8");
+      LOG(critical, "unsupported coarsening factor, try 1,2,4,8,16");
       exit(-1);
     }
     CUDA_RUNTIME(cudaGetLastError());
