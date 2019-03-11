@@ -27,6 +27,7 @@ set(CMAKE_COLOR_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/GetGitRevisionDescription.cmake")
 
 
@@ -82,6 +83,8 @@ endif()
 find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
+find_package(numa REQUIRED)
+
 
 set(PANGOLIN_CPP_SOURCES
   src/config.cpp
@@ -159,7 +162,7 @@ set(PANGOLIN_CU_HEADERS
   include/pangolin/dense/vector-impl.hu
 )
 add_subdirectory(include)
-message(STATUS ${PANGOLIN_CU_HEADERS})
+
 
 
 add_library(pangolin32 SHARED ${PANGOLIN_CPP_HEADERS} ${PANGOLIN_CU_HEADERS} ${PANGOLIN_CU_SOURCES} ${PANGOLIN_CPP_SOURCES})
@@ -359,6 +362,10 @@ pangolin_link_libraries(PUBLIC cub::cub)
 pangolin_link_libraries(PRIVATE nvgraph)
 pangolin_link_libraries(PRIVATE nvToolsExt)
 pangolin_link_libraries(PRIVATE cusparse)
+if (numa_FOUND)
+  pangolin_link_libraries(PUBLIC ${numa_LIBRARY})
+  pangolin_include_directories(SYSTEM INTERFACE ${numa_INCLUDE_DIR})
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
