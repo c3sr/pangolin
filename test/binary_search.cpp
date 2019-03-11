@@ -23,6 +23,8 @@ TEST_CASE("0") {
 TEST_CASE("1") {
   REQUIRE(0 == lb(0, {0}));
   REQUIRE(1 == ub(0, {0}));
+  REQUIRE(1 == lb(1, {0}));
+  REQUIRE(1 == ub(1, {0}));
   REQUIRE(0 == lb(0, {1}));
   REQUIRE(0 == ub(0, {1}));
   REQUIRE(0 == lb(1, {1}));

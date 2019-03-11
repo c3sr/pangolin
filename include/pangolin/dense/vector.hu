@@ -61,6 +61,10 @@ public:
 
   PANGOLIN_HOST void shrink_to_fit();
 
+  /*! mark allocation as read-only and preffetch to device
+   */
+  PANGOLIN_HOST void read_only_prefetch(int dev);
+
   PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
   PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;
   PANGOLIN_HOST_DEVICE inline bool empty() const noexcept;

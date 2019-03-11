@@ -81,13 +81,16 @@ TEST_CASE("gscb") {
   REQUIRE(4 == gscb<int>({0, 1, 2, 3, 4}, {1, 2, 3, 4, 5}));
 }
 
-template <typename T> __global__ void kernel_wscb(uint64_t *count, T *A, size_t aSz, T *B, size_t bSz) {
+template <size_t C, typename T> __global__ void kernel_wscb(uint64_t *count, T *A, size_t aSz, T *B, size_t bSz) {
   if (threadIdx.x < 32 && blockIdx.x == 0) {
-    warp_sorted_count_binary<1, 1>(count, A, aSz, B, bSz);
+    size_t myCount = warp_sorted_count_binary<C, 1>(A, aSz, B, bSz);
+    if (threadIdx.x % 32 == 0) {
+      *count = myCount;
+    }
   }
 }
 
-template <typename T> static uint64_t wscb(std::initializer_list<T> a, std::initializer_list<T> b) {
+template <size_t C, typename T> static uint64_t wscb(std::initializer_list<T> a, std::initializer_list<T> b) {
 
   uint64_t *count = nullptr;
   CUDA_RUNTIME(cudaMallocManaged(&count, sizeof(*count)));
@@ -95,7 +98,7 @@ template <typename T> static uint64_t wscb(std::initializer_list<T> a, std::init
   // compute the size of the intersection
   Vector<T> A(a);
   Vector<T> B(b);
-  kernel_wscb<<<1, 32>>>(count, A.data(), a.size(), B.data(), B.size());
+  kernel_wscb<C><<<1, 32>>>(count, A.data(), a.size(), B.data(), B.size());
   CUDA_RUNTIME(cudaDeviceSynchronize());
 
   uint64_t ret = *count;
@@ -103,18 +106,37 @@ template <typename T> static uint64_t wscb(std::initializer_list<T> a, std::init
   return ret;
 }
 
-TEST_CASE("wscb") {
+TEST_CASE("wscb<1>") {
   logger::set_level(logger::Level::TRACE);
-  REQUIRE(0 == wscb<int>({}, {}));
-  REQUIRE(0 == wscb<int>({}, {1}));
-  REQUIRE(1 == wscb<int>({0}, {0}));
-  REQUIRE(1 == wscb<int>({0}, {0, 1}));
-  REQUIRE(0 == wscb<int>({0}, {1}));
-  REQUIRE(0 == wscb<int>({0}, {1, 2}));
-  REQUIRE(0 == wscb<int>({0, 2, 4}, {1, 3, 5}));
-  REQUIRE(1 == wscb<int>({0, 1, 4}, {1}));
-  REQUIRE(2 == wscb<int>({0, 1, 4}, {1, 4}));
-  REQUIRE(4 == wscb<int>({0, 1, 2, 3, 4}, {1, 2, 3, 4, 5}));
+  REQUIRE(0 == wscb<1, int>({}, {}));
+  REQUIRE(0 == wscb<1, int>({}, {1}));
+  REQUIRE(1 == wscb<1, int>({0}, {0}));
+  REQUIRE(1 == wscb<1, int>({0}, {0, 1}));
+  REQUIRE(0 == wscb<1, int>({0}, {1}));
+  REQUIRE(0 == wscb<1, int>({0}, {1, 2}));
+  REQUIRE(0 == wscb<1, int>({0, 2, 4}, {1, 3, 5}));
+  REQUIRE(1 == wscb<1, int>({0, 1, 4}, {1}));
+  REQUIRE(2 == wscb<1, int>({0, 1, 4}, {1, 4}));
+  REQUIRE(4 == wscb<1, int>({0, 1, 2, 3, 4}, {1, 2, 3, 4, 5}));
+}
+
+TEST_CASE("wscb<2>") {
+  logger::set_level(logger::Level::TRACE);
+  REQUIRE(0 == wscb<2, int>({}, {}));
+  REQUIRE(0 == wscb<2, int>({}, {1}));
+  REQUIRE(1 == wscb<2, int>({0}, {0}));
+  REQUIRE(1 == wscb<2, int>({0}, {0, 1}));
+  REQUIRE(0 == wscb<2, int>({0}, {1}));
+  REQUIRE(0 == wscb<2, int>({0}, {1, 2}));
+  REQUIRE(0 == wscb<2, int>({0, 2, 4}, {1, 3, 5}));
+  REQUIRE(1 == wscb<2, int>({0, 1, 4}, {1}));
+  REQUIRE(2 == wscb<2, int>({0, 1, 4}, {1, 4}));
+  REQUIRE(4 == wscb<2, int>({0, 1, 2, 3, 4}, {1, 2, 3, 4, 5}));
+}
+
+TEST_CASE("wscb<4>") {
+  logger::set_level(logger::Level::TRACE);
+  REQUIRE(6 == wscb<4, int>({0, 1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6, 7}));
 }
 
 template <size_t C, size_t BLOCK_DIM_X, typename T>
