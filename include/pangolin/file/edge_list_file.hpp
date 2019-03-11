@@ -7,13 +7,21 @@
 
 namespace pangolin {
 
-bool endswith(const std::string &base, const std::string &suffix) {
+/*! check if base string ends with suffix string
+
+/returns true if base ends with suffix, false otherwise
+*/
+bool endswith(const std::string &base,  //!< [in] the base string
+              const std::string &suffix //!< [in] the suffix to check for
+) {
   if (base.size() < suffix.size()) {
     return false;
   }
   return 0 == base.compare(base.size() - suffix.size(), suffix.size(), suffix);
 }
 
+/*! a class representing an edge list file
+ */
 class EdgeListFile {
 
 private:
@@ -92,7 +100,13 @@ private:
   }
 
 public:
-  EdgeListFile(const std::string &path) : path_(path) {
+  /*! \brief Construct an EdgeListFile
+
+    Supports GraphChallenge TSV or BEL files
+  */
+  EdgeListFile(const std::string &path //!< [in] the path of the file
+               )
+      : path_(path) {
     LOG(debug, "EdgeListFile for \"{}\"", path_);
     if (endswith(path, ".bel")) {
       type_ = FileType::BEL;
@@ -116,7 +130,17 @@ public:
     }
   }
 
-  template <typename T> size_t get_edges(std::vector<EdgeTy<T>> &edges, const size_t n) {
+  /*! \brief attempt to read n edges from the file
+
+    \tparam T the node ID type
+    \returns the number of edges read
+
+  */
+  template <typename T>
+  size_t
+  get_edges(std::vector<EdgeTy<T>> &edges, //!< [out] the read edges. Resized to the number of successfully read edges
+            const size_t n                 //!< [in] the number of edges to try to read
+  ) {
     SPDLOG_TRACE(logger::console, "requested {} edges", n);
     edges.resize(n);
 
