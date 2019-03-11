@@ -7,6 +7,8 @@ using namespace pangolin;
 
 TEST_CASE("") {
   FlowVector<int> v;
-  v.with_producer(Component::CPU(0));
-  v.with_consumer(Component::GPU(0)).with_consumer(Component::GPU(1));
+
+  v.add_producer(Component::CPU(0, AccessKind::ManyOnce))
+      .add_consumer(Component::GPU(0, AccessKind::ManyShared))
+      .add_consumer(Component::GPU(1, AccessKind::ManyShared));
 }

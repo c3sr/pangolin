@@ -83,7 +83,7 @@ endif()
 find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP REQUIRED)
-find_package(numa REQUIRED)
+find_package(NUMA REQUIRED)
 
 
 set(PANGOLIN_CPP_SOURCES
@@ -362,9 +362,8 @@ pangolin_link_libraries(PUBLIC cub::cub)
 pangolin_link_libraries(PRIVATE nvgraph)
 pangolin_link_libraries(PRIVATE nvToolsExt)
 pangolin_link_libraries(PRIVATE cusparse)
-if (numa_FOUND)
-  pangolin_link_libraries(PUBLIC ${numa_LIBRARY})
-  pangolin_include_directories(SYSTEM INTERFACE ${numa_INCLUDE_DIR})
+if (NUMA_FOUND)
+  pangolin_link_libraries(PUBLIC NUMA::NUMA)
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

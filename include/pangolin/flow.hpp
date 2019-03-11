@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pangolin/utilities.hpp"
+
 namespace pangolin {
 
 enum class AccessKind { OnceExclusive, OnceShared, ManyExclusive, ManyShared, Unknown };
@@ -10,13 +12,15 @@ bool is_exclusive(const AccessKind &k) { return k == AccessKind::ManyExclusive |
 bool is_shared(const AccessKind &k) { return k == AccessKind::OnceShared || k == AccessKind::ManyShared; }
 
 class Component {
+
 private:
-  enum class Type { CPU, GPU };
+  enum class Type { CPU, GPU, UNKNOWN };
 
 public:
   Type type_;
   int id_;
   AccessKind accessKind_;
+  Component() : type_(Type::UNKNOWN), accessKind_(AccessKind::Unknown) {}
 
 private:
   Component(Type type, int id) : type_(type), id_(id), accessKind_(AccessKind::Unknown) {}
@@ -29,6 +33,7 @@ public:
 };
 
 template <typename T, size_t MAX_COMPONENTS = 16> class FlowVector {
+
 private:
   cudaStream_t stream_;
   size_t numConsumers_;
@@ -37,29 +42,53 @@ private:
   Component consumers_[MAX_COMPONENTS];
 
 public:
-  FlowVector() : stream_(nullptr) { CUDA_RUNTIME(cudaStreamCreate(stream_)); }
+  FlowVector() : stream_(0), numProducers_(0), numConsumers_(0) { CUDA_RUNTIME(cudaStreamCreate(&stream_)); }
   ~FlowVector() {
     if (stream_) {
       CUDA_RUNTIME(cudaStreamDestroy(stream_));
     }
   }
 
-  FlowVector<T> &with_producer(const Component &c) {
+  FlowVector<T> &add_producer(const Component &c) {
     assert(numProducers_ < MAX_COMPONENTS);
-    producers[numProducers_++] = c;
+    producers_[numProducers_++] = c;
     return *this;
   }
-  FlowVector<T> with_consumer(const Component &c) {
+  FlowVector<T> &add_consumer(const Component &c) {
     assert(numConsumers_ < MAX_COMPONENTS);
-    consumers[numConsumers_++] = c;
+    consumers_[numConsumers_++] = c;
+    return *this;
   }
-  void to_producer_async() {}
-  void to_consumer_async() {}
-  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
-  /*! get a const view of the container
-   */
-  void view() {}
+  static FlowVector<T> from(std::initializer_list<Component> &cs) {
+    FlowVector<T> v;
+    for (const auto &c : cs) {
+      v.add_producer(c);
+    }
+    return v;
+  }
+
+  static FlowVector<T> to(std::initializer_list<Component> &cs) {
+    FlowVector<T> v;
+    for (const auto &c : cs) {
+      v.add_consumer(c);
+    }
+    return v;
+  }
+
+  void to_producer_async() {}
+  void to_producer() {
+    to_producer_async();
+    sync();
+  }
+
+  void to_consumer_async() {}
+  void to_consumer() {
+    to_consumer_async();
+    sync();
+  }
+
+  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 };
 
 } // namespace pangolin
