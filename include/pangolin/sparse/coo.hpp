@@ -87,7 +87,15 @@ public:
 
   COOView<Index> view() const; //!< create a COOView for this COO
 
-  void read_only_and_prefetch(int dev);
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on all data
+   */
+  HOST void read_mostly(const int dev);
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
+   */
+  HOST void accessed_by(const int dev);
+  /*! call cudaMemPrefetchAsync(..., dev) on all data
+   */
+  HOST void prefetch_async(const int dev);
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array

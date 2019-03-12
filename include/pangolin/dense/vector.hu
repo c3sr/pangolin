@@ -61,9 +61,15 @@ public:
 
   PANGOLIN_HOST void shrink_to_fit();
 
-  /*! mark allocation as read-only and preffetch to device
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on Vector data
    */
-  PANGOLIN_HOST void read_only_prefetch(int dev);
+  PANGOLIN_HOST void read_mostly(const int dev);
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
+   */
+  PANGOLIN_HOST void accessed_by(const int dev);
+  /*! call cudaMemPrefetchAsync(..., dev) on Vector data
+   */
+  PANGOLIN_HOST void prefetch_async(const int dev);
 
   PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
   PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;

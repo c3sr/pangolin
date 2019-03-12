@@ -6,10 +6,10 @@
 #include "pangolin/logger.hpp"
 
 #ifdef __CUDACC__
-#define HOST __host__
+#define PANGOLIN_HOST __host__
 #define DEVICE __device__
 #else
-#define HOST
+#define PANGOLIN_HOST
 #define DEVICE
 #endif
 
@@ -17,7 +17,7 @@ namespace pangolin {
 
 template <typename Index> COO<Index>::COO() {}
 
-template <typename Index> HOST DEVICE uint64_t COO<Index>::num_rows() const {
+template <typename Index> PANGOLIN_HOST DEVICE uint64_t COO<Index>::num_rows() const {
   if (rowPtr_.size() == 0) {
     return 0;
   } else {
@@ -136,13 +136,25 @@ template <typename Index> COOView<Index> COO<Index>::view() const {
   return view;
 }
 
-template <typename Index> void COO<Index>::read_only_and_prefetch(int dev) {
-  rowPtr_.read_only_prefetch(dev);
-  rowInd_.read_only_prefetch(dev);
-  colInd_.read_only_prefetch(dev);
+template <typename Index> void COO<Index>::read_mostly(const int dev) {
+  rowPtr_.read_mostly(dev);
+  rowInd_.read_mostly(dev);
+  colInd_.read_mostly(dev);
+}
+
+template <typename Index> void COO<Index>::accessed_by(const int dev) {
+  rowPtr_.accessed_by(dev);
+  rowInd_.accessed_by(dev);
+  colInd_.accessed_by(dev);
+}
+
+template <typename Index> void COO<Index>::prefetch_async(const int dev) {
+  rowPtr_.prefetch_async(dev);
+  rowInd_.prefetch_async(dev);
+  colInd_.prefetch_async(dev);
 }
 
 } // namespace pangolin
 
-#undef HOST
+#undef PANGOLIN_HOST
 #undef DEVICE

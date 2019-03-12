@@ -174,9 +174,17 @@ template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::shrink_to_
   }
 }
 
-template <typename T> PANGOLIN_HOST void Vector<T>::read_only_prefetch(int dev) {
+template <typename T> PANGOLIN_HOST void Vector<T>::read_mostly(const int dev) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
   CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetReadMostly, dev));
+}
+
+template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
+  // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
+  CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetAccessedBy, dev));
+}
+
+template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
   CUDA_RUNTIME(cudaMemPrefetchAsync(data_, size() * sizeof(T), dev));
 }
