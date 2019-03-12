@@ -64,3 +64,8 @@ pangolin_add_test(
   NAME test_flow
   SRCS test_flow.cu
 )
+
+pangolin_add_test(
+  NAME test_zero
+  SRCS test_zero.cu
+)

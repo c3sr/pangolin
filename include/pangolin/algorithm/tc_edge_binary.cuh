@@ -3,6 +3,7 @@
 #include <cub/cub.cuh>
 
 #include "count.cuh"
+#include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
 #include "search.cuh"
 
@@ -61,7 +62,7 @@ public:
 
   template <typename CsrCoo>
   void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0, const size_t c = 1) {
-    *count_ = 0;
+    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     // create one warp per edge
     constexpr int dimBlock = 512;
     const int dimGrid = (32 * numEdges + dimBlock - 1) / (dimBlock * c);
