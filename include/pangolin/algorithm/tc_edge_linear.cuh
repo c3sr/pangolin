@@ -58,6 +58,7 @@ public:
 
   template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0) {
     *count_ = 0;
+    CUDA_RUNTIME(cudaMemPrefetchAsync(count_, sizeof(*count_), dev_, stream_));
     constexpr int dimBlock = 512;
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
