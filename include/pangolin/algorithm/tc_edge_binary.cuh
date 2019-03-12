@@ -55,7 +55,8 @@ public:
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
-    *count_ = 0;
+    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
+    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
   }
 
   BinaryTC() : BinaryTC(0) {}
