@@ -51,13 +51,21 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
-  NAME merge_path
-  SRCS merge_path.cpp
+  NAME test_merge_path
+  SRCS test_merge_path.cpp
 )
 
 pangolin_add_test(
-  NAME test_counter
-  SRCS test_counter.cu
+  NAME test_tc_edge_linear
+  SRCS test_tc_edge_linear.cu
+)
+pangolin_add_test(
+  NAME test_tc_edge_binary
+  SRCS test_tc_edge_binary.cu
+)
+pangolin_add_test(
+  NAME test_tc_edge_merge
+  SRCS test_tc_edge_merge.cu
 )
 
 pangolin_add_test(

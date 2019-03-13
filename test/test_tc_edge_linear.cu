@@ -6,6 +6,9 @@
 
 using namespace pangolin;
 
-TEST_CASE("ctor") { LinearTC c; }
+TEST_CASE("ctor") {
+  LinearTC c;
+  REQUIRE(c.count() == 0);
+}
 
 TEST_CASE("vector") { std::vector<LinearTC> v; }
