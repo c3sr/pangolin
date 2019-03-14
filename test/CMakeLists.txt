@@ -77,3 +77,8 @@ pangolin_add_test(
   NAME test_zero
   SRCS test_zero.cu
 )
+
+pangolin_add_test(
+  NAME test_map
+  SRCS test_map.cu
+)
