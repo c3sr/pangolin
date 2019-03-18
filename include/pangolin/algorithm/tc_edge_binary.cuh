@@ -32,8 +32,14 @@ __global__ void kernel(uint64_t *count,                         //!< [inout] the
     const Index dstStop = mat.device_row_ptr()[dst + 1];
 
     // only thread 0 will return the full count
-    warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(
-        &mat.device_col_ind()[srcStart], srcStop - srcStart, &mat.device_col_ind()[dstStart], dstStop - dstStart);
+    // search in parallel through the smaller array into the larger array
+    if (dstStop - dstStart > srcStop - srcStart) {
+      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(
+          &mat.device_col_ind()[srcStart], srcStop - srcStart, &mat.device_col_ind()[dstStart], dstStop - dstStart);
+    } else {
+      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(
+          &mat.device_col_ind()[dstStart], dstStop - dstStart, &mat.device_col_ind()[srcStart], srcStop - srcStart);
+    }
   }
 
   // Add to total count
@@ -65,8 +71,8 @@ public:
   void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0, const size_t c = 1) {
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     // create one warp per edge
-    constexpr int dimBlock = 512;
-    const int dimGrid = (32 * numEdges + dimBlock - 1) / (dimBlock * c);
+    constexpr int dimBlock = 256;
+    const int dimGrid = (32 * numEdges + (dimBlock * c) - 1) / (dimBlock * c);
     assert(edgeOffset + numEdges <= mat.nnz());
     assert(count_);
     SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
