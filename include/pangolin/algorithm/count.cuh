@@ -126,7 +126,9 @@ __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, cons
     \return                       The count found by the warp (in lane 0 only)
 
     The calling threadblock should be made up of a number of complete warps.
-    The longer array is searched in parallel for elements from the shorter array using a binary search.
+    Each thread searches for C elements of A in B.
+    First, a binary search is used to find the lower bound of the chunk in B.
+    Then, a sequential count of matching elements is used.
 */
 template <size_t C, size_t WARPS_PER_BLOCK, typename T>
 __device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
