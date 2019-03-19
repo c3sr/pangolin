@@ -163,17 +163,10 @@ __device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
       }
 
       // find the lower bound of the beginning of the A-chunk in B
-      size_t lb = pangolin::binary_search<Bounds::LOWER>(B, bSz, chunkBegin[0]);
-
-      size_t ub;
-      if (chunkBegin == chunkEnd) {
-        ub = lb;
-      } else {
-        ub = pangolin::binary_search<Bounds::UPPER>(B, bSz, *(chunkEnd - 1));
-      }
+      const size_t lb = pangolin::binary_search<Bounds::LOWER>(B, bSz, chunkBegin[0]);
 
       // Search for the A chunk in B, starting at the lower bound
-      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lb], &B[ub]);
+      threadCount += pangolin::serial_sorted_count_linear(chunkBegin, chunkEnd, &B[lb], &B[bSz]);
     }
   }
 
