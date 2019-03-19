@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "gpu_csr.hpp"
+#include "coo.hpp"
 #include "pangolin/logger.hpp"
 
 #ifdef __CUDACC__
