@@ -7,13 +7,13 @@
 #include "pangolin/dense/vector.hu"
 #include "search.cuh"
 
-template <size_t BLOCK_DIM_X, size_t C, typename CsrCoo>
-__global__ void kernel(uint64_t *count,                         //!< [inout] the count, caller should zero
-                       const CsrCoo mat, const size_t numEdges, //!< the number of edges this kernel will count
-                       const size_t edgeStart                   //<! the edge this kernel will start counting at
+template <size_t BLOCK_DIM_X, size_t C, typename CsrCooView>
+__global__ void kernel(uint64_t *count,                             //!< [inout] the count, caller should zero
+                       const CsrCooView mat, const size_t numEdges, //!< the number of edges this kernel will count
+                       const size_t edgeStart                       //<! the edge this kernel will start counting at
 ) {
 
-  typedef typename CsrCoo::index_type Index;
+  typedef typename CsrCooView::index_type Index;
 
   static_assert(BLOCK_DIM_X % 32 == 0); // block is multiple of 32
   constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
@@ -23,22 +23,24 @@ __global__ void kernel(uint64_t *count,                         //!< [inout] the
   uint64_t warpCount = 0;
 
   for (size_t i = gwx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x / 32) {
-    const Index src = mat.device_row_ind()[i];
-    const Index dst = mat.device_col_ind()[i];
+    const Index src = mat.rowInd_[i];
+    const Index dst = mat.colInd_[i];
 
-    const Index srcStart = mat.device_row_ptr()[src];
-    const Index srcStop = mat.device_row_ptr()[src + 1];
-    const Index dstStart = mat.device_row_ptr()[dst];
-    const Index dstStop = mat.device_row_ptr()[dst + 1];
+    const Index srcStart = mat.rowPtr_[src];
+    const Index srcStop = mat.rowPtr_[src + 1];
+    const Index dstStart = mat.rowPtr_[dst];
+    const Index dstStop = mat.rowPtr_[dst + 1];
+    const Index dstLen = dstStop - dstStart;
+    const Index srcLen = srcStop - srcStart;
 
     // only thread 0 will return the full count
     // search in parallel through the smaller array into the larger array
-    if (dstStop - dstStart > srcStop - srcStart) {
-      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(
-          &mat.device_col_ind()[srcStart], srcStop - srcStart, &mat.device_col_ind()[dstStart], dstStop - dstStart);
+    if (dstLen > srcLen) {
+      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(&mat.colInd_[srcStart], srcLen,
+                                                                        &mat.colInd_[dstStart], dstLen);
     } else {
-      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(
-          &mat.device_col_ind()[dstStart], dstStop - dstStart, &mat.device_col_ind()[srcStart], srcStop - srcStart);
+      warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(&mat.colInd_[dstStart], dstLen,
+                                                                        &mat.colInd_[srcStart], srcLen);
     }
   }
 

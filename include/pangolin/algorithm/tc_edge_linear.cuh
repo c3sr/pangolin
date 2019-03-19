@@ -7,23 +7,23 @@
 #include "pangolin/dense/vector.hu"
 #include "search.cuh"
 
-template <size_t BLOCK_DIM_X, typename CsrCoo>
+template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void kernel(uint64_t *count, //!< [inout] the count, caller should zero
-                       const CsrCoo mat, const size_t numEdges, const size_t edgeStart) {
+                       const CsrCooView mat, const size_t numEdges, const size_t edgeStart) {
 
-  typedef typename CsrCoo::index_type Index;
+  typedef typename CsrCooView::index_type Index;
 
   size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
   uint64_t threadCount = 0;
 
   for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) {
-    const Index src = mat.device_row_ind()[i];
-    const Index dst = mat.device_col_ind()[i];
+    const Index src = mat.rowInd_[i];
+    const Index dst = mat.colInd_[i];
 
-    const Index *srcBegin = &mat.device_col_ind()[mat.device_row_ptr()[src]];
-    const Index *srcEnd = &mat.device_col_ind()[mat.device_row_ptr()[src + 1]];
-    const Index *dstBegin = &mat.device_col_ind()[mat.device_row_ptr()[dst]];
-    const Index *dstEnd = &mat.device_col_ind()[mat.device_row_ptr()[dst + 1]];
+    const Index *srcBegin = &mat.colInd_[mat.rowPtr_[src]];
+    const Index *srcEnd = &mat.colInd_[mat.rowPtr_[src + 1]];
+    const Index *dstBegin = &mat.colInd_[mat.rowPtr_[dst]];
+    const Index *dstEnd = &mat.colInd_[mat.rowPtr_[dst + 1]];
 
     threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
   }
