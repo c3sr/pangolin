@@ -6,12 +6,12 @@
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
 
-template <size_t BLOCK_DIM_X, typename Index>
-__global__ void row_kernel(uint64_t *count,      //!<[out] the count will be accumulated into here
-                           const Index src,      //!< [in] the src node
-                           const Index *rowBegin //!< [in] the beginning of nonzeros in CSR row src
-                           const size_t rowLen,  //!< [in] the number of nonzeros in row src
-                           const CsrView mat,    //!< [in] the CSR matrix
+template <size_t BLOCK_DIM_X, typename Index, typename CsrView>
+__global__ void row_kernel(uint64_t *count,       //!<[out] the count will be accumulated into here
+                           const Index src,       //!< [in] the src node
+                           const Index *rowBegin, //!< [in] the beginning of nonzeros in CSR row src
+                           const size_t rowLen,   //!< [in] the number of nonzeros in row src
+                           const CsrView mat      //!< [in] the CSR matrix
 ) {
 
   __shared__ Index rowShared[BLOCK_DIM_X];
@@ -23,18 +23,18 @@ __global__ void row_kernel(uint64_t *count,      //!<[out] the count will be acc
   // each block loads a chunk of the row into shared memory
   const size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
   if (gx < rowLen) {
-    rowShared[threadIdx.x] = row[gx];
+    rowShared[threadIdx.x] = rowBegin[gx];
   }
   __syncthreads();
 
   // each thread does a linear search of this piece of the src neighbor list with the dst neighbor list
-  if (gx < rowSz) {
-    Index dst = row[gx];
+  if (gx < rowLen) {
+    Index dst = rowShared[threadIdx.x]; // FIXME: already loaded once
     const size_t dstStart = mat.rowPtr_[dst];
     const size_t dstStop = mat.rowPtr_[dst + 1];
-    const Index *dstBegin = mat.colInd_[dstStart];
-    const Index *dstEnd = mat.colInd_[dstStop];
-    threadCount = pangolin::serial_sorted_count_linear(rowShared, &rowShared[rowSharedLen], dstBegin, dstEnd);
+    const Index *dstBegin = &mat.colInd_[dstStart];
+    const Index *dstEnd = &mat.colInd_[dstStop];
+    uint64_t threadCount = pangolin::serial_sorted_count_linear(rowShared, &rowShared[rowSharedLen], dstBegin, dstEnd);
     atomicAdd(count, threadCount);
   }
 }
@@ -49,14 +49,14 @@ __global__ void launcher(uint64_t *count,   //!< [inout] the count, caller shoul
   size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
 
   // launch one kernel per row
-  for (size_t row = gx + rowStart; row < rowStart + numRows; row += BLOCK_DIM_X * gridDim.x) {
+  for (Index row = gx + rowStart; row < rowStart + numRows; row += BLOCK_DIM_X * gridDim.x) {
     const Index rowStart = csr.rowPtr_[row];
-    const Index *rowBegin = csr.colInd_[rowStart];
+    const Index *rowBegin = &csr.colInd_[rowStart];
     const size_t rowLen = csr.rowPtr_[row + 1] - rowStart;
 
     constexpr int dimBlock = 512;
     const int dimGrid = (rowLen + dimBlock - 1) / dimBlock;
-    row_kernel<dimBlock><<<dimGrid, dimBlock>>>(count, row, rowBegin, rowLen, mat);
+    row_kernel<dimBlock><<<dimGrid, dimBlock>>>(count, row, rowBegin, rowLen, csr);
   }
 }
 
@@ -97,11 +97,14 @@ public:
     CUDA_RUNTIME(cudaGetLastError());
   }
 
-  template <typename CsrView> uint64_t count_sync(const CsrView &mat, const size_t rowOffset, const size_t n) {
-    count_async(mat, rowOffset, n);
+  template <typename CsrView>
+  uint64_t count_sync(const CsrView &mat, const size_t numRows, const size_t rowOffset = 0) {
+    count_async(mat, numRows, rowOffset);
     sync();
     return count();
   }
+
+  template <typename CsrView> uint64_t count_sync(const CsrView &mat) { return count_sync(mat, mat.num_rows(), 0); }
 
   /*! make the triangle count available in count()
    */
