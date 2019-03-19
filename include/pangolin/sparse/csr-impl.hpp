@@ -68,8 +68,8 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   }
 
   // add the final length of the non-zeros to the offset array
-  coo.rowPtr_.push_back(coo.colInd_.size());
-  return coo;
+  csr.rowPtr_.push_back(csr.colInd_.size());
+  return csr;
 }
 
 template <typename Index> CSRView<Index> CSR<Index>::view() const {

@@ -86,7 +86,6 @@ public:
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
-  const Index *row_ind() const { return rowInd_.data(); } //<! row index array
 
   PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_row_ptr() const { return rowPtr_.data(); } //!< row offset array
   PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_col_ind() const { return colInd_.data(); } //!< column index array
