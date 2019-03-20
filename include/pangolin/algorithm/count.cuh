@@ -224,4 +224,44 @@ __device__ void block_sorted_count_binary(uint64_t *count, const T *const A, con
   }
 }
 
+/*! \brief threadblock cooperative count of elements in A that appear in B
+
+    \tparam C           coarsening factor: elements per thread
+    \tparam BLOCK_DIM_X Threadblock size
+    \returns each thread's contribution to the count
+
+    Each thread takes a consective group of elements from A.
+    The lower bound of the first element of that group into B is found with a binary search
+    Then the search is executed in a linear fashion.
+*/
+template <size_t C, size_t BLOCK_DIM_X, typename T>
+__device__ uint64_t block_sorted_count_binary(const T *const A, //!< [in] array A
+                                              const size_t aSz, //!< [in] the number of elements in A
+                                              const T *const B, //!< [in] array B
+                                              const size_t bSz  //!< [in] the number of elements in B
+) {
+
+  static_assert(C != 0, "expect at least 1 element per thread");
+  uint64_t threadCount = 0;
+
+  // cover entirety of A with block
+  for (size_t i = threadIdx.x * C; i < aSz; i += BLOCK_DIM_X * C) {
+
+    const T *aChunkBegin = &A[i];
+    const T *aChunkEnd = &A[i + C];
+    if (aChunkEnd > &A[aSz]) {
+      aChunkEnd = &A[aSz];
+    }
+
+    // find the lower bound of the beginning of the A-chunk in B
+    ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *aChunkBegin);
+    T lowerBound = uu.y;
+
+    // Search for the A chunk in B, starting at the lower bound
+    threadCount += pangolin::serial_sorted_count_linear(aChunkBegin, aChunkEnd, &B[lowerBound], &B[bSz]);
+  }
+
+  return threadCount;
+}
+
 } // namespace pangolin

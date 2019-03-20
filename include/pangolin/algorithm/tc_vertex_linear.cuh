@@ -6,6 +6,74 @@
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
 
+/*!
+Handle a row of the adjacency matrix
+The block loops over chunks of the src row and puts them in shared memory
+The block considers one element of the src row at a time.
+
+Since src and dst row are sorted, we could be able to march through chunks and load each only once
+*/
+template <size_t BLOCK_DIM_X>
+__global__ void row_block(uint64_t *count,       //!<[out] the count will be accumulated into here
+                          const Index src,       //!< [in] the src node
+                          const Index *rowBegin, //!< [in] the beginning of nonzeros in CSR row src
+                          const size_t rowLen,   //!< [in] the number of nonzeros in row src
+                          const CsrView mat      //!< [in] the CSR matrix
+) {
+
+  __shared__ Index srcShared[BLOCK_DIM_X];
+  __shared__ Index dstShared[BLOCK_DIM_X];
+
+  uint64_t threadCount = 0;
+
+  // loop over chunks of src row
+  for (Index srcChunkStart = 0; srcChunkStart < rowLen; srcChunkStart += BLOCK_DIM_X) {
+    // load src row chunk into shared memory
+    const size_t srcChunkSz = rowLen - srcChunkStart > BLOCK_DIM_X
+                                  ? BLOCK_DIM_X
+                                  : rowLen - srcChunkStart; // min(rowLen-srcChunkStart, BLOCK_DIM_X)
+
+    if (threadIdx.x < srcChunkSz) {
+      srcShared[threadIdx.x] = rowBegin[srcChunkStart + threadIdx.x];
+    }
+    __syncthreads();
+
+    // loop over elements in src chunk
+    for (Index srcIdx = 0; srcIdx < srcChunkSz; srcIdx++) {
+
+      const Index dst = srcShared[srcIdx];
+      const Index dstStart = csr.rowPtr_[dst];
+      const Index dstStop = csr.rowPtr_[dst + 1];
+      const Index dstLen = dstStop - dstStart;
+      const Index *dstBegin = &csr.colInd_[dstStart];
+
+      // loop over dst chunks
+      for (Index dstChunkStart = 0; dstChunkStart < dstLen; dstChunkStart += BLOCK_DIM_X) {
+        // load dst row chunk into shared memory
+        const size_t dstChunkSz = dstLen - dstChunkStart > BLOCK_DIM_X
+                                      ? BLOCK_DIM_X
+                                      : dstLen - dstChunkStart; // min(dstLen-dstChunkStart, BLOCK_DIM_X)
+
+        if (threadIdx.x < dstChunkSz) {
+          dstShared[threadIdx.x] = dstBegin[dstChunkStart + threadIdx.x];
+        }
+        __syncthreads();
+      }
+
+      // binary search of src row chunk into dst row chunk
+      threadCount += pangolin::block_sorted_count_binary(srcShared, srcChunkSz, dstShard, dstChunkSize);
+    }
+  }
+
+  // aggregate local counts into total count
+  atomicAdd(count, threadCount);
+}
+
+/*!
+Handle a row of the adjacency matrix.
+Each threadblock handles a chunk of the src row and puts it in shared memory.
+Each thread loads one element from the row and does a linear comparison of that piece of the src row with the dst row.
+*/
 template <size_t BLOCK_DIM_X, typename Index, typename CsrView>
 __global__ void row_kernel(uint64_t *count,       //!<[out] the count will be accumulated into here
                            const Index src,       //!< [in] the src node
