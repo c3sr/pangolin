@@ -34,7 +34,7 @@ pangolin_add_test(
 )
 pangolin_add_test(
   NAME fc
-  SRCS fc.cpp
+  SRCS fc.cu
 )
 pangolin_add_test(
   NAME tc_coo
@@ -56,10 +56,10 @@ pangolin_add_test(
   NAME test_tc_edge_linear
   SRCS test_tc_edge_linear.cu
 )
-pangolin_add_test(
-  NAME test_tc_vertex_linear
-  SRCS test_tc_vertex_linear.cu
-)
+# pangolin_add_test(
+#   NAME test_tc_vertex_linear
+#   SRCS test_tc_vertex_linear.cu
+# )
 pangolin_add_test(
   NAME test_tc_edge_binary
   SRCS test_tc_edge_binary.cu
