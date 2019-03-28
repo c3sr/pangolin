@@ -95,7 +95,7 @@ public:
   HOST void accessed_by(const int dev);
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
-  HOST void prefetch_async(const int dev);
+  HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array

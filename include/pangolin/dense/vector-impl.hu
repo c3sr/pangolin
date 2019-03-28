@@ -184,9 +184,9 @@ template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
   CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetAccessedBy, dev));
 }
 
-template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev) {
+template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev, cudaStream_t stream) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
-  CUDA_RUNTIME(cudaMemPrefetchAsync(data_, size() * sizeof(T), dev));
+  CUDA_RUNTIME(cudaMemPrefetchAsync(data_, size() * sizeof(T), dev, stream));
 }
 
 template <typename VALUE_TYPE> PANGOLIN_HOST_DEVICE inline size_t Vector<VALUE_TYPE>::capacity() const noexcept {

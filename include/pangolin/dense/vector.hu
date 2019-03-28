@@ -63,9 +63,9 @@ public:
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
    */
   PANGOLIN_HOST void accessed_by(const int dev);
-  /*! call cudaMemPrefetchAsync(..., dev) on Vector data
+  /*! call cudaMemPrefetchAsync(..., dev, stream) on Vector data
    */
-  PANGOLIN_HOST void prefetch_async(const int dev);
+  PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;
   PANGOLIN_HOST_DEVICE inline size_t size() const noexcept;

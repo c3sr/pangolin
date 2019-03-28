@@ -148,10 +148,10 @@ template <typename Index> void COO<Index>::accessed_by(const int dev) {
   colInd_.accessed_by(dev);
 }
 
-template <typename Index> void COO<Index>::prefetch_async(const int dev) {
-  rowPtr_.prefetch_async(dev);
-  rowInd_.prefetch_async(dev);
-  colInd_.prefetch_async(dev);
+template <typename Index> void COO<Index>::prefetch_async(const int dev, cudaStream_t stream) {
+  rowPtr_.prefetch_async(dev, stream);
+  rowInd_.prefetch_async(dev, stream);
+  colInd_.prefetch_async(dev, stream);
 }
 
 } // namespace pangolin
