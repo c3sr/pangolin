@@ -101,8 +101,7 @@ set(PANGOLIN_CPP_SOURCES
   src/sparse/unified_memory_csr.cpp
   src/triangle_counter/cuda_triangle_counter.cpp
   src/triangle_counter/cpu_triangle_counter.cpp
-  src/triangle_counter/nvgraph_triangle_counter.cpp
-  src/triangle_counter/triangle_counter.cpp
+
 )
 set(PANGOLIN_CPP_HEADERS
     include/pangolin/config.hpp
@@ -152,7 +151,9 @@ set(PANGOLIN_CU_SOURCES
   src/triangle_counter/hu_tc.cu
   src/triangle_counter/impact_2018_tc.cu
   src/triangle_counter/impact_2019_tc.cu
+  src/triangle_counter/nvgraph_triangle_counter.cu
   src/triangle_counter/spmm_tc.cu
+  src/triangle_counter/triangle_counter.cu
   src/triangle_counter/vertex_tc.cu
 )
     

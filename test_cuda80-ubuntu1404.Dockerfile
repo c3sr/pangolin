@@ -3,6 +3,7 @@ FROM nvidia/cuda:8.0-devel-ubuntu14.04 as builder
 RUN apt-get update && apt-get install -y --no-install-suggests --no-install-recommends \
     curl \
     git \
+    libnuma-dev \
 && rm -rf /var/lib/apt/lists/*
 
 # install cmake
