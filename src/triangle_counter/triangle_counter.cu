@@ -14,9 +14,7 @@ namespace pangolin {
 
 TriangleCounter::~TriangleCounter() {}
 
-void TriangleCounter::setup_data() {
-  SPDLOG_DEBUG(logger::console, "triangle counter setup_data is a no-op");
-}
+void TriangleCounter::setup_data() { SPDLOG_DEBUG(logger::console, "triangle counter setup_data is a no-op"); }
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c) {
   if (c.type_ == "") {
@@ -35,6 +33,10 @@ TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c) {
       LOG(critical, "nvgraph not supported for sizeof(Int) = {}", sizeof(Int));
       exit(-1);
     }
+#if __CUDACC_VER_MAJOR__ <= 8
+    LOG(critical, "nvgraph in CUDA <= 8 does not support triangle counting");
+    exit(-1);
+#endif //  __CUDACC_VER_MAJOR__ <= 8
     return new NvGraphTriangleCounter(c);
   } else if (c.type_ == "vertex") {
     return new VertexTC(c);

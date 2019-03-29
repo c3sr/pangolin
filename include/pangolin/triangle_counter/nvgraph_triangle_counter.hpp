@@ -7,6 +7,11 @@
 
 namespace pangolin {
 
+/*! \brief Triangle Count using nvgraph
+
+  Undefined behavior for CUDA 8 and below.
+
+*/
 class NvGraphTriangleCounter : public TriangleCounter {
 private:
   int gpu_;
