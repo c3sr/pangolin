@@ -20,9 +20,11 @@
 
 namespace pangolin {
 
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::Vector() : capacity_(0), size_(0), data_(nullptr) {}
+template <typename VALUE_TYPE>
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(void) : capacity_(0), size_(0), data_(nullptr) {}
 
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n) : Vector() {
+template <typename VALUE_TYPE>
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n) : capacity_(0), size_(0), data_(nullptr) {
   resize(n);
   for (size_t i = 0; i < size_; ++i) {
     new (&data_[i]) value_type;
@@ -30,7 +32,7 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n
 }
 
 template <typename VALUE_TYPE>
-PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t count, const_reference value) : Vector() {
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t count, const_reference value) : capacity_(0), size_(0), data_(nullptr) {
   resize(count);
   for (size_t i = 0; i < size(); ++i) {
     data_[i] = value;
@@ -40,7 +42,8 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t count, const_reference value) : 
 /*!  initializer list
  */
 template <typename VALUE_TYPE>
-PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(std::initializer_list<VALUE_TYPE> il) : Vector() {
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(std::initializer_list<VALUE_TYPE> il)
+    : capacity_(0), size_(0), data_(nullptr) {
   resize(il.size());
   auto it = il.begin();
   for (size_t i = 0; i < il.size(); ++i) {
@@ -59,7 +62,8 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other)
 }
 
 // copy constructor
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : Vector() {
+template <typename VALUE_TYPE>
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : capacity_(0), size_(0), data_(nullptr) {
   SPDLOG_TRACE(logger::console, "copy ctor");
   reserve(other.capacity_);
   std::memcpy(data_, other.data_, other.size_ * sizeof(value_type));
