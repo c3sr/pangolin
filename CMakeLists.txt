@@ -82,7 +82,7 @@ if(USE_HUNTER)
 endif()
 find_package(cub CONFIG REQUIRED)
 
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 find_package(NUMA REQUIRED)
 
 
