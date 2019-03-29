@@ -57,9 +57,9 @@ public:
   PANGOLIN_HOST void resize(size_t n, const value_type &val);
   PANGOLIN_HOST void shrink_to_fit();
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on Vector data
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on Vector data
    */
-  PANGOLIN_HOST void read_mostly(const int dev);
+  PANGOLIN_HOST void read_mostly();
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
    */
   PANGOLIN_HOST void accessed_by(const int dev);

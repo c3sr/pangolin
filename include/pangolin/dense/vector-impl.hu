@@ -191,7 +191,8 @@ template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
 
 template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev, cudaStream_t stream) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
-  SPDLOG_TRACE(logger::console, "cudaMemPrefetchAsync {}B to device {} stream {}", size() * sizeof(T), dev, uintptr_t(stream));
+  SPDLOG_TRACE(logger::console, "cudaMemPrefetchAsync {}B to device {} stream {}", size() * sizeof(T), dev,
+               uintptr_t(stream));
   CUDA_RUNTIME(cudaMemPrefetchAsync(data_, size() * sizeof(T), dev, stream));
 }
 
