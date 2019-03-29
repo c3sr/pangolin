@@ -178,9 +178,10 @@ template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::shrink_to_
   }
 }
 
-template <typename T> PANGOLIN_HOST void Vector<T>::read_mostly(const int dev) {
+template <typename T> PANGOLIN_HOST void Vector<T>::read_mostly() {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
-  CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetReadMostly, dev));
+  SPDLOG_TRACE(logger::console, "cudaMemAdviseSetReadMostly {}B on device", size() * sizeof(T));
+  CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetReadMostly, 0 /* ignored */));
 }
 
 template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
@@ -190,6 +191,7 @@ template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
 
 template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev, cudaStream_t stream) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
+  SPDLOG_TRACE(logger::console, "cudaMemPrefetchAsync {}B to device {} stream {}", size() * sizeof(T), dev, uintptr_t(stream));
   CUDA_RUNTIME(cudaMemPrefetchAsync(data_, size() * sizeof(T), dev, stream));
 }
 
