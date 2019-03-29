@@ -87,9 +87,9 @@ public:
 
   COOView<Index> view() const; //!< create a COOView for this COO
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on all data
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
-  HOST void read_mostly(const int dev);
+  HOST void read_mostly();
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
    */
   HOST void accessed_by(const int dev);

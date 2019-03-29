@@ -136,10 +136,10 @@ template <typename Index> COOView<Index> COO<Index>::view() const {
   return view;
 }
 
-template <typename Index> void COO<Index>::read_mostly(const int dev) {
-  rowPtr_.read_mostly(dev);
-  rowInd_.read_mostly(dev);
-  colInd_.read_mostly(dev);
+template <typename Index> void COO<Index>::read_mostly() {
+  rowPtr_.read_mostly();
+  rowInd_.read_mostly();
+  colInd_.read_mostly();
 }
 
 template <typename Index> void COO<Index>::accessed_by(const int dev) {
