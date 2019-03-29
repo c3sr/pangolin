@@ -11,7 +11,7 @@
 #include <cstdlib>
 
 namespace pangolin {
-template <typename VALUE_TYPE> PANGOLIN_HOST_DEVICE class Vector {
+template <typename VALUE_TYPE> class Vector {
 public:
   typedef VALUE_TYPE value_type;
   typedef value_type &reference;
