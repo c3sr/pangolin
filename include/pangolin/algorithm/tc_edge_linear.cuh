@@ -64,10 +64,11 @@ public:
     // CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     // zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     // CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+    // error may be deferred to a cudaHostGetDevicePointer
     CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocMapped));
+
     *count_ = 0;
   }
-
 
   LinearTC() : LinearTC(0) {}
   ~LinearTC() {
@@ -79,13 +80,15 @@ public:
 
   template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0) {
     // zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
+    uint64_t *devCount = nullptr;
+    assert(count_);
+    CUDA_RUNTIME(cudaHostGetDevicePointer(&devCount, count_, 0));
+    SPDLOG_DEBUG(logger::console, "zero {}", uintptr_t(count_));
     *count_ = 0;
+    SPDLOG_DEBUG(logger::console, "did zero");
     constexpr int dimBlock = 512;
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
-    assert(count_);
-    uint64_t *devCount;
-    CUDA_RUNTIME(cudaHostGetDevicePointer(&devCount, count_, 0));
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(devCount, mat, numEdges, edgeOffset);
