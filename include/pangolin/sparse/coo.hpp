@@ -85,6 +85,15 @@ public:
   static COO<Index> from_edges(EdgeIter begin, EdgeIter end,
                                std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
 
+  /*! Add a single edge to the COO.
+
+  The edge should either
+    start a new row
+    be in the current row and have a NZ column index larger than the previous one in the row
+
+  */
+  void add_next_edge(const EdgeTy<Index> &e);
+
   COOView<Index> view() const; //!< create a COOView for this COO
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data

@@ -126,6 +126,25 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   return coo;
 }
 
+template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e) {
+  const Index src = e.first;
+  const Index dst = e.second;
+  SPDLOG_TRACE(logger::console, "handling edge {}->{}", src, dst);
+
+  // edge has a new src and should be in a new row
+  // even if the edge is filtered out, we need to add empty rows
+  while (rowPtr_.size() != size_t(src + 1)) {
+    // expecting inputs to be sorted by src, so it should be at least
+    // as big as the current largest row we have recored
+    assert(src >= rowPtr_.size() && "are edges not ordered by source?");
+    SPDLOG_TRACE(logger::console, "node {} edges start at {}", src, rowPtr_.size());
+    rowPtr_.push_back(colInd_.size());
+  }
+
+  rowInd_.push_back(src);
+  colInd_.push_back(dst);
+}
+
 template <typename Index> COOView<Index> COO<Index>::view() const {
   COOView<Index> view;
   view.nnz_ = nnz();
