@@ -145,6 +145,11 @@ template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e)
   colInd_.push_back(dst);
 }
 
+template <typename Index> void COO<Index>::finish_edges() {
+  // add the final length of the non-zeros to the offset array
+  rowPtr_.push_back(colInd_.size());
+}
+
 template <typename Index> COOView<Index> COO<Index>::view() const {
   COOView<Index> view;
   view.nnz_ = nnz();

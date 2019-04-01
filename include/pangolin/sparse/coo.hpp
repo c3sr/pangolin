@@ -94,6 +94,11 @@ public:
   */
   void add_next_edge(const EdgeTy<Index> &e);
 
+  /*!
+    Should be called after add_next_edge
+  */
+  void finish_edges();
+
   COOView<Index> view() const; //!< create a COOView for this COO
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
