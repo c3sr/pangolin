@@ -10,7 +10,7 @@
 template <size_t BLOCK_DIM_X, size_t C, typename CsrCooView>
 __global__ void kernel(uint64_t *count,                             //!< [inout] the count, caller should zero
                        const CsrCooView mat, const size_t numEdges, //!< the number of edges this kernel will count
-                       const size_t edgeStart                       //<! the edge this kernel will start counting at
+                       const size_t edgeStart                       //!< the edge this kernel will start counting at
 ) {
 
   typedef typename CsrCooView::index_type Index;
