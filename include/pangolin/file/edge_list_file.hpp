@@ -133,7 +133,7 @@ public:
   /*! \brief attempt to read n edges from the file
 
     \tparam T the node ID type
-    \returns the number of edges read
+    \return the number of edges read
 
   */
   template <typename T>
