@@ -39,6 +39,7 @@ message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 
 option(USE_HUNTER "Turn on to enable using the hunter package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
+option(USE_NUMA "compile with NUMA support" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -83,7 +84,10 @@ endif()
 find_package(cub CONFIG REQUIRED)
 
 find_package(OpenMP)
+
+if (USE_NUMA)
 find_package(NUMA REQUIRED)
+endif(USE_NUMA)
 
 
 set(PANGOLIN_CPP_SOURCES
@@ -250,7 +254,10 @@ if(OPENMP_FOUND)
   )
 endif()
 
-
+if (NUMA_FOUND)
+  pangolin_compile_definitions(INTERFACE -DUSE_NUMA=1)
+  pangolin_link_libraries(INTERFACE NUMA::NUMA)
+endif()
 
 
 
@@ -362,10 +369,8 @@ pangolin_link_libraries(PUBLIC spdlog::spdlog)
 pangolin_link_libraries(PUBLIC cub::cub)
 pangolin_link_libraries(PRIVATE nvgraph)
 pangolin_link_libraries(PRIVATE nvToolsExt)
+pangolin_link_libraries(INTERFACE nvidia-ml)
 pangolin_link_libraries(PRIVATE cusparse)
-if (NUMA_FOUND)
-  pangolin_link_libraries(PUBLIC NUMA::NUMA)
-endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
