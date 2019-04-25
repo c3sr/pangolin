@@ -12,7 +12,8 @@ function(pangolin_add_test)
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   set_target_properties(${PARSED_ARGS_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_compile_options(${PARSED_ARGS_NAME}
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo;
+    -ccbin=g++-6>
   )
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin32)
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch2)
@@ -56,10 +57,10 @@ pangolin_add_test(
   NAME test_tc_edge_linear
   SRCS test_tc_edge_linear.cu
 )
-pangolin_add_test(
-  NAME test_tc_vertex_linear
-  SRCS test_tc_vertex_linear.cu
-)
+#pangolin_add_test(
+#  NAME test_tc_vertex_linear
+#  SRCS test_tc_vertex_linear.cu
+#)
 pangolin_add_test(
   NAME test_tc_edge_binary
   SRCS test_tc_edge_binary.cu

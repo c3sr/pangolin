@@ -15,7 +15,7 @@ __global__ void kernel(uint64_t *count,                             //!< [inout]
 
   typedef typename CsrCooView::index_type Index;
 
-  static_assert(BLOCK_DIM_X % 32 == 0); // block is multiple of 32
+  static_assert(BLOCK_DIM_X % 32 == 0, "Block is multiple of 32");
   constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
 
   const size_t lx = threadIdx.x % 32;
