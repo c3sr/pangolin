@@ -1,13 +1,13 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/pangolin.hpp"
+#include "pangolin/generator/complete.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("c2") {
 
-  using NodeTy = int;
+  using NodeTy = unsigned;
 
   generator::Complete<NodeTy> c2(2);
 
@@ -20,10 +20,10 @@ TEST_CASE("c2") {
   // expected number of edges
   size_t count = 0;
   for (auto _ : c2) {
+    (void) _;
     ++count;
   }
   REQUIRE(count == 2);
-
 
 }
 
@@ -42,6 +42,7 @@ TEST_CASE("c3") {
   // expected number of edges
   size_t count = 0;
   for (auto _ : c3) {
+    (void) _;
     ++count;
   }
   REQUIRE(count == 6);
