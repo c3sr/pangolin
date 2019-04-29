@@ -2,7 +2,7 @@
 
 #include <set>
 #include <climits>
-
+#include <thread>
 #include <nvml.h>
 
 #include "pangolin/numa.hpp"
