@@ -13,7 +13,7 @@ TEST_CASE("dynamic 10", "[gpu]") {
   const int dev = 0;
   cudaStream_t stream;
   CUDA_RUNTIME(cudaMallocManaged(&a, sizeof(*a) * n));
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     a[i] = i + 1;
   }
 
@@ -22,7 +22,7 @@ TEST_CASE("dynamic 10", "[gpu]") {
   zero_async(a, n, dev, stream);
   CUDA_RUNTIME(cudaStreamSynchronize(stream));
 
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     REQUIRE(a[i] == 0);
   }
 
@@ -36,7 +36,7 @@ TEST_CASE("dconstexpr 10", "[gpu]") {
   int dev = 0;
   cudaStream_t stream;
   CUDA_RUNTIME(cudaMallocManaged(&a, sizeof(*a) * n));
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     a[i] = i + 1;
   }
 
@@ -45,7 +45,7 @@ TEST_CASE("dconstexpr 10", "[gpu]") {
   zero_async<10>(a, dev, stream);
   CUDA_RUNTIME(cudaStreamSynchronize(stream));
 
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     REQUIRE(a[i] == 0);
   }
 
