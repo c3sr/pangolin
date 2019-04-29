@@ -17,5 +17,4 @@ TEST_CASE("node_of_cpu") {
   for (const auto cpu : cpus) {
     pangolin::numa::node_of_cpu(cpu);
   }
-  numa_node_of_cpu(100000);
 }

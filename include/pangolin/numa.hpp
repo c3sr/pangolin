@@ -17,6 +17,7 @@ It should otherwise be consistent with libnuma.
 #include <numa.h>
 #endif // USE_NUMA == 1
 
+#include "logger.hpp"
 namespace pangolin {
 
 namespace numa {

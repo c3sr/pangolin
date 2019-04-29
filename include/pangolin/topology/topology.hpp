@@ -1,10 +1,13 @@
 #pragma once
 
 #include <set>
-
+#include <climits>
+#include <thread>
 #include <nvml.h>
 
 #include "pangolin/numa.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/utilities.hpp"
 
 namespace pangolin {
 namespace topology {
