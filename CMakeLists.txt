@@ -2,8 +2,9 @@
 # 3.9+ for OpenMP::OpenMP_CXX
 # 3.10+ findopenmp gained support for language-specific components
 # 3.11+ for CMake not to add -fopenmp to the nvcc flags
+# 3.13+ for target_link_directories
 
-cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 # set(
 #     CMAKE_TOOLCHAIN_FILE

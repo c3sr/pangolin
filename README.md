@@ -29,7 +29,7 @@ Allowed values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERR`, `CRITICAL`.
 
 Instructions for installing CUDA on supported systems may be obtained from Nvidia's website.
 
-2. Install CMake 3.11+
+2. Install CMake 3.13+
 
 On x86 linux, CMake provides prebuilt binaries with a shell script.
 On POWER, you will need to build CMake from source.
