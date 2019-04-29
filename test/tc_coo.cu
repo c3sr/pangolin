@@ -1,8 +1,10 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/pangolin.cuh"
-#include "pangolin/pangolin.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/generator/complete.hpp"
+#include "pangolin/sparse/coo.hpp"
+#include "pangolin/algorithm/tc_edge_dynpar.cuh"
 
 using namespace pangolin;
 
