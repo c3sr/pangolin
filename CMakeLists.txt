@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 
 # set(
@@ -144,9 +144,9 @@ set(PANGOLIN_CU_SOURCES
   src/triangle_counter/spmm_tc.cu
   src/triangle_counter/vertex_tc.cu
 )
-    
+
 set(PANGOLIN_CU_HEADERS
-  include/pangolin/sparse/cusparse_csr.hu  
+  include/pangolin/sparse/cusparse_csr.hu
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
   include/pangolin/algorithm/elementwise.cuh
@@ -355,7 +355,7 @@ set_pangolin_properties(PROPERTIES
 # add the binary dir where the version file is
 pangolin_include_directories(PUBLIC
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
-  $<INSTALL_INTERFACE:include>  
+  $<INSTALL_INTERFACE:include>
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
