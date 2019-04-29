@@ -17,6 +17,8 @@ It should otherwise be consistent with libnuma.
 #include <numa.h>
 #endif // USE_NUMA == 1
 
+#include "logger.hpp"
+
 namespace pangolin {
 
 namespace numa {
@@ -112,6 +114,28 @@ inline void bind(const int node //<! NUMA node to bind to
 #else  // USE_NUMA == 1
   LOG(debug, "USE_NUMA not defined");
 #endif // USE_NUMA == 1
+}
+
+/*! Bind future allocation to a numa node
+*/
+inline void membind(const int node //<! NUMA node to bind to
+) {
+  #if USE_NUMA == 1
+  if (available()) {
+    if (-1 == node) {
+      numa_set_membind(numa_all_nodes_ptr);
+    } else if (node >= 0) {
+      struct bitmask *nodemask = numa_allocate_nodemask();
+      nodemask = numa_bitmask_setbit(nodemask, node);
+      numa_set_membind(nodemask);
+      numa_free_nodemask(nodemask);
+    } else {
+      LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
+    }
+  }
+  #else // USE_NUMA == 1
+  LOG(debug, "USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
+  #endif // USE_NUMA == 1
 }
 
 /*! \brief bind execution and allocation to all nodes
