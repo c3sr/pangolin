@@ -45,8 +45,13 @@ public:
   // destructor
   PANGOLIN_HOST ~Vector();
 
-  // move-assignment
+  /*! move-assignment
+  */
   PANGOLIN_HOST Vector &operator=(Vector &&other);
+
+  /*! copy-assignment
+  */
+  PANGOLIN_HOST Vector &operator=(Vector &other);
 
   PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
   PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;

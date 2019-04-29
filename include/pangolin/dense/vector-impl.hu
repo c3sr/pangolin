@@ -89,15 +89,26 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector() {
 template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
   SPDLOG_TRACE(logger::console, "move assignment");
 
-  // take ownership of other vector
   capacity_ = other.capacity_;
   size_ = other.size_;
+  
+  // take ownership of other vector
   data_ = other.data_;
 
   // clear other after taking ownership of data
   other.capacity_ = 0;
   other.size_ = 0;
   other.data_ = nullptr;
+
+  return *this;
+}
+
+// copy-assignment
+template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &other) {
+  SPDLOG_TRACE(logger::console, "copy assignment");
+  capacity_ = other.capacity_;
+  size_ = other.size_;
+  std::memcpy(data_, other.data_, size_);
 
   return *this;
 }
