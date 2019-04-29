@@ -215,6 +215,8 @@ endif()
 if (NUMA_FOUND)
   target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=1)
   target_link_libraries(pangolin INTERFACE NUMA::NUMA)
+else()
+  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=0)
 endif()
 
 
