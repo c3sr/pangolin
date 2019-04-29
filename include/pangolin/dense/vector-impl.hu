@@ -91,7 +91,7 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TY
 
   capacity_ = other.capacity_;
   size_ = other.size_;
-  
+
   // take ownership of other vector
   data_ = other.data_;
 
@@ -106,9 +106,14 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TY
 // copy-assignment
 template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &other) {
   SPDLOG_TRACE(logger::console, "copy assignment");
-  capacity_ = other.capacity_;
-  size_ = other.size_;
-  std::memcpy(data_, other.data_, size_);
+
+  if (this != &other) { // check for self-assignment
+    if (other.size_ != size_) { // storage cannot be reused
+      resize(0);
+      resize(other.size_);
+    }
+    std::copy(other.data_, other.data_ + other.size_, data_);
+  }
 
   return *this;
 }

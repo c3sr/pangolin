@@ -14,8 +14,32 @@ TEST_CASE("Vector ctor(2)") {
   Vector<int> v(10, 1);
   REQUIRE(v.size() == 10);
   for (size_t i = 0; i < v.size(); ++i) {
-    REQUIRE(v[9] == 1);
+    REQUIRE(v[i] == 1);
   }
+}
+
+TEST_CASE("Vector copy-assignment") {
+  Vector<int> v(15, 1);
+  Vector<int> w(10, 2);
+
+  w = v;
+  REQUIRE(w.size() == 15);
+  for (size_t i = 0; i < w.size(); ++i) {
+    REQUIRE(v[i] == 1);
+  }
+}
+
+TEST_CASE("Vector move-assignment") {
+  Vector<int> v(15, 1);
+  Vector<int> w(10, 2);
+
+  w = std::move(v);
+  REQUIRE(w.size() == 15);
+  for (size_t i = 0; i < w.size(); ++i) {
+    REQUIRE(w[i] == 1);
+  }
+
+  REQUIRE(v.size() == 0);
 }
 
 TEST_CASE("Vector reserve") {
