@@ -1,6 +1,8 @@
 #pragma once
 
+#if USE_NUMA == 1
 #include <numa.h>
+#endif
 
 #include "component.hpp"
 #include "pangolin/utilities.hpp"
