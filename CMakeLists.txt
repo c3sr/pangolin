@@ -62,7 +62,7 @@ find_package(cub CONFIG REQUIRED)
 find_package(OpenMP)
 
 if (USE_NUMA)
-find_package(NUMA REQUIRED)
+find_package(NUMA)
 endif(USE_NUMA)
 
 set(PANGOLIN_CPP_HEADERS
@@ -106,7 +106,7 @@ set(PANGOLIN_CPP_HEADERS
 )
 
 set(PANGOLIN_CU_HEADERS
-  include/pangolin/sparse/cusparse_csr.hu  
+  include/pangolin/sparse/cusparse_csr.hu
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
 )
@@ -134,7 +134,7 @@ endif()
 ## Add CUDA flags
 target_compile_options(
   pangolin
-  INTERFACE 
+  INTERFACE
   $<$<COMPILE_LANGUAGE:CUDA>:
     --Wno-deprecated-gpu-targets;
     --expt-extended-lambda;
@@ -156,7 +156,7 @@ target_compile_options(
 ## Add CXX Flags
 target_compile_options(
   pangolin
-  INTERFACE 
+  INTERFACE
   $<$<COMPILE_LANGUAGE:CXX>:
     -Wall;
     -Wextra;
@@ -178,7 +178,7 @@ target_compile_options(
 
 # target_include_directories(pangolin INTERFACE include/)
 
-#set_target_properties(pangolin PROPERTIES 
+#set_target_properties(pangolin PROPERTIES
 #  CUDA_SEPARABLE_COMPILATION ON
 #  CUDA_RESOLVE_DEVICE_SYMBOLS ON
 #)
@@ -187,13 +187,13 @@ target_compile_options(
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_options(
     pangolin
-    INTERFACE 
+    INTERFACE
     $<$<COMPILE_LANGUAGE:CUDA>:-G>
   )
 elseif (CMAKE_BUILD_TYPE MATCHES Release)
   target_compile_options(
     pangolin
-    INTERFACE 
+    INTERFACE
     $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
   )
 endif()
@@ -207,7 +207,7 @@ if(OPENMP_FOUND)
   target_link_libraries(pangolin INTERFACE OpenMP::OpenMP_CXX)
   target_compile_options(
     pangolin
-    INTERFACE 
+    INTERFACE
     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=${OpenMP_CXX_FLAGS}>
   )
 endif()
@@ -311,7 +311,7 @@ install(
 
 ## Add include directories
 target_include_directories(pangolin SYSTEM INTERFACE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-target_include_directories(pangolin INTERFACE 
+target_include_directories(pangolin INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -351,7 +351,7 @@ target_compile_features(pangolin INTERFACE cxx_std_11)
 # add the binary dir where the version file is
 target_include_directories(pangolin INTERFACE
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
-  $<INSTALL_INTERFACE:include>  
+  $<INSTALL_INTERFACE:include>
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
