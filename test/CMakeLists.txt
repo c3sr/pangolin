@@ -52,6 +52,12 @@ pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cpp
 )
+
+pangolin_add_test(
+  NAME test_numa
+  SRCS test_numa.cpp
+)
+
 pangolin_add_test(
   NAME test_tc_edge_linear
   SRCS test_tc_edge_linear.cu
@@ -68,10 +74,16 @@ pangolin_add_test(
   NAME test_tc_edge_merge
   SRCS test_tc_edge_merge.cu
 )
+
 pangolin_add_test(
-  NAME test_flow
-  SRCS test_flow.cu
+  NAME test_topology
+  SRCS test_topology.cpp
 )
+
+# pangolin_add_test(
+#   NAME test_flow
+#   SRCS test_flow.cu
+# )
 pangolin_add_test(
   NAME test_zero
   SRCS test_zero.cu
