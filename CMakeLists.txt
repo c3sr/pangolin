@@ -283,6 +283,12 @@ install(
     DESTINATION "${config_install_dir}"
 )
 
+# install FindNUMA.cmake
+install(
+  FILES "cmake/FindNUMA.cmake"
+  DESTINATION "${config_install_dir}"
+)
+
 # install libraries
 install(
     TARGETS pangolin
@@ -299,11 +305,6 @@ install(
     DESTINATION "${config_install_dir}"
 )
 
-# install pangolin tools
-install(
-    PROGRAMS tools/pangolin-tsv-to-bel.py
-    DESTINATION "${bin_install_dir}"
-)
 
 
 ## Add include directories
