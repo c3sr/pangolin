@@ -84,6 +84,9 @@ target_link_libraries(... pangolin::pangolin32)
 
 ### As an external Library
 
+Pangolin is a header-only library, so "installation" is a matter of copying pangolin's headers to a desired location.
+Pangolin also includes a CMake config file for easy integration with other CMake projects.
+
 1. Clone and install pangolin to the desired location
 
 ```
@@ -99,7 +102,7 @@ make install
 # CMakeLists.txt
 find_package(pangolin CONFIG REQUIRED)
 ...
-target_link_libraries(... pangolin::pangolin32)
+target_link_libraries(... pangolin::pangolin)
 ```
 
 ## Getting Started
