@@ -46,12 +46,16 @@ public:
   PANGOLIN_HOST ~Vector();
 
   /*! move-assignment
-  */
-  PANGOLIN_HOST Vector &operator=(Vector &&other);
+   */
+  PANGOLIN_HOST Vector &operator=(Vector &&other) noexcept;
 
   /*! copy-assignment
-  */
-  PANGOLIN_HOST Vector &operator=(Vector &other);
+   */
+  PANGOLIN_HOST Vector &operator=(const Vector &other);
+
+  /*! swap the state of Vector with other
+   */
+  PANGOLIN_HOST void swap(Vector &other) noexcept;
 
   PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
   PANGOLIN_HOST_DEVICE inline const value_type *data() const noexcept;

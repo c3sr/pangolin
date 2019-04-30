@@ -21,6 +21,19 @@ TEST_CASE("Vector ctor(2)") {
   }
 }
 
+TEST_CASE("Vector copy-ctor") {
+  pangolin::init();
+  Vector<int> v(10, 1);
+  Vector<int> w(v);
+
+  REQUIRE(v.size() == 10);
+  REQUIRE(w.size() == 10);
+  for (size_t i = 0; i < v.size(); ++i) {
+    REQUIRE(v[i] == 1);
+    REQUIRE(w[i] == 1);
+  }
+}
+
 TEST_CASE("Vector copy-assignment") {
   pangolin::init();
   Vector<int> v(15, 1);
@@ -43,8 +56,6 @@ TEST_CASE("Vector move-assignment") {
   for (size_t i = 0; i < w.size(); ++i) {
     REQUIRE(w[i] == 1);
   }
-
-  REQUIRE(v.size() == 0);
 }
 
 TEST_CASE("Vector reserve") {

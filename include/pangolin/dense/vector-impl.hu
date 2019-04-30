@@ -86,36 +86,31 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector() {
 }
 
 // move-assignment
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) {
+template <typename VALUE_TYPE>
+PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) noexcept {
   SPDLOG_TRACE(logger::console(), "move assignment");
 
-  capacity_ = other.capacity_;
-  size_ = other.size_;
+  /* Don't call delete on other (maybe faster)
+     Opportunity for data to be reused since it was not deleted
+     No exceptions thrown.
+  */
 
-  // take ownership of other vector
-  data_ = other.data_;
-
-  // clear other after taking ownership of data
-  other.capacity_ = 0;
-  other.size_ = 0;
-  other.data_ = nullptr;
-
+  other.swap(*this);
   return *this;
 }
 
 // copy-assignment
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &other) {
-  SPDLOG_TRACE(logger::console(), "copy assignment");
-
-  if (this != &other) {         // check for self-assignment
-    if (other.size_ != size_) { // storage cannot be reused
-      resize(0);
-      resize(other.size_);
-    }
-    std::copy(other.data_, other.data_ + other.size_, data_);
-  }
-
+template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(const Vector &other) {
+  Vector<VALUE_TYPE> temp(other);
+  temp.swap(*this);
   return *this;
+}
+
+// swap
+template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::swap(Vector &other) noexcept {
+  std::swap(other.size_, size_);
+  std::swap(other.capacity_, capacity_);
+  std::swap(other.data_, data_);
 }
 
 template <typename VALUE_TYPE>
