@@ -1,13 +1,18 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
+#include "pangolin/init.hpp"
 #include "pangolin/sparse/csr.hpp"
 
 using namespace pangolin;
 
-TEST_CASE("ctor") { CSR<int> m; }
+TEST_CASE("ctor") {
+  pangolin::init();
+  CSR<int> m;
+}
 
 TEST_CASE("COO<int>::from_edgelist") {
+  pangolin::init();
   EdgeList el = {
       {0, 1},
   };
@@ -22,6 +27,7 @@ TEST_CASE("COO<int>::from_edgelist") {
 }
 
 TEST_CASE("CSR<int>::from_edges upper triangular") {
+  pangolin::init();
   std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
@@ -33,6 +39,7 @@ TEST_CASE("CSR<int>::from_edges upper triangular") {
 }
 
 TEST_CASE("CSR<int>::from_edges lower triangular") {
+  pangolin::init();
   std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 

@@ -2,15 +2,18 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/dense/vector.hu"
+#include "pangolin/init.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("Vector ctor(1)") {
+  pangolin::init();
   Vector<int> v(10);
   REQUIRE(v.size() == 10);
 }
 
 TEST_CASE("Vector ctor(2)") {
+  pangolin::init();
   Vector<int> v(10, 1);
   REQUIRE(v.size() == 10);
   for (size_t i = 0; i < v.size(); ++i) {
@@ -19,6 +22,7 @@ TEST_CASE("Vector ctor(2)") {
 }
 
 TEST_CASE("Vector copy-assignment") {
+  pangolin::init();
   Vector<int> v(15, 1);
   Vector<int> w(10, 2);
 
@@ -30,6 +34,7 @@ TEST_CASE("Vector copy-assignment") {
 }
 
 TEST_CASE("Vector move-assignment") {
+  pangolin::init();
   Vector<int> v(15, 1);
   Vector<int> w(10, 2);
 
@@ -43,6 +48,7 @@ TEST_CASE("Vector move-assignment") {
 }
 
 TEST_CASE("Vector reserve") {
+  pangolin::init();
   Vector<int> v;
   v.reserve(10);
   REQUIRE(v.size() == 0);
@@ -50,6 +56,7 @@ TEST_CASE("Vector reserve") {
 }
 
 TEST_CASE("initializer-list 3") {
+  pangolin::init();
   Vector<int> v{0, 1, 2};
   REQUIRE(v.size() == 3);
   REQUIRE(v[0] == 0);
@@ -58,6 +65,7 @@ TEST_CASE("initializer-list 3") {
 }
 
 TEST_CASE("initializer-list 0") {
+  pangolin::init();
   Vector<int> v{};
   REQUIRE(v.size() == 0);
 }

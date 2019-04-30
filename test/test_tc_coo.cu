@@ -1,14 +1,16 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/logger.hpp"
-#include "pangolin/generator/complete.hpp"
-#include "pangolin/sparse/coo.hpp"
 #include "pangolin/algorithm/tc_edge_dynpar.cuh"
+#include "pangolin/generator/complete.hpp"
+#include "pangolin/init.hpp"
+#include "pangolin/logger.hpp"
+#include "pangolin/sparse/coo.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("count complete graph 3") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   using NodeTy = int;
 
@@ -21,6 +23,7 @@ TEST_CASE("count complete graph 3") {
 }
 
 TEST_CASE("count complete graph 4") {
+  pangolin::init();
   INFO("ctor");
   logger::set_level(logger::Level::TRACE);
   using NodeTy = int;

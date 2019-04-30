@@ -2,6 +2,7 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/binary_search.cuh"
+#include "pangolin/init.hpp"
 
 using namespace pangolin;
 
@@ -16,11 +17,13 @@ template <typename T> size_t ub(T searchVal, std::initializer_list<T> a) {
 }
 
 TEST_CASE("0") {
+  pangolin::init();
   REQUIRE(0 == lb(0, {}));
   REQUIRE(0 == ub(0, {}));
 }
 
 TEST_CASE("1") {
+  pangolin::init();
   REQUIRE(0 == lb(0, {0}));
   REQUIRE(1 == ub(0, {0}));
   REQUIRE(1 == lb(1, {0}));
@@ -34,6 +37,7 @@ TEST_CASE("1") {
 }
 
 TEST_CASE("2") {
+  pangolin::init();
   REQUIRE(0 == lb(0, {0, 0}));
   REQUIRE(2 == ub(0, {0, 0}));
   REQUIRE(0 == lb(0, {0, 1}));
@@ -45,6 +49,7 @@ TEST_CASE("2") {
 }
 
 TEST_CASE("3") {
+  pangolin::init();
   REQUIRE(1 == lb(1, {0, 1, 2}));
   REQUIRE(2 == ub(1, {0, 1, 2}));
 }

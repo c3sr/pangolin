@@ -2,12 +2,14 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/zero.cuh"
+#include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("dynamic 10", "[gpu]") {
+  pangolin::init();
   int *a = nullptr;
   size_t n = 10;
   const int dev = 0;
@@ -31,6 +33,7 @@ TEST_CASE("dynamic 10", "[gpu]") {
 }
 
 TEST_CASE("dconstexpr 10", "[gpu]") {
+  pangolin::init();
   int *a = nullptr;
   constexpr size_t n = 10;
   int dev = 0;
