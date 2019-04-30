@@ -3,6 +3,7 @@
 
 #include "pangolin/algorithm/count.cuh"
 #include "pangolin/dense/vector.hu"
+#include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
 
@@ -32,6 +33,7 @@ template <typename T> static uint64_t sscl(std::initializer_list<T> a, std::init
 }
 
 TEST_CASE("sscl") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   REQUIRE(0 == sscl<int>({}, {}));
   REQUIRE(0 == sscl<int>({}, {1}));
@@ -68,6 +70,7 @@ template <typename T> static uint64_t gscb(std::initializer_list<T> a, std::init
 }
 
 TEST_CASE("gscb") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   REQUIRE(0 == gscb<int>({}, {}));
   REQUIRE(0 == gscb<int>({}, {1}));
@@ -107,6 +110,7 @@ template <size_t C, typename T> static uint64_t wscb(std::initializer_list<T> a,
 }
 
 TEST_CASE("wscb<1>") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   REQUIRE(0 == wscb<1, int>({}, {}));
   REQUIRE(0 == wscb<1, int>({}, {1}));
@@ -164,6 +168,7 @@ template <size_t C, typename T> static uint64_t bscb(std::initializer_list<T> a,
 }
 
 TEST_CASE("bscb") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   REQUIRE(0 == bscb<2, int>({}, {}));
   REQUIRE(0 == bscb<2, int>({}, {1}));

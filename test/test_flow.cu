@@ -2,11 +2,12 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/flow/flow.hpp"
+#include "pangolin/init.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("", "[gpu][numa]") {
-
+  pangolin::init();
   numa_set_strict(1);
   LOG(debug, "set numa_set_strict(1)");
   numa_set_bind_policy(1);

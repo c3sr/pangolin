@@ -1,4 +1,14 @@
-include(FindPackageHandleStandardArgs)
+# - Try to find libnuma
+# Once done, this will define
+#
+#  NUMA_FOUND - system has NUMA
+#  NUMA_INCLUDE_DIRS - the NUMA include directories
+#  NUMA_LIBRARIES - link these to use NUMA
+#
+# It will also create an imported target NUMA::NUMA
+# 
+
+
 
 SET(NUMA_INCLUDE_SEARCH_PATHS
       ${NUMA}
@@ -30,32 +40,33 @@ if (numa_LIBRARY)
     get_filename_component(NUMA_LIBRARY_DIR ${NUMA_LIBRARY} PATH)
 endif()
 
-mark_as_advanced(NUMA_INCLUDE_DIR NUMA_LIBRARY_DIR NUMA_LIBRARY)
-
 
 if (NUMA_LIBRARY AND NUMA_INCLUDE_DIR)
   if (NOT TARGET NUMA::NUMA)
-    add_library(NUMA::NUMA UNKNOWN IMPORTED)
+    add_library(NUMA::NUMA SHARED IMPORTED)
     set_target_properties(NUMA::NUMA PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${NUMA_INCLUDE_DIR}"
       IMPORTED_LOCATION "${NUMA_LIBRARY}"
     )
+    target_include_directories(NUMA::NUMA INTERFACE "${NUMA_INCLUDE_DIR}")
+    target_link_libraries(NUMA::NUMA INTERFACE "${NUMA_LIBRARY}")
   else()
     message(WARNING "NUMA::NUMA is already a target")
   endif()
 
 endif()
 
-
-
-
+include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NUMA 
-DEFAULT_MESSAGE
-NUMA_INCLUDE_DIR NUMA_LIBRARY
+  DEFAULT_MESSAGE
+  NUMA_LIBRARY NUMA_INCLUDE_DIR
 )
 
-# message(STATUS "numaFOUND: " ${numa_FOUND})
-# message(STATUS "numa_LIBRARY: " ${numa_LIBRARY})
-# message(STATUS "numa_INCLUDE_DIR: " ${numa_INCLUDE_DIR})
-# get_property(propval TARGET numa::numa PROPERTY INTERFACE_LINK_LIBRARIES)
+mark_as_advanced(NUMA_INCLUDE_DIR NUMA_LIBRARY_DIR NUMA_LIBRARY)
+
+# message(STATUS "NUMA_FOUND: " ${NUMA_FOUND})
+# message(STATUS "NUMA_LIBRARY: " ${NUMA_LIBRARY})
+# message(STATUS "NUMA_INCLUDE_DIR: " ${NUMA_INCLUDE_DIR})
+# get_property(propval TARGET NUMA::NUMA PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+# message(STATUS "INTERFACE_INCLUDE_DIRECTORIES: " ${propval})
+# get_property(propval TARGET NUMA::NUMA PROPERTY INTERFACE_LINK_LIBRARIES)
 # message(STATUS "INTERFACE_LINK_LIBRARIES: " ${propval})

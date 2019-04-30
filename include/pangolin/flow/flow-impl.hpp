@@ -27,7 +27,7 @@ template <typename T, size_t MC> void FlowVector<T, MC>::reserve(size_t n) {
       // Look for a CPU component in producers
       for (const auto &p : producers_) {
         if (p.is_cpu()) {
-          SPDLOG_DEBUG(logger::console, "bind to node {}", p.id());
+          LOG(debug, "bind to node {}", p.id());
           numa_bind_node(p.id());
         }
       }

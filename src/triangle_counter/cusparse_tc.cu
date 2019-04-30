@@ -26,7 +26,7 @@ CusparseTC::CusparseTC(Config &c) : descrA_(nullptr), descrC_(nullptr) {
     LOG(warn, "CusparseTC requires exactly 1 GPU. Selected GPU {}", gpu_);
   }
 
-  SPDLOG_DEBUG(logger::console, "create CUSparse handle");
+  LOG(debug, "create CUSparse handle");
   CUSPARSE(cusparseCreate(&handle_));
 
   int version;
@@ -45,7 +45,7 @@ void CusparseTC::read_data(const std::string &path) {
   if (edgeList.size() == 0) {
     LOG(warn, "empty edge list");
   }
-  SPDLOG_DEBUG(logger::console, "building A");
+  LOG(debug, "building A");
   A_ = GPUCSR<int>::from_edgelist(edgeList, [](const Edge &e) {
     return e.second >= e.first; // keep src > dst
   });
@@ -59,7 +59,7 @@ size_t CusparseTC::count() {
   const int m = checked_narrow(A_.num_rows());
   const int n = checked_narrow(A_.max_col() + 1);
   const int k = checked_narrow(A_.max_col() + 1);
-  SPDLOG_DEBUG(logger::console, "CUSparse product m={} n={} k={}", m, n, k);
+  LOG(debug, "CUSparse product m={} n={} k={}", m, n, k);
 
   const cusparseOperation_t transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
 
@@ -67,22 +67,20 @@ size_t CusparseTC::count() {
   const int *csrRowPtrA = A_.deviceRowPtr();
   const int *csrColIndA = A_.deviceColInd();
   assert(nnzA == csrRowPtrA[m] - csrRowPtrA[0]);
-  SPDLOG_DEBUG(logger::console, "A has {} nonzeros", nnzA);
+  LOG(debug, "A has {} nonzeros", nnzA);
 
   int *csrRowPtrC = nullptr;
-  SPDLOG_DEBUG(logger::console, "allocate {} rows for C", m);
+  LOG(debug, "allocate {} rows for C", m);
   CUDA_RUNTIME(cudaMallocManaged(&csrRowPtrC, sizeof(int) * (m + 1)));
 
-  SPDLOG_DEBUG(logger::console, "compute C nnzs");
+  LOG(debug, "compute C nnzs");
   int nnzC;
   int *nnzTotalDevHostPtr = &nnzC;
   CUSPARSE(cusparseSetPointerMode(handle_, CUSPARSE_POINTER_MODE_HOST));
-  CUSPARSE(cusparseXcsrgemmNnz(handle_, transA, transA, m, n, k, descrA_, nnzA,
-                               csrRowPtrA, csrColIndA, descrA_, nnzA,
-                               csrRowPtrA, csrColIndA, descrC_, csrRowPtrC,
-                               nnzTotalDevHostPtr));
+  CUSPARSE(cusparseXcsrgemmNnz(handle_, transA, transA, m, n, k, descrA_, nnzA, csrRowPtrA, csrColIndA, descrA_, nnzA,
+                               csrRowPtrA, csrColIndA, descrC_, csrRowPtrC, nnzTotalDevHostPtr));
   if (nullptr != nnzTotalDevHostPtr) {
-    SPDLOG_TRACE(logger::console, "get nnzC from nnzTotalDevHostPtr");
+    SPDLOG_TRACE(logger::console(), "get nnzC from nnzTotalDevHostPtr");
     nnzC = *nnzTotalDevHostPtr;
     assert(nnzC == csrRowPtrC[m] - csrRowPtrC[0]);
   } else {
@@ -91,37 +89,32 @@ size_t CusparseTC::count() {
     baseC = csrRowPtrC[0];
     nnzC -= baseC;
   }
-  SPDLOG_DEBUG(logger::console, "C has {} nonzeros", nnzC);
+  LOG(debug, "C has {} nonzeros", nnzC);
 
   int *csrColIndC = nullptr;
   float *csrValC = nullptr;
-  SPDLOG_DEBUG(logger::console, "allocate {} B for csrColIndC",
-               sizeof(int) * nnzC);
+  LOG(debug, "allocate {} B for csrColIndC", sizeof(int) * nnzC);
   CUDA_RUNTIME(cudaMallocManaged(&csrColIndC, sizeof(int) * nnzC));
-  SPDLOG_DEBUG(logger::console, "allocate {} B for csrValC",
-               sizeof(float) * nnzC);
+  LOG(debug, "allocate {} B for csrValC", sizeof(float) * nnzC);
   CUDA_RUNTIME(cudaMallocManaged(&csrValC, sizeof(float) * nnzC));
 
   float *csrValA = nullptr;
-  SPDLOG_DEBUG(logger::console, "allocate/fill {} B for A csrValA",
-               sizeof(float) * nnzA);
+  LOG(debug, "allocate/fill {} B for A csrValA", sizeof(float) * nnzA);
   CUDA_RUNTIME(cudaMallocManaged(&csrValA, sizeof(float) * nnzA));
   pangolin::device_fill(csrValA, nnzA, 1.0f);
   CUDA_RUNTIME(cudaDeviceSynchronize());
 
-  SPDLOG_DEBUG(logger::console, "cusparseScsrgemm");
-  CUSPARSE(cusparseScsrgemm(handle_, transA, transA, m, n, k, descrA_, nnzA,
-                            csrValA, csrRowPtrA, csrColIndA, descrA_, nnzA,
-                            csrValA, csrRowPtrA, csrColIndA, descrC_, csrValC,
-                            csrRowPtrC, csrColIndC));
+  LOG(debug, "cusparseScsrgemm");
+  CUSPARSE(cusparseScsrgemm(handle_, transA, transA, m, n, k, descrA_, nnzA, csrValA, csrRowPtrA, csrColIndA, descrA_,
+                            nnzA, csrValA, csrRowPtrA, csrColIndA, descrC_, csrValC, csrRowPtrC, csrColIndC));
 
-  SPDLOG_DEBUG(logger::console, "hadamard product");
+  LOG(debug, "hadamard product");
   // c .*= A
   constexpr size_t dimBlockX = 256;
   const size_t dimGridX = (m + dimBlockX - 1) / dimBlockX;
 
-  pangolin::csr_elementwise_inplace<dimBlockX><<<dimGridX, dimBlockX>>>(
-      csrRowPtrC, csrColIndC, csrValC, csrRowPtrA, csrColIndA, csrValA, m);
+  pangolin::csr_elementwise_inplace<dimBlockX>
+      <<<dimGridX, dimBlockX>>>(csrRowPtrC, csrColIndC, csrValC, csrRowPtrA, csrColIndA, csrValA, m);
   CUDA_RUNTIME(cudaGetLastError());
 
   float *deviceTotal;
@@ -131,32 +124,28 @@ size_t CusparseTC::count() {
   // Reduce the final non-zeros
   void *d_temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
-  SPDLOG_DEBUG(logger::console, "compute reduction storage requirements");
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC,
-                         deviceTotal, nnzC);
-  SPDLOG_DEBUG(logger::console, "allocate {} B for temporary reduction storage",
-               temp_storage_bytes);
+  LOG(debug, "compute reduction storage requirements");
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC, deviceTotal, nnzC);
+  LOG(debug, "allocate {} B for temporary reduction storage", temp_storage_bytes);
   CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-  SPDLOG_DEBUG(logger::console, "device reduction");
-  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC,
-                         deviceTotal, nnzC);
-  SPDLOG_TRACE(logger::console, "free temporary reduction storage",
-               temp_storage_bytes);
+  LOG(debug, "device reduction");
+  cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, csrValC, deviceTotal, nnzC);
+  SPDLOG_TRACE(logger::console(), "free temporary reduction storage", temp_storage_bytes);
   CUDA_RUNTIME(cudaFree(d_temp_storage));
 
   uint64_t total = *deviceTotal;
-  SPDLOG_DEBUG(logger::console, "total is {}", total);
+  LOG(debug, "total is {}", total);
 
   CUDA_RUNTIME(cudaFree(deviceTotal));
   return total;
 }
 
 CusparseTC::~CusparseTC() {
-  SPDLOG_DEBUG(logger::console, "destroy A");
+  LOG(debug, "destroy A");
   CUSPARSE(cusparseDestroyMatDescr(descrA_));
-  SPDLOG_DEBUG(logger::console, "destroy C");
+  LOG(debug, "destroy C");
   CUSPARSE(cusparseDestroyMatDescr(descrC_));
-  SPDLOG_DEBUG(logger::console, "destroy handle");
+  LOG(debug, "destroy handle");
   CUSPARSE(cusparseDestroy(handle_));
 }
 

@@ -61,7 +61,7 @@ template <typename Index> COO<Index> COO<Index>::from_edgelist(const EdgeList &e
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= csr.rowPtr_.size());
-      // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_,
+      // SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.src_,
       // csr.edgeSrc_.size());
       csr.rowPtr_.push_back(csr.colInd_.size());
     }
@@ -99,7 +99,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     EdgeTy<Index> edge = *ei;
     const Index src = edge.first;
     const Index dst = edge.second;
-    SPDLOG_TRACE(logger::console, "handling edge {}->{}", edge.first, edge.second);
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
     // edge has a new src and should be in a new row
     // even if the edge is filtered out, we need to add empty rows
@@ -107,7 +107,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= coo.rowPtr_.size() && "are edges not ordered by source?");
-      SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.first, coo.rowPtr_.size());
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, coo.rowPtr_.size());
       coo.rowPtr_.push_back(coo.colInd_.size());
     }
 
@@ -126,6 +126,30 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   return coo;
 }
 
+template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e) {
+  const Index src = e.first;
+  const Index dst = e.second;
+  SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
+
+  // edge has a new src and should be in a new row
+  // even if the edge is filtered out, we need to add empty rows
+  while (rowPtr_.size() != size_t(src + 1)) {
+    // expecting inputs to be sorted by src, so it should be at least
+    // as big as the current largest row we have recored
+    assert(src >= rowPtr_.size() && "are edges not ordered by source?");
+    SPDLOG_TRACE(logger::console(), "node {} edges start at {}", src, rowPtr_.size());
+    rowPtr_.push_back(colInd_.size());
+  }
+
+  rowInd_.push_back(src);
+  colInd_.push_back(dst);
+}
+
+template <typename Index> void COO<Index>::finish_edges() {
+  // add the final length of the non-zeros to the offset array
+  rowPtr_.push_back(colInd_.size());
+}
+
 template <typename Index> COOView<Index> COO<Index>::view() const {
   COOView<Index> view;
   view.nnz_ = nnz();
@@ -136,10 +160,10 @@ template <typename Index> COOView<Index> COO<Index>::view() const {
   return view;
 }
 
-template <typename Index> void COO<Index>::read_mostly(const int dev) {
-  rowPtr_.read_mostly(dev);
-  rowInd_.read_mostly(dev);
-  colInd_.read_mostly(dev);
+template <typename Index> void COO<Index>::read_mostly() {
+  rowPtr_.read_mostly();
+  rowInd_.read_mostly();
+  colInd_.read_mostly();
 }
 
 template <typename Index> void COO<Index>::accessed_by(const int dev) {
@@ -148,10 +172,10 @@ template <typename Index> void COO<Index>::accessed_by(const int dev) {
   colInd_.accessed_by(dev);
 }
 
-template <typename Index> void COO<Index>::prefetch_async(const int dev) {
-  rowPtr_.prefetch_async(dev);
-  rowInd_.prefetch_async(dev);
-  colInd_.prefetch_async(dev);
+template <typename Index> void COO<Index>::prefetch_async(const int dev, cudaStream_t stream) {
+  rowPtr_.prefetch_async(dev, stream);
+  rowInd_.prefetch_async(dev, stream);
+  colInd_.prefetch_async(dev, stream);
 }
 
 } // namespace pangolin

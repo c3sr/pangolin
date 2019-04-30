@@ -9,10 +9,8 @@
 namespace pangolin {
 
 // count intersections between sorted lists a and b
-__device__ static size_t linear_intersection_count(const Uint *const aBegin,
-                                                   const Uint *const aEnd,
-                                                   const Uint *const bBegin,
-                                                   const Uint *const bEnd) {
+__device__ static size_t linear_intersection_count(const Uint *const aBegin, const Uint *const aEnd,
+                                                   const Uint *const bBegin, const Uint *const bEnd) {
   size_t count = 0;
   const auto *ap = aBegin;
   const auto *bp = bBegin;
@@ -33,16 +31,14 @@ __device__ static size_t linear_intersection_count(const Uint *const aBegin,
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void kernel_linear(
-    uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
-    const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
-    const char *isLocalNonZero, const size_t numEdges) {
+__global__ static void kernel_linear(uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
+                                     const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
+                                     const char *isLocalNonZero, const size_t numEdges) {
 
   const size_t gIdx = threadIdx.x + blockIdx.x * BLOCK_DIM_X;
 
   // one thread per edge
-  for (Uint edgeIdx = gIdx; edgeIdx < numEdges;
-       edgeIdx += BLOCK_DIM_X * gridDim.x) {
+  for (Uint edgeIdx = gIdx; edgeIdx < numEdges; edgeIdx += BLOCK_DIM_X * gridDim.x) {
 
     // only count local edges
     if (!isLocalNonZero || isLocalNonZero[edgeIdx]) {
@@ -61,9 +57,8 @@ __global__ static void kernel_linear(
       const Uint tailOffStart = rowStarts[tail];
       const Uint tailOffEnd = rowStarts[tail + 1];
 
-      count += linear_intersection_count(
-          &nonZeros[headOffStart], &nonZeros[headOffEnd],
-          &nonZeros[tailOffStart], &nonZeros[tailOffEnd]);
+      count += linear_intersection_count(&nonZeros[headOffStart], &nonZeros[headOffEnd], &nonZeros[tailOffStart],
+                                         &nonZeros[tailOffEnd]);
 
       edgeTriangleCounts[edgeIdx] = count;
     }
@@ -71,8 +66,7 @@ __global__ static void kernel_linear(
 }
 
 // return 1 if search_val is in array between offets left and right, inclusive
-__device__ static bool binary_search(const Uint *const array, size_t left,
-                                     size_t right, const Uint search_val) {
+__device__ static bool binary_search(const Uint *const array, size_t left, size_t right, const Uint search_val) {
   while (left <= right) {
     size_t mid = (left + right) / 2;
     Uint val = array[mid];
@@ -88,14 +82,12 @@ __device__ static bool binary_search(const Uint *const array, size_t left,
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void kernel_binary(
-    uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
-    const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
-    const char *isLocalNonZero, const size_t numEdges) {
+__global__ static void kernel_binary(uint64_t *__restrict__ edgeTriangleCounts, // per edge triangle count
+                                     const Uint *rowStarts, const Uint *edgeSrc, const Uint *nonZeros,
+                                     const char *isLocalNonZero, const size_t numEdges) {
 
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
-  static_assert(BLOCK_DIM_X % 32 == 0,
-                "expect integer number of warps per block");
+  static_assert(BLOCK_DIM_X % 32 == 0, "expect integer number of warps per block");
   typedef cub::WarpReduce<size_t> WarpReduce;
   __shared__ typename WarpReduce::TempStorage temp_storage[WARPS_PER_BLOCK];
 
@@ -105,8 +97,7 @@ __global__ static void kernel_binary(
   const size_t gwIdx = warpIdx + blockIdx.x * WARPS_PER_BLOCK;
 
   // one warp per edge
-  for (Uint edgeIdx = gwIdx; edgeIdx < numEdges;
-       edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
+  for (Uint edgeIdx = gwIdx; edgeIdx < numEdges; edgeIdx += WARPS_PER_BLOCK * gridDim.x) {
 
     // only count local edges
     if (!isLocalNonZero || isLocalNonZero[edgeIdx]) {
@@ -126,13 +117,11 @@ __global__ static void kernel_binary(
       const Uint tailOffEnd = rowStarts[tail + 1];
 
       if (headOffEnd - headOffStart < tailOffEnd - tailOffStart) {
-        for (const Uint *u = &nonZeros[headOffStart] + laneIdx;
-             u < &nonZeros[headOffEnd]; u += 32) {
+        for (const Uint *u = &nonZeros[headOffStart] + laneIdx; u < &nonZeros[headOffEnd]; u += 32) {
           count += binary_search(nonZeros, tailOffStart, tailOffEnd - 1, *u);
         }
       } else {
-        for (const Uint *u = &nonZeros[tailOffStart] + laneIdx;
-             u < &nonZeros[tailOffEnd]; u += 32) {
+        for (const Uint *u = &nonZeros[tailOffStart] + laneIdx; u < &nonZeros[tailOffEnd]; u += 32) {
           count += binary_search(nonZeros, headOffStart, headOffEnd - 1, *u);
         }
       }
@@ -160,8 +149,7 @@ EdgeTC::EdgeTC(Config &c) : CUDATriangleCounter(c) {
   } else if (kernel == "binary") {
     kernel_ = Kernel::BINARY;
   } else {
-    LOG(critical, "Unknown triangle counting kernel \"{}\" for EdgeTC",
-        c.kernel_);
+    LOG(critical, "Unknown triangle counting kernel \"{}\" for EdgeTC", c.kernel_);
     exit(-1);
   }
 
@@ -182,16 +170,15 @@ void EdgeTC::read_data(const std::string &path) {
   // turn into DAG with src < dst
   EdgeList filtered;
   for (const auto &e : edgeList) {
-    SPDLOG_TRACE(logger::console, "read edge {} {}", e.first, e.second);
+    SPDLOG_TRACE(logger::console(), "read edge {} {}", e.first, e.second);
     if (e.first < e.second) {
       filtered.push_back(e);
     }
   }
 
-  SPDLOG_TRACE(logger::console, "filtered edge list has {} entries",
-               filtered.size());
+  SPDLOG_TRACE(logger::console(), "filtered edge list has {} entries", filtered.size());
 
-  SPDLOG_DEBUG(logger::console, "building DAG");
+  LOG(debug, "building DAG");
   // for singe dag, no remote edges
   auto graph = UnifiedMemoryCSR::from_sorted_edgelist(filtered);
 
@@ -203,7 +190,7 @@ void EdgeTC::read_data(const std::string &path) {
 
   if (gpus_.size() == 1) {
     graphs_.push_back(graph);
-    SPDLOG_TRACE(logger::console, "added to graphs_");
+    SPDLOG_TRACE(logger::console(), "added to graphs_");
   } else {
     graphs_ = graph.partition_nonzeros(gpus_.size());
   }
@@ -219,8 +206,7 @@ void EdgeTC::read_data(const std::string &path) {
       }
     }
     edgeSrc_.push_back(edgeSrc);
-    SPDLOG_DEBUG(logger::console, "created src edge list of length {}",
-                 edgeSrc.size());
+    LOG(debug, "created src edge list of length {}", edgeSrc.size());
     assert(edgeSrc.size() == g.nnz());
   }
 
@@ -267,7 +253,7 @@ void EdgeTC::setup_data() {
   }
 
   for (const auto i : gpus_) {
-    SPDLOG_TRACE(logger::console, "synchronizing GPU {}", i);
+    SPDLOG_TRACE(logger::console(), "synchronizing GPU {}", i);
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
@@ -282,36 +268,28 @@ size_t EdgeTC::count() {
 
     switch (kernel_) {
     case Kernel::LINEAR: {
-      SPDLOG_DEBUG(logger::console, "linear search kernel");
+      LOG(debug, "linear search kernel");
       const size_t BLOCK_DIM_X = 128;
       const dim3 dimBlock(BLOCK_DIM_X);
       dim3 dimGrid((graph.nnz() + BLOCK_DIM_X - 1) / BLOCK_DIM_X);
-      dimGrid.x =
-          std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>(
-                                  (((uint64_t)1) << 31) - 1)); // 2^32 - 1
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x,
-                   dimBlock.x);
-      kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
-          triangleCounts_d_[i], rowOffsets_d_[i], rows_d_[i], cols_d_[i],
-          isLocalCol_d_[i], numEdges);
+      dimGrid.x = std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>((((uint64_t)1) << 31) - 1)); // 2^32 - 1
+      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], rows_d_[i], cols_d_[i],
+                                                        isLocalCol_d_[i], numEdges);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
     case Kernel::BINARY: {
-      SPDLOG_DEBUG(logger::console, "binary search kernel");
+      LOG(debug, "binary search kernel");
       const size_t BLOCK_DIM_X = 512;
       const dim3 dimBlock(BLOCK_DIM_X);
       const size_t warpsPerBlock = dimBlock.x / 32;
       const size_t numGridWarps = graph.nnz();
       dim3 dimGrid((numGridWarps + warpsPerBlock - 1) / warpsPerBlock);
-      dimGrid.x =
-          std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>(
-                                  (((uint64_t)1) << 31) - 1)); // 2^32 - 1
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x,
-                   dimBlock.x);
-      kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
-          triangleCounts_d_[i], rowOffsets_d_[i], rows_d_[i], cols_d_[i],
-          isLocalCol_d_[i], numEdges);
+      dimGrid.x = std::min(dimGrid.x, static_cast<typeof(dimGrid.x)>((((uint64_t)1) << 31) - 1)); // 2^32 - 1
+      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], rows_d_[i], cols_d_[i],
+                                                        isLocalCol_d_[i], numEdges);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
@@ -327,16 +305,16 @@ size_t EdgeTC::count() {
   for (size_t i = 0; i < graphs_.size(); ++i) {
     const auto &graph = graphs_[i];
     const int &dev = gpus_[i];
-    SPDLOG_DEBUG(logger::console, "waiting for GPU {}", dev);
+    LOG(debug, "waiting for GPU {}", dev);
     CUDA_RUNTIME(cudaSetDevice(dev));
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
     Uint partitionTotal = 0;
-    SPDLOG_DEBUG(logger::console, "cpu reduction for GPU {}", dev);
+    LOG(debug, "cpu reduction for GPU {}", dev);
     for (size_t j = 0; j < graph.nnz(); ++j) {
       partitionTotal += triangleCounts_[i][j];
     }
-    SPDLOG_DEBUG(logger::console, "partition had {} triangles", partitionTotal);
+    LOG(debug, "partition had {} triangles", partitionTotal);
     total += partitionTotal;
   }
 

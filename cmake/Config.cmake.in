@@ -1,6 +1,15 @@
-find_package(fmt REQUIRED)
-find_package(cub REQUIRED)
-find_package(spdlog REQUIRED)
-find_package(Catch2 REQUIRED)
+include(CMakeFindDependencyMacro)
+
+# expect this to be in the same path as pangolin's FindNUMA.cmake
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
+
+# Pangolin depends on these things
+find_dependency(Catch2)
+find_dependency(cub)
+find_dependency(fmt)
+find_dependency(NUMA)
+find_dependency(OpenMP)
+find_dependency(spdlog)
 
 include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
+
