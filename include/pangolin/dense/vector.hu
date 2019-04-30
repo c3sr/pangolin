@@ -23,38 +23,17 @@ private:
   value_type *data_; //<! the underlying allocation
 
 public:
-  /*! default
-   */
   PANGOLIN_HOST explicit Vector(void);
-
-  /*! fill
-   */
   PANGOLIN_HOST explicit Vector(size_t n);
-  PANGOLIN_HOST explicit Vector(size_t count, const_reference value);
-
-  /*!  initializer list
-   */
+  PANGOLIN_HOST explicit Vector(size_t n, const_reference val);
   PANGOLIN_HOST Vector(std::initializer_list<VALUE_TYPE> il);
-
-  // move constructor
   PANGOLIN_HOST Vector(Vector &&other);
-
-  // copy constructor
   PANGOLIN_HOST Vector(const Vector &other);
-
-  // destructor
   PANGOLIN_HOST ~Vector();
 
-  /*! move-assignment
-   */
   PANGOLIN_HOST Vector &operator=(Vector &&other) noexcept;
-
-  /*! copy-assignment
-   */
   PANGOLIN_HOST Vector &operator=(const Vector &other);
 
-  /*! swap the state of Vector with other
-   */
   PANGOLIN_HOST void swap(Vector &other) noexcept;
 
   PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
@@ -66,14 +45,8 @@ public:
   PANGOLIN_HOST void resize(size_t n, const value_type &val);
   PANGOLIN_HOST void shrink_to_fit();
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on Vector data
-   */
   PANGOLIN_HOST void read_mostly();
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
-   */
   PANGOLIN_HOST void accessed_by(const int dev);
-  /*! call cudaMemPrefetchAsync(..., dev, stream) on Vector data
-   */
   PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   PANGOLIN_HOST_DEVICE inline size_t capacity() const noexcept;

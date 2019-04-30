@@ -20,9 +20,15 @@
 
 namespace pangolin {
 
+/*! empty container constructor (default constructor)
+ */
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(void) : capacity_(0), size_(0), data_(nullptr) {}
 
+/*! fill constructor
+
+Constructs a container with n elements
+*/
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n) : capacity_(0), size_(0), data_(nullptr) {
   resize(n);
@@ -31,27 +37,35 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n) : capacity_(0), size_(0), dat
   }
 }
 
+/*! fill constructor
+
+Constructs a container with n elements. Each element is a copy of val
+*/
 template <typename VALUE_TYPE>
-PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t count, const_reference value) : capacity_(0), size_(0), data_(nullptr) {
-  resize(count);
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(size_t n, const_reference val) : capacity_(0), size_(0), data_(nullptr) {
+  resize(n);
   for (size_t i = 0; i < size(); ++i) {
-    data_[i] = value;
+    data_[i] = val;
   }
 }
 
-/*!  initializer list
- */
+/*! copy constructor
+
+Constructs a container with a copy of each of the elements in other, in the same order
+*/
 template <typename VALUE_TYPE>
-PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(std::initializer_list<VALUE_TYPE> il)
-    : capacity_(0), size_(0), data_(nullptr) {
-  resize(il.size());
-  auto it = il.begin();
-  for (size_t i = 0; i < il.size(); ++i) {
-    data_[i] = *it++;
-  }
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : capacity_(0), size_(0), data_(nullptr) {
+  SPDLOG_TRACE(logger::console(), "copy ctor");
+  reserve(other.capacity_);
+  std::memcpy(data_, other.data_, other.size_ * sizeof(value_type));
+  size_ = other.size_;
 }
 
-// move constructor
+/*! move constructor
+
+    Constructs a container that acquires teh elemetns of x
+    x is left in an unspecified by valid state
+*/
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other)
     : capacity_(other.capacity_), size_(other.size_), data_(other.data_) {
@@ -61,13 +75,18 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other)
   other.data_ = nullptr;
 }
 
-// copy constructor
+/*!  initializer list constructor
+
+    Constructs a container with a copy of each of the elements in il, in the same order
+ */
 template <typename VALUE_TYPE>
-PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(const Vector &other) : capacity_(0), size_(0), data_(nullptr) {
-  SPDLOG_TRACE(logger::console(), "copy ctor");
-  reserve(other.capacity_);
-  std::memcpy(data_, other.data_, other.size_ * sizeof(value_type));
-  size_ = other.size_;
+PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(std::initializer_list<VALUE_TYPE> il)
+    : capacity_(0), size_(0), data_(nullptr) {
+  resize(il.size());
+  auto it = il.begin();
+  for (size_t i = 0; i < il.size(); ++i) {
+    data_[i] = *it++;
+  }
 }
 
 // destructor
@@ -85,12 +104,24 @@ template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE>::~Vector() {
   }
 }
 
-// move-assignment
+/*! copy-assignment copies all elements from other into the container
+ */
+template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(const Vector &other) {
+  Vector<VALUE_TYPE> temp(other);
+  temp.swap(*this);
+  return *this;
+}
+
+/*! move-assignment moves the elements of other into the container
+
+    other is left in an unspecified but valid state
+*/
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) noexcept {
   SPDLOG_TRACE(logger::console(), "move assignment");
 
-  /* Don't call delete on other (maybe faster)
+  /* We just swap other and this, which has the following benefits:
+     Don't call delete on other (maybe faster)
      Opportunity for data to be reused since it was not deleted
      No exceptions thrown.
   */
@@ -99,14 +130,8 @@ PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) 
   return *this;
 }
 
-// copy-assignment
-template <typename VALUE_TYPE> PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(const Vector &other) {
-  Vector<VALUE_TYPE> temp(other);
-  temp.swap(*this);
-  return *this;
-}
-
-// swap
+/*! swap the state of the container with other
+ */
 template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::swap(Vector &other) noexcept {
   std::swap(other.size_, size_);
   std::swap(other.capacity_, capacity_);
@@ -195,17 +220,23 @@ template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::shrink_to_
   }
 }
 
+/*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on Vector data
+ */
 template <typename T> PANGOLIN_HOST void Vector<T>::read_mostly() {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
   SPDLOG_TRACE(logger::console(), "cudaMemAdviseSetReadMostly {}B on device", size() * sizeof(T));
   CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetReadMostly, 0 /* ignored */));
 }
 
+/*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
+ */
 template <typename T> PANGOLIN_HOST void Vector<T>::accessed_by(const int dev) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
   CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetAccessedBy, dev));
 }
 
+/*! call cudaMemPrefetchAsync(..., dev, stream) on Vector data
+ */
 template <typename T> PANGOLIN_HOST void Vector<T>::prefetch_async(const int dev, cudaStream_t stream) {
   // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
   SPDLOG_TRACE(logger::console(), "cudaMemPrefetchAsync {}B to device {} stream {}", size() * sizeof(T), dev,
