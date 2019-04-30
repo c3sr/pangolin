@@ -123,8 +123,14 @@ PANGOLIN_HOST_DEVICE inline const typename Vector<VALUE_TYPE>::value_type *Vecto
   return data_;
 }
 
+/*! Add a new element at the end
+
+Increases the container size by 1, which causes a reallocation of allocated storage space if size surpasses capacity.
+ */
 template <typename VALUE_TYPE>
-PANGOLIN_HOST void Vector<VALUE_TYPE>::push_back(const Vector<VALUE_TYPE>::value_type &val) {
+PANGOLIN_HOST void Vector<VALUE_TYPE>::push_back(
+    const Vector<VALUE_TYPE>::value_type &val //<! [in] the value to be copied to the new element
+) {
   if (0 == size_) {
     reserve(1);
   } else if (size_ == capacity_) {
