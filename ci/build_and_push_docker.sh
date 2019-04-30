@@ -1,6 +1,14 @@
 #! /bin/bash
 
+# To run from command line, ensure DOCKER_CUDA variable is set first
+
+if [ $CI ]; then
 set -x
+fi
+
+if [[ -z ${DRY_RUN+x} ]]; then
+    DRY_RUN=1
+fi
 
 function or_die () {
     "$@"
@@ -11,6 +19,8 @@ function or_die () {
     fi
 }
 
+
+# Determine git branch
 if [ $CI ]; then
     source ~/.bashrc
     cd ${TRAVIS_BUILD_DIR}
@@ -18,7 +28,6 @@ if [ $CI ]; then
 else
     BRANCH=`git rev-parse --abbrev-ref HEAD`
 fi
-
 # replace / with -
 BRANCH="${BRANCH//\//-}"
 
@@ -33,11 +42,11 @@ else
     fi
 fi
 
+SHA=`git rev-parse --short HEAD`
+
 REPO=c3sr/pangolin
 TAG=`if [ "$BRANCH" == "master" ]; then echo "latest"; else echo "${BRANCH}"; fi`
-
-echo "$REPO"
-echo "$TAG"
+TAG="$TAG-$SHA"
 
 # untracked files
 git ls-files --exclude-standard --others
@@ -87,6 +96,19 @@ commands:
 
         echo "$rai_build" > rai_build.yml
         or_die rai -d -v -p . -q rai_ppc64le_osu
+    fi
+else
+    if [[ -z ${DOCKER_CUDA+x} ]]; then
+        echo "please set DOCKER_CUDA"
+        exit 1
+    fi
+    if [[ $DRY_RUN == 1 ]]; then
+        echo "would run" docker build -f $ARCH.cuda${DOCKER_CUDA}.Dockerfile -t $REPO:$ARCH-cuda${DOCKER_CUDA}-$TAG .
+        echo "would run" docker push ${REPO}:${ARCH}-cuda${DOCKER_CUDA}-$TAG
+        echo run with DRY_RUN=0 to build and push
+    else
+        docker build -f $ARCH.cuda${DOCKER_CUDA}.Dockerfile -t $REPO:$ARCH-cuda${DOCKER_CUDA}-$TAG .
+        docker push ${REPO}:${ARCH}-cuda${DOCKER_CUDA}-$TAG
     fi
 fi
 

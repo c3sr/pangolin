@@ -1,9 +1,15 @@
-hunter_add_package(spdlog)
-find_package(spdlog CONFIG REQUIRED)
+include(CMakeFindDependencyMacro)
 
-hunter_add_package(cub)
-find_package(cub CONFIG REQUIRED)
+# expect this to be in the same path as pangolin's FindNUMA.cmake
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
 
-find_package(OpenMP REQUIRED)
+# Pangolin depends on these things
+find_dependency(Catch2)
+find_dependency(cub)
+find_dependency(fmt)
+find_dependency(NUMA)
+find_dependency(OpenMP)
+find_dependency(spdlog)
 
 include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
+

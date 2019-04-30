@@ -2,11 +2,17 @@
 
 #include <nvgraph.h>
 
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/dag_lowertriangular_csr.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 
-class NvGraphTriangleCounter : public TriangleCounter
-{
+namespace pangolin {
+
+/*! \brief Triangle Count using nvgraph
+
+  Undefined behavior for CUDA 8 and below.
+
+*/
+class NvGraphTriangleCounter : public TriangleCounter {
 private:
   int gpu_;
   DAGLowerTriangularCSR dag_;
@@ -19,3 +25,5 @@ public:
   virtual size_t count() override;
   virtual uint64_t num_edges() override { return dag_.num_edges(); }
 };
+
+} // namespace pangolin

@@ -1,14 +1,35 @@
 # Pangolin
 
+## Controlling Logging
+
+```c++
+pangolin::logger::set_level(pangolin::Level::ERR)
+```
+
+Allowed values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERR`, `CRITICAL`.
+
 ## Building Pangolin from Source
 
 ### Prerequisites
+
+| Dockerfile | cpu | CUDA | c++ | CMake | Builds |
+|-|-|-|-|-|-|
+| test_cuda92-ubuntu1804.Dockerfile         | amd64  | 9.2     | g++ 7.3.0   | 3.11.0 | &#9745; |
+| test_cuda100-ubuntu1804.Dockerfile        | amd64  | 10.0    | g++ 7.3.0   | 3.11.0 | &#9745; |
+|                                           | POWER9 | 9.2.148 | clang 5.0.0 | 3.12.0 | &#9745; |
+|                                           | POWER9 | 9.2.148 | g++ ??? | 3.12.0 | ??? |
+| test_cuda80-ubuntu1404.Dockerfile         | amd64  | 8.0.61  | g++ 4.8.4   | 3.11.0 | &#9745; |
+| test_cuda80-ubuntu1404-clang38.Dockerfile | amd64  | 8.0.61  | clang 3.8.0 | 3.11.0 | (needs check) x: problem parsing Vector |
+| test_cuda80-ubuntu1604.Dockerfile         | amd64  | 8.0.61  | g++ 5.4.0   | 3.11.0 | (needs check) x: problem parsing Vector |
+| test_cuda92_ubuntu1604-clang5.Dockerfile  | amd64  | 9.2.148 | clang 5.0.0 | 3.11.0 | x: problem with simd intrinsics |
+| - | amd64 | 9.2.148 | g++5.4.1 | 3.13.3 | x: problem with std::to_string in catch2 | 
+
 
 1. Install CUDA
 
 Instructions for installing CUDA on supported systems may be obtained from Nvidia's website.
 
-2. Install CMake 3.12+
+2. Install CMake 3.13+
 
 On x86 linux, CMake provides prebuilt binaries with a shell script.
 On POWER, you will need to build CMake from source.
@@ -29,6 +50,7 @@ If doxygen is installed, building pangolin will also create API documentation.
     cd build
     cmake ..
     make
+    make tests
 
 This will produce two libraries: `pangolin32` and `pangolin64`.
 Both have equivalent functionality, but use 32-bit and 64-bit values for graph vertex/edge IDs respectively.
@@ -62,6 +84,9 @@ target_link_libraries(... pangolin::pangolin32)
 
 ### As an external Library
 
+Pangolin is a header-only library, so "installation" is a matter of copying pangolin's headers to a desired location.
+Pangolin also includes a CMake config file for easy integration with other CMake projects.
+
 1. Clone and install pangolin to the desired location
 
 ```
@@ -77,7 +102,7 @@ make install
 # CMakeLists.txt
 find_package(pangolin CONFIG REQUIRED)
 ...
-target_link_libraries(... pangolin::pangolin32)
+target_link_libraries(... pangolin::pangolin)
 ```
 
 ## Getting Started

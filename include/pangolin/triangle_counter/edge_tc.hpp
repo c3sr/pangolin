@@ -1,21 +1,18 @@
 #pragma once
 
-#include "pangolin/triangle_counter/cuda_triangle_counter.hpp"
-#include "pangolin/sparse/unified_memory_csr.hpp"
 #include "pangolin/dense/cuda_managed_vector.hpp"
+#include "pangolin/sparse/unified_memory_csr.hpp"
+#include "pangolin/triangle_counter/cuda_triangle_counter.hpp"
 
-#include <vector>
-#include <iostream>
 #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
 
-class EdgeTC : public CUDATriangleCounter
-{
+namespace pangolin {
+
+class EdgeTC : public CUDATriangleCounter {
 private:
-  enum class Kernel
-  {
-    LINEAR,
-    BINARY
-  };
+  enum class Kernel { LINEAR, BINARY };
 
 private:
   Kernel kernel_;
@@ -49,3 +46,5 @@ public:
   virtual uint64_t num_edges() override { return numEdges_; }
   virtual size_t num_nodes() { return numNodes_; }
 };
+
+} // namespace pangolin

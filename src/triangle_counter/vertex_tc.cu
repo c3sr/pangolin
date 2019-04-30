@@ -1,16 +1,16 @@
 #include "pangolin/logger.hpp"
 #include "pangolin/par_graph.hpp"
 #include "pangolin/reader/gc_tsv_reader.hpp"
-#include "pangolin/utilities.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
+#include "pangolin/utilities.hpp"
 
 #include <cub/cub.cuh>
 
+namespace pangolin {
+
 // count intersections between sorted lists a and b
-__device__ static size_t linear_intersection_count(const Uint *const aBegin,
-                                                   const Uint *const aEnd,
-                                                   const Uint *const bBegin,
-                                                   const Uint *const bEnd) {
+__device__ static size_t linear_intersection_count(const Uint *const aBegin, const Uint *const aEnd,
+                                                   const Uint *const bBegin, const Uint *const bEnd) {
   size_t count = 0;
   const auto *ap = aBegin;
   const auto *bp = bBegin;
@@ -31,10 +31,9 @@ __device__ static size_t linear_intersection_count(const Uint *const aBegin,
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void
-kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
-              const Uint *rowStarts, const Uint *nonZeros,
-              const char *isLocalNonZero, const size_t numRows) {
+__global__ static void kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
+                                     const Uint *rowStarts, const Uint *nonZeros, const char *isLocalNonZero,
+                                     const size_t numRows) {
 
   // Specialize BlockReduce for a 1D block
   typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
@@ -53,8 +52,7 @@ kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
     const Uint tailEnd = rowStarts[head + 1];
 
     // one thread per edge
-    for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd;
-         tailOff += BLOCK_DIM_X) {
+    for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
 
       // only count local edges
       if (!isLocalNonZero || isLocalNonZero[tailOff]) {
@@ -68,9 +66,8 @@ kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
         const Uint tailEdgeStart = rowStarts[tail];
         const Uint tailEdgeEnd = rowStarts[tail + 1];
 
-        count += linear_intersection_count(
-            &nonZeros[headEdgeStart], &nonZeros[headEdgeEnd],
-            &nonZeros[tailEdgeStart], &nonZeros[tailEdgeEnd]);
+        count += linear_intersection_count(&nonZeros[headEdgeStart], &nonZeros[headEdgeEnd], &nonZeros[tailEdgeStart],
+                                           &nonZeros[tailEdgeEnd]);
       }
     }
   }
@@ -82,10 +79,9 @@ kernel_linear(uint64_t *__restrict__ triangleCounts, // per block triangle count
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void kernel_linear_shared(
-    uint64_t *__restrict__ triangleCounts, // per block triangle count
-    const Uint *rowStarts, const Uint *nonZeros, const char *isLocalNonZero,
-    const size_t numRows) {
+__global__ static void kernel_linear_shared(uint64_t *__restrict__ triangleCounts, // per block triangle count
+                                            const Uint *rowStarts, const Uint *nonZeros, const char *isLocalNonZero,
+                                            const size_t numRows) {
 
   // Specialize BlockReduce for a 1D block
   typedef cub::BlockReduce<size_t, BLOCK_DIM_X> BlockReduce;
@@ -123,8 +119,7 @@ __global__ static void kernel_linear_shared(
     }
 
     // one thread per edge
-    for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd;
-         tailOff += BLOCK_DIM_X) {
+    for (Uint tailOff = tailStart + threadIdx.x; tailOff < tailEnd; tailOff += BLOCK_DIM_X) {
 
       // only count local edges
       if (!isLocalNonZero || isLocalNonZero[tailOff]) {
@@ -134,9 +129,8 @@ __global__ static void kernel_linear_shared(
         const Uint tailEdgeStart = rowStarts[tail];
         const Uint tailEdgeEnd = rowStarts[tail + 1];
 
-        count += linear_intersection_count(headEdgeBegin, headEdgeEnd,
-                                           &nonZeros[tailEdgeStart],
-                                           &nonZeros[tailEdgeEnd]);
+        count +=
+            linear_intersection_count(headEdgeBegin, headEdgeEnd, &nonZeros[tailEdgeStart], &nonZeros[tailEdgeEnd]);
       }
     }
   }
@@ -148,8 +142,7 @@ __global__ static void kernel_linear_shared(
 }
 
 // return 1 if search_val is in array between offets left and right, inclusive
-__device__ static bool binary_search(const Uint *const array, size_t left,
-                                     size_t right, const Uint search_val) {
+__device__ static bool binary_search(const Uint *const array, size_t left, size_t right, const Uint search_val) {
   while (left <= right) {
     size_t mid = (left + right) / 2;
     Uint val = array[mid];
@@ -165,13 +158,11 @@ __device__ static bool binary_search(const Uint *const array, size_t left,
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ static void
-kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
-              const Uint *rowStarts, const Uint *nonZeros,
-              const char *isLocalNonZero, const size_t numRows) {
+__global__ static void kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
+                                     const Uint *rowStarts, const Uint *nonZeros, const char *isLocalNonZero,
+                                     const size_t numRows) {
   const size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
-  static_assert(BLOCK_DIM_X % 32 ==
-                0, "expect integer number of warps per block");
+  static_assert(BLOCK_DIM_X % 32 == 0, "expect integer number of warps per block");
 
   const int warpIdx = threadIdx.x / 32; // which warp in thread block
   const int laneIdx = threadIdx.x % 32; // which thread in warp
@@ -193,8 +184,7 @@ kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
     const Int tailEnd = rowStarts[head + 1];
 
     // one warp per edge
-    for (Int tailOff = tailStart + warpIdx; tailOff < tailEnd;
-         tailOff += WARPS_PER_BLOCK) {
+    for (Int tailOff = tailStart + warpIdx; tailOff < tailEnd; tailOff += WARPS_PER_BLOCK) {
 
       // only count local edges
       if (!isLocalNonZero || isLocalNonZero[tailOff]) {
@@ -210,16 +200,12 @@ kernel_binary(uint64_t *__restrict__ triangleCounts, // per block triangle count
 
         // warp in parallel across shorter list to binary-search longer list
         if (headEdgeEnd - headEdgeStart < tailEdgeEnd - tailEdgeStart) {
-          for (const Uint *u = &nonZeros[headEdgeStart] + laneIdx;
-               u < &nonZeros[headEdgeEnd]; u += 32) {
-            count +=
-                binary_search(nonZeros, tailEdgeStart, tailEdgeEnd - 1, *u);
+          for (const Uint *u = &nonZeros[headEdgeStart] + laneIdx; u < &nonZeros[headEdgeEnd]; u += 32) {
+            count += binary_search(nonZeros, tailEdgeStart, tailEdgeEnd - 1, *u);
           }
         } else {
-          for (const Uint *u = &nonZeros[tailEdgeStart] + laneIdx;
-               u < &nonZeros[tailEdgeEnd]; u += 32) {
-            count +=
-                binary_search(nonZeros, headEdgeStart, headEdgeEnd - 1, *u);
+          for (const Uint *u = &nonZeros[tailEdgeStart] + laneIdx; u < &nonZeros[tailEdgeEnd]; u += 32) {
+            count += binary_search(nonZeros, headEdgeStart, headEdgeEnd - 1, *u);
           }
         }
       }
@@ -250,8 +236,7 @@ VertexTC::VertexTC(Config &c) : CUDATriangleCounter(c) {
   } else if (kernel == "hash") {
     kernel_ = Kernel::HASH;
   } else {
-    LOG(critical, "Unknown triangle counting kernel \"{}\" for VertexTC",
-        c.kernel_);
+    LOG(critical, "Unknown triangle counting kernel \"{}\" for VertexTC", c.kernel_);
     exit(-1);
   }
 
@@ -279,7 +264,7 @@ void VertexTC::read_data(const std::string &path) {
     }
   }
 
-  TRACE("filtered edge list has {} entries", filtered.size());
+  SPDLOG_TRACE(logger::console(), "filtered edge list has {} entries", filtered.size());
 
   LOG(debug, "building DAG");
   // for singe dag, no remote edges
@@ -339,7 +324,7 @@ void VertexTC::setup_data() {
   }
 
   for (const auto i : gpus_) {
-    TRACE("synchronizing GPU {}", i);
+    SPDLOG_TRACE(logger::console(), "synchronizing GPU {}", i);
     CUDA_RUNTIME(cudaSetDevice(i));
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
@@ -359,9 +344,8 @@ size_t VertexTC::count() {
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
       LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-      kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
-          triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
-          isLocalNonZero_d_[i], numRows);
+      kernel_linear<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
+                                                        isLocalNonZero_d_[i], numRows);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
@@ -370,9 +354,8 @@ size_t VertexTC::count() {
       const size_t BLOCK_DIM_X = 128;
       dim3 dimBlock(BLOCK_DIM_X);
       LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-      kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
-          triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
-          isLocalNonZero_d_[i], numRows);
+      kernel_linear_shared<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
+                                                               isLocalNonZero_d_[i], numRows);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
@@ -382,9 +365,8 @@ size_t VertexTC::count() {
       dim3 dimBlock(BLOCK_DIM_X);
       dim3 dimGrid(graph.num_rows());
       LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-      kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(
-          triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
-          isLocalNonZero_d_[i], numRows);
+      kernel_binary<BLOCK_DIM_X><<<dimGrid, dimBlock>>>(triangleCounts_d_[i], rowOffsets_d_[i], nonZeros_d_[i],
+                                                        isLocalNonZero_d_[i], numRows);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
@@ -420,3 +402,5 @@ size_t VertexTC::count() {
 
   return total;
 }
+
+} // namespace pangolin

@@ -1,0 +1,9 @@
+set(PANGOLIN_CU_HEADERS
+  ${PANGOLIN_CU_HEADERS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/pangolin/algorithm/count.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/pangolin/algorithm/elementwise.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/pangolin/algorithm/fill.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/pangolin/algorithm/search.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/pangolin/algorithm/tc_edge_dynpar.cuh
+  PARENT_SCOPE
+)

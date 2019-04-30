@@ -7,15 +7,13 @@ Routines for interacting with CUSparse
 #include <cusparse.h>
 
 #include "pangolin/dense/vector.hu"
-#include "pangolin/namespace.hpp"
 #include "pangolin/edge_list.hpp"
+#include "pangolin/namespace.hpp"
 
-
-
-PANGOLIN_NAMESPACE_BEGIN()
+namespace pangolin {
 
 class CusparseCSR {
- public:
+public:
   CusparseCSR();
   cusparseMatDescr_t descr_;
   Vector<int> csrRowPtr_;
@@ -24,10 +22,10 @@ class CusparseCSR {
 
   const int *csrRowPtrA() const { return csrRowPtr_.data(); }
   const int *csrColIndA() const { return csrColInd_.data(); }
-  const int *csrValA() const {return csrVal_.data(); }
+  const int *csrValA() const { return csrVal_.data(); }
 
-  static CusparseCSR from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &));
+  static CusparseCSR from_edgelist(const EdgeList &es,
+                                   bool (*edgeFilter)(const Edge &));
 };
 
-
-PANGOLIN_NAMESPACE_END()
+} // namespace pangolin

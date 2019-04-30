@@ -2,12 +2,11 @@
 
 #include <cusparse.h>
 
-
-#include "pangolin/triangle_counter/triangle_counter.hpp"
-#include "pangolin/sparse/gpu_csr.hpp"
 #include "pangolin/namespace.hpp"
+#include "pangolin/sparse/gpu_csr.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 
-PANGOLIN_NAMESPACE_BEGIN()
+namespace pangolin {
 
 /*! Count triangles with CUSparse cusparseScsrgemm
 
@@ -18,8 +17,7 @@ C .*= A
 
 
 */
-class CusparseTC : public TriangleCounter
-{
+class CusparseTC : public TriangleCounter {
 private:
   int gpu_;
 
@@ -35,7 +33,7 @@ public:
   virtual void read_data(const std::string &path) override;
   virtual void setup_data() override;
   virtual size_t count() override;
-  virtual uint64_t num_edges() override {return A_.nnz(); }
+  virtual uint64_t num_edges() override { return A_.nnz(); }
 };
 
-PANGOLIN_NAMESPACE_END()
+} // namespace pangolin

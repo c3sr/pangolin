@@ -1,16 +1,18 @@
 #pragma once
 
+#include <map>
 #include <set>
 #include <vector>
-#include <map>
 
 #include <cuda_runtime.h>
 
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/config.hpp"
+#include "pangolin/namespace.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 
-class CUDATriangleCounter : public TriangleCounter
-{
+namespace pangolin {
+
+class CUDATriangleCounter : public TriangleCounter {
 protected:
   // treat each of these as a separate GPU (even if there are duplicates)
   std::vector<int> gpus_;
@@ -31,3 +33,5 @@ public:
   // available after read_data()
   virtual size_t num_nodes() = 0;
 };
+
+} // namespace pangolin

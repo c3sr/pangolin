@@ -1,4 +1,19 @@
-build
-Dockerfile
-references
-data
+# ignore everything
+*
+
+# except...
+!ci
+!cmake
+!CMakeLists.txt
+!Doxyfile.in
+!include
+!README.md
+!src
+!test
+!tools
+!.git
+!.gitignore
+
+# but do ignore
+tools/*.tsv
+tools/*.bel
