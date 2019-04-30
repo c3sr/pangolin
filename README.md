@@ -2,13 +2,29 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/9996fcec-ff4e-4664-ae94-3734b469d5d9/deploy-status)](https://app.netlify.com/sites/pangolin-docs/deploys)
 
-## Controlling Logging
+A header-only C++/CUDA library for GPU graph operations
+
+## Getting Started
+
+Include the pangolin headers in your code
 
 ```c++
-pangolin::logger::set_level(pangolin::Level::ERR)
+#include "pangolin.hpp"
+#include "pangolin.cuh"
+```
+
+### Controlling Logging
+
+```c++
+pangolin::logger::set_level(pangolin::logger::Level::ERR)
 ```
 
 Allowed values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERR`, `CRITICAL`.
+
+### API Documentation
+
+API documentation is available at [pangolin-docs.netlify.com](https://pangolin-docs.netlify.com/).
+
 
 ## Building Pangolin from Source
 
@@ -48,21 +64,20 @@ If doxygen is installed, building pangolin will also create API documentation.
 
 ### Building on Ubuntu/Debian
 
+Pangolin is a header-only library, but you can still build the tests
+
     mkdir -p build
     cd build
     cmake ..
     make
     make tests
 
-This will produce two libraries: `pangolin32` and `pangolin64`.
-Both have equivalent functionality, but use 32-bit and 64-bit values for graph vertex/edge IDs respectively.
-
 ## Using Pangolin in another CMake project
 
 See [Pangolin_Example](https://github.com/c3sr/pangolin_example) for an example.
 
 Pangolin may be used with CMake `add_subdirectory()`, or installed and used with CMake `find_package(pangolin CONFIG)`.
-Pangolin exports two targets `pangolin::pangolin32` and `pangolin::pangolin64` for 32-bit or 64-bit integer types in graph IDs.
+Pangolin exports the CMake `pangolin::pangolin` target.
 
 ### As a Subdirectory
 
@@ -107,9 +122,7 @@ find_package(pangolin CONFIG REQUIRED)
 target_link_libraries(... pangolin::pangolin)
 ```
 
-## Getting Started
 
-API documentation is available at [pangolin-docs.netlify.com](https://pangolin-docs.netlify.com/).
 
 
 ## Profiling
