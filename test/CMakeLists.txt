@@ -19,40 +19,37 @@ function(pangolin_add_test)
   add_test(NAME ${PARSED_ARGS_NAME} COMMAND ${PARSED_ARGS_NAME} -a)
 endfunction()
 
+pangolin_add_test(
+  NAME test_binary_search
+  SRCS test_binary_search.cpp
+)
 
 pangolin_add_test(
-  NAME coo
-  SRCS coo.cu
+  NAME test_complete
+  SRCS test_complete.cu
 )
+
 pangolin_add_test(
-  NAME test_csr
-  SRCS test_csr.cu
+  NAME test_coo
+  SRCS test_coo.cu
 )
-pangolin_add_test(
-  NAME vector
-  SRCS vector.cu
-)
-pangolin_add_test(
-  NAME fc
-  SRCS fc.cu
-)
-pangolin_add_test(
-  NAME tc_coo
-  SRCS tc_coo.cu
-)
+
 pangolin_add_test(
   NAME test_count
   SRCS test_count.cu
 )
+
 pangolin_add_test(
-  NAME binary_search
-  SRCS binary_search.cpp
+  NAME test_csr
+  SRCS test_csr.cu
 )
 
 pangolin_add_test(
   NAME test_logger
   SRCS test_logger.cpp test_logger_helper.cpp
 )
+
+
 
 pangolin_add_test(
   NAME test_merge_path
@@ -65,17 +62,20 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
-  NAME test_tc_edge_linear
-  SRCS test_tc_edge_linear.cu
+  NAME test_tc_coo
+  SRCS test_tc_coo.cu
 )
-# pangolin_add_test(
-#   NAME test_tc_vertex_linear
-#   SRCS test_tc_vertex_linear.cu
-# )
+
 pangolin_add_test(
   NAME test_tc_edge_binary
   SRCS test_tc_edge_binary.cu
 )
+
+pangolin_add_test(
+  NAME test_tc_edge_linear
+  SRCS test_tc_edge_linear.cu
+)
+
 pangolin_add_test(
   NAME test_tc_edge_merge
   SRCS test_tc_edge_merge.cu
@@ -86,16 +86,27 @@ pangolin_add_test(
   SRCS test_topology.cpp
 )
 
-# pangolin_add_test(
-#   NAME test_flow
-#   SRCS test_flow.cu
-# )
+pangolin_add_test(
+  NAME test_vector
+  SRCS test_vector.cu
+)
 
 pangolin_add_test(
   NAME test_zero
   SRCS test_zero.cu
 )
-pangolin_add_test(
-  NAME test_map
-  SRCS test_map.cu
-)
+
+# pangolin_add_test(
+#   NAME test_tc_vertex_linear
+#   SRCS test_tc_vertex_linear.cu
+# )
+
+# pangolin_add_test(
+#   NAME test_flow
+#   SRCS test_flow.cu
+# )
+
+# pangolin_add_test(
+#   NAME test_map
+#   SRCS test_map.cu
+# )
