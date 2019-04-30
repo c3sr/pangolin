@@ -61,7 +61,7 @@ template <typename Index> COO<Index> COO<Index>::from_edgelist(const EdgeList &e
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= csr.rowPtr_.size());
-      // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_,
+      // SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.src_,
       // csr.edgeSrc_.size());
       csr.rowPtr_.push_back(csr.colInd_.size());
     }
@@ -99,7 +99,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     EdgeTy<Index> edge = *ei;
     const Index src = edge.first;
     const Index dst = edge.second;
-    SPDLOG_TRACE(logger::console, "handling edge {}->{}", edge.first, edge.second);
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
     // edge has a new src and should be in a new row
     // even if the edge is filtered out, we need to add empty rows
@@ -107,7 +107,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= coo.rowPtr_.size() && "are edges not ordered by source?");
-      SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.first, coo.rowPtr_.size());
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, coo.rowPtr_.size());
       coo.rowPtr_.push_back(coo.colInd_.size());
     }
 
@@ -129,7 +129,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
 template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e) {
   const Index src = e.first;
   const Index dst = e.second;
-  SPDLOG_TRACE(logger::console, "handling edge {}->{}", src, dst);
+  SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
 
   // edge has a new src and should be in a new row
   // even if the edge is filtered out, we need to add empty rows
@@ -137,7 +137,7 @@ template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e)
     // expecting inputs to be sorted by src, so it should be at least
     // as big as the current largest row we have recored
     assert(src >= rowPtr_.size() && "are edges not ordered by source?");
-    SPDLOG_TRACE(logger::console, "node {} edges start at {}", src, rowPtr_.size());
+    SPDLOG_TRACE(logger::console(), "node {} edges start at {}", src, rowPtr_.size());
     rowPtr_.push_back(colInd_.size());
   }
 

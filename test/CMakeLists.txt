@@ -48,6 +48,12 @@ pangolin_add_test(
   NAME binary_search
   SRCS binary_search.cpp
 )
+
+pangolin_add_test(
+  NAME test_logger
+  SRCS test_logger.cpp test_logger_helper.cpp
+)
+
 pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cpp
@@ -84,6 +90,7 @@ pangolin_add_test(
 #   NAME test_flow
 #   SRCS test_flow.cu
 # )
+
 pangolin_add_test(
   NAME test_zero
   SRCS test_zero.cu

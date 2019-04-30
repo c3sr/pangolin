@@ -8,8 +8,7 @@
 
 namespace pangolin {
 
-GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path)
-    : fp_(nullptr), path_(path), is_(path) {
+GraphChallengeTSVReader::GraphChallengeTSVReader(const std::string &path) : fp_(nullptr), path_(path), is_(path) {
   fp_ = fopen(path.c_str(), "r");
   assert(fp_);
 }
@@ -43,7 +42,7 @@ static EdgeList read_stream(std::istream &is, std::istream::streampos end) {
   EdgeList l;
   const Int intMax = std::numeric_limits<Int>::max();
 
-  SPDLOG_DEBUG(logger::console, "reading from {} until {}", is.tellg(), end);
+  LOG(debug, "reading from {} until {}", is.tellg(), end);
 
   for (std::string line; std::getline(is, line);) {
 
@@ -51,7 +50,7 @@ static EdgeList read_stream(std::istream &is, std::istream::streampos end) {
     if (end != -1) {
       // if we read past the end for this line, don't record edge
       if (is.tellg() > end) {
-        SPDLOG_DEBUG(logger::console, "read past requested end {}", end);
+        LOG(debug, "read past requested end {}", end);
         break;
       }
     }
@@ -79,22 +78,18 @@ static EdgeList read_stream(std::istream &is, std::istream::streampos end) {
 
     l.push_back(Edge(src, dst));
   }
-  SPDLOG_DEBUG(logger::console, "finished reading stream at {}", is.tellg());
+  LOG(debug, "finished reading stream at {}", is.tellg());
 
   if (l.size()) {
-    SPDLOG_DEBUG(logger::console, "first edge {} -> {}", l.begin()->first,
-                 l.begin()->second);
-    SPDLOG_DEBUG(logger::console, "2nd last edge {} -> {}",
-                 (l.end() - 2)->first, (l.end() - 2)->second);
-    SPDLOG_DEBUG(logger::console, "last edge {} -> {}", (l.end() - 1)->first,
-                 (l.end() - 1)->second);
+    LOG(debug, "first edge {} -> {}", l.begin()->first, l.begin()->second);
+    LOG(debug, "2nd last edge {} -> {}", (l.end() - 2)->first, (l.end() - 2)->second);
+    LOG(debug, "last edge {} -> {}", (l.end() - 1)->first, (l.end() - 1)->second);
   }
   return l;
 }
 
 // return the position of the beginning of the next line, or the end of the file
-static std::istream::streampos next_line_or_eof(const std::string &path,
-                                                std::istream::streampos start) {
+static std::istream::streampos next_line_or_eof(const std::string &path, std::istream::streampos start) {
   std::ifstream newlineFinder(path);
   newlineFinder.seekg(start);
 
@@ -102,15 +97,12 @@ static std::istream::streampos next_line_or_eof(const std::string &path,
   newlineFinder.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
   if (newlineFinder.eof()) {
-    SPDLOG_TRACE(logger::console,
-                 "reached EOF in {} after {} while searching for newline", path,
-                 start);
+    SPDLOG_TRACE(logger::console(), "reached EOF in {} after {} while searching for newline", path, start);
     std::ifstream endFinder(path);
     endFinder.seekg(0, endFinder.end);
     return endFinder.tellg();
   } else {
-    SPDLOG_TRACE(logger::console, "found newline in {} at {} after {}", path,
-                 newlineFinder.tellg(), start);
+    SPDLOG_TRACE(logger::console(), "found newline in {} at {} after {}", path, newlineFinder.tellg(), start);
     return newlineFinder.tellg();
   }
 }
@@ -134,7 +126,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end) {
     LOG(critical, "unable to get size for {}", path_);
     exit(-1);
   }
-  SPDLOG_TRACE(logger::console, "file size is {}", sz);
+  SPDLOG_TRACE(logger::console(), "file size is {}", sz);
 
   if (start == end) {
     return EdgeList();
@@ -147,8 +139,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end) {
   } else {
     edgeStart = next_line_or_eof(path_, start);
   }
-  SPDLOG_TRACE(logger::console, "found edge start after {} at {}", start,
-               edgeStart);
+  SPDLOG_TRACE(logger::console(), "found edge start after {} at {}", start, edgeStart);
 
   // find the end of the edge after end
   size_t edgeEnd;
@@ -157,7 +148,7 @@ EdgeList GraphChallengeTSVReader::read_edges(size_t start, size_t end) {
   } else {
     edgeEnd = next_line_or_eof(path_, end);
   }
-  SPDLOG_TRACE(logger::console, "found edge end after {} at {}", end, edgeEnd);
+  SPDLOG_TRACE(logger::console(), "found edge end after {} at {}", end, edgeEnd);
 
   fs.clear(); // clear fail and eof bits
   fs.seekg(edgeStart);

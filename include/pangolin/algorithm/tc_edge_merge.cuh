@@ -79,7 +79,7 @@ public:
     constexpr int dimBlock = 512;
     const int dimGrid = numEdges;
     assert(edgeOffset + numEdges <= mat.nnz());
-    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
+    LOG(debug, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
     CUDA_RUNTIME(cudaGetLastError());

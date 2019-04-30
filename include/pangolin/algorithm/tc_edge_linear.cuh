@@ -50,11 +50,11 @@ private:
 
 public:
   LinearTC(int dev) : dev_(dev), stream_(nullptr), count_(nullptr), destroyStream_(true) {
-    SPDLOG_TRACE(logger::console, "set dev {}", dev_);
+    SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    SPDLOG_TRACE(logger::console, "create stream");
+    SPDLOG_TRACE(logger::console(), "create stream");
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
-    SPDLOG_TRACE(logger::console, "mallocManaged");
+    SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
@@ -82,7 +82,7 @@ public:
   LinearTC() : LinearTC(0) {}
   ~LinearTC() {
     if (destroyStream_ && stream_) {
-      SPDLOG_TRACE(logger::console, "destroy stream {}", uintptr_t(stream_));
+      SPDLOG_TRACE(logger::console(), "destroy stream {}", uintptr_t(stream_));
       CUDA_RUNTIME(cudaStreamDestroy(stream_));
     }
     CUDA_RUNTIME(cudaFree(count_));
@@ -97,14 +97,13 @@ public:
     // zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     // uint64_t *devCount = nullptr;
     // CUDA_RUNTIME(cudaHostGetDevicePointer(&devCount, count_, 0));
-    // SPDLOG_DEBUG(logger::console, "zero {}", uintptr_t(count_));
+    // LOG(debug, "zero {}", uintptr_t(count_));
     // *count_ = 0;
-    // SPDLOG_DEBUG(logger::console, "did zero");
+    // LOG(debug, "did zero");
     constexpr int dimBlock = 256;
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
-    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}, stream = {}", dev_, dimGrid, dimBlock,
-                 uintptr_t(stream_));
+    LOG(debug, "device = {}, blocks = {}, threads = {}, stream = {}", dev_, dimGrid, dimBlock, uintptr_t(stream_));
     kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
     CUDA_RUNTIME(cudaGetLastError());
   }

@@ -7,9 +7,7 @@
 
 namespace pangolin {
 
-BELReader::BELReader(const std::string &path) : fp_(nullptr), path_(path) {
-  fp_ = fopen(path.c_str(), "r");
-}
+BELReader::BELReader(const std::string &path) : fp_(nullptr), path_(path) { fp_ = fopen(path.c_str(), "r"); }
 
 BELReader::~BELReader() {
   if (fp_) {
@@ -73,7 +71,7 @@ size_t BELReader::read(Edge *ptr, const size_t num) {
 
   // for (size_t i = 0; i < numRead; ++i)
   // {
-  //     SPDLOG_DEBUG(logger::console, "{} {}", ptr[i].first, ptr[i].second);
+  //     LOG(debug, "{} {}", ptr[i].first, ptr[i].second);
   // }
   // exit(0);
 

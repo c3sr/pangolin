@@ -77,7 +77,7 @@ public:
     const int dimGrid = (32 * numEdges + (dimBlock * c) - 1) / (dimBlock * c);
     assert(edgeOffset + numEdges <= mat.nnz());
     assert(count_);
-    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
+    LOG(debug, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     switch (c) {
     case 1:

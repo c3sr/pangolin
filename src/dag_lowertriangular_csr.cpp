@@ -8,9 +8,7 @@ namespace pangolin {
 DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l) {
   DAGLowerTriangularCSR dag;
 
-  SPDLOG_DEBUG(logger::console,
-               "Building DAGLowerTriangularCSR from EdgeList with {} edges",
-               l.size());
+  LOG(debug, "Building DAGLowerTriangularCSR from EdgeList with {} edges", l.size());
 
   if (l.size() == 0) {
     return dag;
@@ -29,18 +27,18 @@ DAGLowerTriangularCSR DAGLowerTriangularCSR::from_edgelist(EdgeList &l) {
 
   // ensure node IDs are 0 - whatever
   const auto smallest = l.begin()->first;
-  SPDLOG_DEBUG(logger::console, "smallest node was {}", smallest);
+  LOG(debug, "smallest node was {}", smallest);
   for (auto &e : l) {
     e.first -= smallest;
     e.second -= smallest;
   }
 
   for (const auto &edge : l) {
-    // SPDLOG_DEBUG(logger::console, "{} {}", edge.src_, edge.second);
+    // LOG(debug, "{} {}", edge.src_, edge.second);
     // a new source node or the first source node.
     // assume this come in in order
     if (dag.sourceOffsets_.size() != size_t(edge.first + 1)) {
-      // SPDLOG_DEBUG(logger::console, "new source node {} starts at offset {}",
+      // LOG(debug, "new source node {} starts at offset {}",
       // edge.src_, dag.destinationIndices_.size()); node ids should cover all
       // numbers and be increasing
       assert(edge.first == dag.sourceOffsets_.size());

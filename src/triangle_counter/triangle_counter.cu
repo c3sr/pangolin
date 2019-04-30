@@ -1,4 +1,3 @@
-#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/triangle_counter/cpu_triangle_counter.hpp"
 #include "pangolin/triangle_counter/cudamemcpy_tc.hpp"
 #include "pangolin/triangle_counter/cusparse_tc.hpp"
@@ -8,13 +7,14 @@
 #include "pangolin/triangle_counter/impact_2019_tc.hpp"
 #include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
 #include "pangolin/triangle_counter/spmm_tc.hpp"
+#include "pangolin/triangle_counter/triangle_counter.hpp"
 #include "pangolin/triangle_counter/vertex_tc.hpp"
 
 namespace pangolin {
 
 TriangleCounter::~TriangleCounter() {}
 
-void TriangleCounter::setup_data() { SPDLOG_DEBUG(logger::console, "triangle counter setup_data is a no-op"); }
+void TriangleCounter::setup_data() { LOG(debug, "triangle counter setup_data is a no-op"); }
 
 TriangleCounter *TriangleCounter::CreateTriangleCounter(Config &c) {
   if (c.type_ == "") {

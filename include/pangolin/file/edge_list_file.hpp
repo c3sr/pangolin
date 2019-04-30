@@ -74,7 +74,7 @@ private:
       std::memcpy(&dst, &belBuf_[i * 24 + 0], 8);
       ptr[i].first = src;
       ptr[i].second = dst;
-      SPDLOG_TRACE(logger::console, "read {} -> {}", ptr[i].first, ptr[i].second);
+      SPDLOG_TRACE(logger::console(), "read {} -> {}", ptr[i].first, ptr[i].second);
     }
 
     // no characters extracted or parsing error
@@ -149,7 +149,7 @@ public:
   get_edges(std::vector<EdgeTy<T>> &edges, //!< [out] the read edges. Resized to the number of successfully read edges
             const size_t n                 //!< [in] the number of edges to try to read
   ) {
-    SPDLOG_TRACE(logger::console, "requested {} edges", n);
+    SPDLOG_TRACE(logger::console(), "requested {} edges", n);
     edges.resize(n);
 
     size_t numRead;

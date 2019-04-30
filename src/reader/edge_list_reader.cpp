@@ -14,10 +14,10 @@ namespace pangolin {
 
 EdgeListReader *EdgeListReader::from_file(const std::string &path) {
   if (endswith(path, ".bel")) {
-    SPDLOG_DEBUG(logger::console, "creating BELReader");
+    LOG(debug, "creating BELReader");
     return new BELReader(path);
   } else if (endswith(path, ".tsv")) {
-    SPDLOG_DEBUG(logger::console, "creating GraphChallengeTSVReader");
+    LOG(debug, "creating GraphChallengeTSVReader");
     return new GraphChallengeTSVReader(path);
   } else {
     LOG(critical, "Unknown reader for file \"{}\"", path);

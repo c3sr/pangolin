@@ -8,8 +8,7 @@
 
 namespace pangolin {
 
-static size_t intersection_count(const Int *const aBegin, const Int *const aEnd,
-                                 const Int *const bBegin,
+static size_t intersection_count(const Int *const aBegin, const Int *const aEnd, const Int *const bBegin,
                                  const Int *const bEnd) {
   size_t count = 0;
   const Int *ap = aBegin;
@@ -32,7 +31,7 @@ static size_t intersection_count(const Int *const aBegin, const Int *const aEnd,
 
 CPUTriangleCounter::CPUTriangleCounter(const Config &c) {
   numThreads_ = c.numCPUThreads_;
-  SPDLOG_DEBUG(logger::console, "config requested {} threads", numThreads_);
+  LOG(debug, "config requested {} threads", numThreads_);
 
 #if USE_OPENMP
   const size_t max_threads = omp_get_max_threads();
@@ -57,7 +56,7 @@ void CPUTriangleCounter::read_data(const std::string &path) {
   LOG(info, "reading {}", path);
   auto *reader = pangolin::EdgeListReader::from_file(path);
   auto edgeList = reader->read_all();
-  SPDLOG_DEBUG(logger::console, "building DAG");
+  LOG(debug, "building DAG");
   dag_ = DAG2019::from_edgelist(edgeList);
 
   LOG(info, "{} nodes", dag_.num_nodes());
@@ -81,8 +80,7 @@ size_t CPUTriangleCounter::count() {
     Int v_end = dag_.nodes_[v + 1];
 
     size_t count =
-        intersection_count(&dag_.edgeDst_[u_ptr], &dag_.edgeDst_[u_end],
-                           &dag_.edgeDst_[v_ptr], &dag_.edgeDst_[v_end]);
+        intersection_count(&dag_.edgeDst_[u_ptr], &dag_.edgeDst_[u_end], &dag_.edgeDst_[v_ptr], &dag_.edgeDst_[v_end]);
 
 #pragma omp atomic
     total += count;
