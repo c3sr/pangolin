@@ -1,5 +1,7 @@
 # Pangolin
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/9996fcec-ff4e-4664-ae94-3734b469d5d9/deploy-status)](https://app.netlify.com/sites/pangolin-docs/deploys)
+
 ## Controlling Logging
 
 ```c++
@@ -107,7 +109,7 @@ target_link_libraries(... pangolin::pangolin)
 
 ## Getting Started
 
-API documentation may be produced with `make docs` if Doxygen and Graphviz are installed.
+API documentation is available at [pangolin-docs.netlify.com](https://pangolin-docs.netlify.com/).
 
 
 ## Profiling
