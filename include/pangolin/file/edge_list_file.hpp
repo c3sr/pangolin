@@ -29,8 +29,17 @@ private:
   FILE *fp_;
   std::string path_;
   FileType type_;
+  std::vector<char> belBuf_; // a buffer used by read_bel
 
-  template <typename T> size_t read_bel(EdgeTy<T> *ptr, const size_t n) {
+  /*! read n edges into ptr
+
+    \tparam T the Node type
+    \return the number of edges read
+  */
+  template <typename T>
+  size_t read_bel(EdgeTy<T> *ptr, //<! buffer for edges (allocated by caller)
+                  const size_t n  //<! number of edges to read
+  ) {
     if (fp_ == nullptr) {
       LOG(error, "error reading {} or file was already closed ", path_);
       return 0;
@@ -39,8 +48,8 @@ private:
       LOG(error, "buffer is a nullptr");
       return 0;
     }
-    char *buf = new char[24 * n];
-    const size_t numRead = fread(buf, 24, n, fp_);
+    belBuf_.resize(24 * n);
+    const size_t numRead = fread(belBuf_.data(), 24, n, fp_);
 
     // end of file or error
     if (numRead != n) {
@@ -61,15 +70,14 @@ private:
     }
     for (size_t i = 0; i < numRead; ++i) {
       uint64_t src, dst;
-      std::memcpy(&src, &buf[i * 24 + 8], 8);
-      std::memcpy(&dst, &buf[i * 24 + 0], 8);
+      std::memcpy(&src, &belBuf_[i * 24 + 8], 8);
+      std::memcpy(&dst, &belBuf_[i * 24 + 0], 8);
       ptr[i].first = src;
       ptr[i].second = dst;
       SPDLOG_TRACE(logger::console, "read {} -> {}", ptr[i].first, ptr[i].second);
     }
 
     // no characters extracted or parsing error
-    delete[] buf;
     return numRead;
   }
 
