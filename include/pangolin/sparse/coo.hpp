@@ -54,8 +54,6 @@ well. For read-only GPU access, use the view() method to get a lightweight
 reference to the data.
 */
 template <typename Index> class COO {
-private:
-  Index maxCol_;
 
 public:
   typedef Index index_type;
