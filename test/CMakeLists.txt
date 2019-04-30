@@ -49,8 +49,6 @@ pangolin_add_test(
   SRCS test_logger.cpp test_logger_helper.cpp
 )
 
-
-
 pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cpp
@@ -59,11 +57,6 @@ pangolin_add_test(
 pangolin_add_test(
   NAME test_numa
   SRCS test_numa.cpp
-)
-
-pangolin_add_test(
-  NAME test_tc_coo
-  SRCS test_tc_coo.cu
 )
 
 pangolin_add_test(
