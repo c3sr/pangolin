@@ -27,11 +27,12 @@ __global__ void row_block_kernel(uint64_t *count,        //!<[out] the count wil
     const size_t srcStart = adj.rowPtr_[src];
     const size_t srcStop = adj.rowPtr_[src + 1];
     const size_t srcLen = srcStop - srcStart;
-    const bool useShared = (srcLen) < BLOCK_DIM_X;
 
+    // if the row fits in shared memory, put in in there
+    // srcBegin will point at the beginning of the row's nonzeros, whether it's in shared memory or not
     const Index *srcBegin = nullptr;
-    if (useShared) {
-      for (size_t i = 0; i < srcLen; i += blockDim.x) {
+    if (srcLen < BLOCK_DIM_X) {
+      for (size_t i = threadIdx.x; i < srcLen; i += blockDim.x) {
         srcShared[i] = adj.colInd_[srcStart + i];
       }
       __syncthreads();
@@ -57,27 +58,6 @@ __global__ void row_block_kernel(uint64_t *count,        //!<[out] the count wil
   atomicAdd(count, threadCount);
 }
 
-template <size_t BLOCK_DIM_X, typename CsrView>
-__global__ void launcher(uint64_t *count,   //!< [inout] the count, caller should zero
-                         const CsrView csr, //!< [in] a CSR view
-                         const size_t numRows, const size_t rowStart) {
-
-  typedef typename CsrView::index_type Index;
-
-  size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-
-  // launch one kernel per row
-  for (Index row = gx + rowStart; row < rowStart + numRows; row += BLOCK_DIM_X * gridDim.x) {
-    const Index rowStart = csr.rowPtr_[row];
-    const Index *rowBegin = &csr.colInd_[rowStart];
-    const size_t rowLen = csr.rowPtr_[row + 1] - rowStart;
-
-    constexpr int dimBlock = 512;
-    const int dimGrid = (rowLen + dimBlock - 1) / dimBlock;
-    row_block_kernel<dimBlock><<<dimGrid, dimBlock>>>(count, row, rowBegin, rowLen, csr);
-  }
-}
-
 namespace pangolin {
 
 class VertexBlockBinaryTC {
@@ -85,6 +65,7 @@ private:
   int dev_;
   cudaStream_t stream_;
   uint64_t *count_;
+  dim3 maxGridSize_;
 
 public:
   VertexBlockBinaryTC(int dev) : dev_(dev), count_(nullptr) {
@@ -93,6 +74,13 @@ public:
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+
+    // get the maximum grid size
+    {
+      cudaDeviceProp prop;
+      CUDA_RUNTIME(cudaGetDeviceProperties(&prop, dev));
+      maxGridSize_.x = prop.maxGridSize[0];
+    }
   }
 
   VertexBlockBinaryTC() : VertexBlockBinaryTC(0) {}
@@ -105,8 +93,9 @@ public:
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // block per row
+    // constexpr int dimBlock = 512;
     constexpr int dimBlock = 512;
-    const int dimGrid = (numRows + dimBlock - 1) / dimBlock;
+    const int dimGrid = std::min(numRows, static_cast<uint64_t>(maxGridSize_.x));
     assert(rowOffset + numRows <= mat.num_rows());
     assert(count_);
     LOG(debug, "row_block_kernel: device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
@@ -115,14 +104,23 @@ public:
     CUDA_RUNTIME(cudaGetLastError());
   }
 
+  /*! Synchronous triangle count
+
+      Counts triangles for rows [rowOffset, rowOffset + numRows)
+  */
   template <typename CsrView>
-  uint64_t count_sync(const CsrView &mat, const size_t numRows, const size_t rowOffset = 0) {
-    count_async(mat, numRows, rowOffset);
+  uint64_t count_sync(const CsrView &adj,        //<! [in] a CSR adjacency matrix to count
+                      const size_t numRows,      //<! [in] the number of rows to count
+                      const size_t rowOffset = 0 //<! [in] the first row to count
+  ) {
+    count_async(adj, numRows, rowOffset);
     sync();
     return count();
   }
 
-  template <typename CsrView> uint64_t count_sync(const CsrView &mat) { return count_sync(mat, mat.num_rows(), 0); }
+  /*! Synchronous triangle count
+   */
+  template <typename CsrView> uint64_t count_sync(const CsrView &adj) { return count_sync(adj, adj.num_rows(), 0); }
 
   /*! make the triangle count available in count()
    */
