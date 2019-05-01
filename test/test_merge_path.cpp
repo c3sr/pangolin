@@ -2,6 +2,7 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/merge_path.cuh"
+#include "pangolin/init.hpp"
 
 using namespace pangolin;
 
@@ -14,6 +15,7 @@ template <typename T> size_t mp_ub(T diag, std::vector<T> A, std::vector<T> B) {
 }
 
 TEST_CASE("0") {
+  pangolin::init();
 
   /*
     0 1 2 3
@@ -49,6 +51,7 @@ TEST_CASE("0") {
 }
 
 TEST_CASE("1") {
+  pangolin::init();
 
   /*
     0 1 2 3
@@ -91,6 +94,7 @@ TEST_CASE("1") {
 }
 
 TEST_CASE("2") {
+  pangolin::init();
 
   /*
     0 1 2 3

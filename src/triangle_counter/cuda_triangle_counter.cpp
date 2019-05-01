@@ -7,11 +7,9 @@
 
 namespace pangolin {
 
-CUDATriangleCounter::CUDATriangleCounter(Config &c)
-    : gpus_(c.gpus_), unique_gpus_(gpus_.begin(), gpus_.end()) {
+CUDATriangleCounter::CUDATriangleCounter(Config &c) : gpus_(c.gpus_), unique_gpus_(gpus_.begin(), gpus_.end()) {
   nvtxRangePush(__PRETTY_FUNCTION__);
-  SPDLOG_DEBUG(logger::console, "CUDA Triangle Counter, sizeof(Int) = {}",
-               sizeof(Int));
+  LOG(debug, "CUDA Triangle Counter, sizeof(Int) = {}", sizeof(Int));
 
   if (gpus_.empty()) {
     LOG(critical, "CUDA Triangle Counter requires >= 1 GPU");

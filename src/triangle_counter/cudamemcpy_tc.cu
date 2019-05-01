@@ -5,11 +5,10 @@
 
 const int BLOCK_DIM_X = 128;
 
-__global__ static void
-kernel_tc(size_t *__restrict__ triangleCounts, const Int *edgeSrc,
-          const Int *edgeDst, const Int *nodes,
-          const bool *localDst, // if an edge is local ( should be counted)
-          const size_t edgeOffset, const size_t numEdges) {
+__global__ static void kernel_tc(size_t *__restrict__ triangleCounts, const Int *edgeSrc, const Int *edgeDst,
+                                 const Int *nodes,
+                                 const bool *localDst, // if an edge is local ( should be counted)
+                                 const size_t edgeOffset, const size_t numEdges) {
 
   /*
 
@@ -21,8 +20,7 @@ kernel_tc(size_t *__restrict__ triangleCounts, const Int *edgeSrc,
 
   const Int gx = blockIdx.x * BLOCK_DIM_X + threadIdx.x;
 
-  for (Int i = gx + edgeOffset; i < edgeOffset + numEdges;
-       i += BLOCK_DIM_X * gridDim.x) {
+  for (Int i = gx + edgeOffset; i < edgeOffset + numEdges; i += BLOCK_DIM_X * gridDim.x) {
 
     // get the src and dst node for this edge
     const Int src = edgeSrc[i];
@@ -60,8 +58,7 @@ kernel_tc(size_t *__restrict__ triangleCounts, const Int *edgeSrc,
 namespace pangolin {
 
 CudaMemcpyTC::CudaMemcpyTC() {
-  SPDLOG_DEBUG(logger::console, "ctor GPU triangle counter, sizeof(Int) = {}",
-               sizeof(Int));
+  LOG(debug, "ctor GPU triangle counter, sizeof(Int) = {}", sizeof(Int));
 
   int numDev;
   CUDA_RUNTIME(cudaGetDeviceCount(&numDev));
@@ -73,8 +70,8 @@ CudaMemcpyTC::CudaMemcpyTC() {
 }
 
 CudaMemcpyTC::~CudaMemcpyTC() {
-  SPDLOG_DEBUG(logger::console, "dtor GPU triangle counter");
-  SPDLOG_DEBUG(logger::console, "unregistering/freeing CUDA memory");
+  LOG(debug, "dtor GPU triangle counter");
+  LOG(debug, "unregistering/freeing CUDA memory");
   CUDA_RUNTIME(cudaFree(edgeSrc_d_));
   CUDA_RUNTIME(cudaFree(edgeDst_d_));
   CUDA_RUNTIME(cudaFree(nodes_d_));
@@ -86,7 +83,7 @@ void CudaMemcpyTC::read_data(const std::string &path) {
   LOG(info, "reading {}", path);
   auto *reader = pangolin::EdgeListReader::from_file(path);
   auto edgeList = reader->read_all();
-  SPDLOG_DEBUG(logger::console, "building DAG");
+  LOG(debug, "building DAG");
   hostDAG_ = DAG2019::from_edgelist(edgeList);
 
   LOG(info, "{} nodes", hostDAG_.num_nodes());
@@ -101,15 +98,11 @@ void CudaMemcpyTC::setup_data() {
   CUDA_RUNTIME(cudaMalloc(&edgeSrc_d_, edgeBytes));
   CUDA_RUNTIME(cudaMalloc(&edgeDst_d_, edgeBytes));
   CUDA_RUNTIME(cudaMalloc(&nodes_d_, nodeBytes));
-  CUDA_RUNTIME(
-      cudaHostAlloc(&triangleCounts_, countBytes, cudaHostAllocMapped));
+  CUDA_RUNTIME(cudaHostAlloc(&triangleCounts_, countBytes, cudaHostAllocMapped));
 
-  CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes,
-                          cudaMemcpyDefault));
-  CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes,
-                          cudaMemcpyDefault));
-  CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes,
-                          cudaMemcpyDefault));
+  CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
+  CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault));
+  CUDA_RUNTIME(cudaMemcpy(nodes_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
 }
 
 size_t CudaMemcpyTC::count() {
@@ -119,29 +112,26 @@ size_t CudaMemcpyTC::count() {
 
   // split edges into devices
   size_t edgesPerDevice = (hostDAG_.num_edges() + numDev - 1) / numDev;
-  SPDLOG_DEBUG(logger::console, "{} edges per GPU", edgesPerDevice);
+  LOG(debug, "{} edges per GPU", edgesPerDevice);
 
   size_t edgeOffset = 0;
   for (int i = 0; i < numDev; ++i) {
     CUDA_RUNTIME(cudaSetDevice(i));
 
-    size_t edgeCount =
-        std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
-    SPDLOG_DEBUG(logger::console, "GPU {} edges {}+{}", i, edgeOffset,
-                 edgeCount);
+    size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
+    LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
     dim3 dimBlock(BLOCK_DIM_X);
     dim3 dimGrid((hostDAG_.num_edges() + dimBlock.x - 1) / dimBlock.x);
 
-    SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-    kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_,
-                                     nodes_d_, nullptr, edgeOffset, edgeCount);
+    LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+    kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, nodes_d_, nullptr, edgeOffset, edgeCount);
     edgeOffset += edgesPerDevice;
   }
 
   for (int i = 0; i < numDev; ++i) {
     CUDA_RUNTIME(cudaSetDevice(i));
-    SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
+    LOG(debug, "Waiting for GPU {}", i);
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
 
@@ -151,7 +141,7 @@ size_t CudaMemcpyTC::count() {
     total += triangleCounts_[i];
   }
   auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-  SPDLOG_DEBUG(logger::console, "CPU reduction {}s", elapsed);
+  LOG(debug, "CPU reduction {}s", elapsed);
 
   return total;
 }

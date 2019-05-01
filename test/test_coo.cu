@@ -1,13 +1,18 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
+#include "pangolin/init.hpp"
 #include "pangolin/sparse/coo.hpp"
 
 using namespace pangolin;
 
-TEST_CASE("ctor") { COO<int> coo; }
+TEST_CASE("ctor") {
+  pangolin::init();
+  COO<int> coo;
+}
 
 TEST_CASE("COO<int>::from_edgelist") {
+  pangolin::init();
   INFO("ctor");
   COO<int> coo;
 
@@ -25,6 +30,7 @@ TEST_CASE("COO<int>::from_edgelist") {
 }
 
 TEST_CASE("COO<int>::from_edges upper triangular") {
+  pangolin::init();
   std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
@@ -36,6 +42,7 @@ TEST_CASE("COO<int>::from_edges upper triangular") {
 }
 
 TEST_CASE("COO<int>::from_edges lower triangular") {
+  pangolin::init();
   std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 

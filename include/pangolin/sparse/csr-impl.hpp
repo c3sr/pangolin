@@ -48,7 +48,7 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     EdgeTy<Index> edge = *ei;
     const Index src = edge.first;
     const Index dst = edge.second;
-    SPDLOG_TRACE(logger::console, "handling edge {}->{}", edge.first, edge.second);
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
     // edge has a new src and should be in a new row
     // even if the edge is filtered out, we need to add empty rows
@@ -56,7 +56,7 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= csr.rowPtr_.size() && "are edges not ordered by source?");
-      SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.first, csr.rowPtr_.size());
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, csr.rowPtr_.size());
       csr.rowPtr_.push_back(csr.colInd_.size());
     }
 

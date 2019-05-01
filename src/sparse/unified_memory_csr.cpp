@@ -11,9 +11,7 @@ Within each src, dst should be in increasing order
 src should also be < dst
 there should be no duplicate edges in local and remote
 */
-UnifiedMemoryCSR
-UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local,
-                                       const EdgeList &remote) {
+UnifiedMemoryCSR UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local, const EdgeList &remote) {
   UnifiedMemoryCSR csr;
 
   if (local.empty() && remote.empty()) {
@@ -29,9 +27,7 @@ UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local,
     return a.first < b.first;
   };
 
-  auto minEdge = [&](const Edge &a, const Edge &b) -> const Edge & {
-    return compareEdge(a, b) ? a : b;
-  };
+  auto minEdge = [&](const Edge &a, const Edge &b) -> const Edge & { return compareEdge(a, b) ? a : b; };
 
   // smallest src edge
   Uint firstRow;
@@ -44,10 +40,9 @@ UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local,
   }
 
   // add empty rows until firstRow
-  SPDLOG_DEBUG(logger::console, "smallest row was {}", firstRow);
+  LOG(debug, "smallest row was {}", firstRow);
   for (Uint i = 0; i < firstRow; ++i) {
-    SPDLOG_TRACE(logger::console, "added empty row {} before smallest row id",
-                 i);
+    SPDLOG_TRACE(logger::console(), "added empty row {} before smallest row id", i);
     csr.rowOffsets_.push_back(0);
   }
 
@@ -93,7 +88,7 @@ UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local,
   }
 
   // add final nodes with 0 out-degree
-  SPDLOG_DEBUG(logger::console, "max node id was {}", maxNode);
+  LOG(debug, "max node id was {}", maxNode);
   while (csr.rowOffsets_.size() < maxNode + 1) {
     csr.rowOffsets_.push_back(csr.data_.size());
   }
@@ -101,24 +96,19 @@ UnifiedMemoryCSR::from_sorted_edgelist(const EdgeList &local,
   // add  the last entry to give a length on the last row
   csr.rowOffsets_.push_back(csr.data_.size());
 
-  SPDLOG_DEBUG(logger::console, "rowOffsets is length {}",
-               csr.rowOffsets_.size());
-  SPDLOG_DEBUG(logger::console, "data is length {}", csr.data_.size());
+  LOG(debug, "rowOffsets is length {}", csr.rowOffsets_.size());
+  LOG(debug, "data is length {}", csr.data_.size());
 
   return csr;
 }
 
-std::vector<UnifiedMemoryCSR>
-UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
-  SPDLOG_DEBUG(logger::console, "paritioning into {} graphs", numPartitions);
-  std::vector<std::set<Edge>> localEdges(
-      numPartitions); // local edges for each partition
-  std::vector<std::set<Edge>> remoteEdges(
-      numPartitions); // remote edges for each partitions
+std::vector<UnifiedMemoryCSR> UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
+  LOG(debug, "paritioning into {} graphs", numPartitions);
+  std::vector<std::set<Edge>> localEdges(numPartitions);  // local edges for each partition
+  std::vector<std::set<Edge>> remoteEdges(numPartitions); // remote edges for each partitions
 
   const uint64_t nnzPerPartition = (nnz() + numPartitions - 1) / numPartitions;
-  SPDLOG_DEBUG(logger::console, "targeting {} nnz per partition",
-               nnzPerPartition);
+  LOG(debug, "targeting {} nnz per partition", nnzPerPartition);
 
   // evenly distribute local edges
   size_t currentPartitionIdx = 0;
@@ -126,14 +116,12 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
     Uint head = si;
     Uint tailOffsetBegin = rowOffsets_[si];
     Uint tailOffsetEnd = rowOffsets_[si + 1];
-    for (Uint tailOffset = tailOffsetBegin; tailOffset < tailOffsetEnd;
-         ++tailOffset) {
+    for (Uint tailOffset = tailOffsetBegin; tailOffset < tailOffsetEnd; ++tailOffset) {
       Uint tail = data_[tailOffset];
       Edge e(head, tail);
       assert(currentPartitionIdx < localEdges.size());
       localEdges[currentPartitionIdx].insert(std::move(e));
-      SPDLOG_TRACE(logger::console, "added local edge {} {} to partition {}",
-                   e.first, e.second, currentPartitionIdx);
+      SPDLOG_TRACE(logger::console(), "added local edge {} {} to partition {}", e.first, e.second, currentPartitionIdx);
       if (localEdges[currentPartitionIdx].size() >= nnzPerPartition) {
         ++currentPartitionIdx;
       }
@@ -147,19 +135,16 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
     auto &remote = remoteEdges[i];
 
     for (auto &e : local) {
-      for (Uint off = rowOffsets_[e.second]; off < rowOffsets_[e.second + 1];
-           ++off) {
+      for (Uint off = rowOffsets_[e.second]; off < rowOffsets_[e.second + 1]; ++off) {
         Edge tailEdge(e.second, data_[off]);
 
         if (0 == local.count(tailEdge)) {
-          SPDLOG_TRACE(logger::console,
-                       "adding remote edge {} {} to parition {}",
-                       tailEdge.first, tailEdge.second, i);
+          SPDLOG_TRACE(logger::console(), "adding remote edge {} {} to parition {}", tailEdge.first, tailEdge.second,
+                       i);
           remote.insert(tailEdge);
         } else {
-          SPDLOG_TRACE(logger::console,
-                       "edge {} {} is already local in parition {}",
-                       tailEdge.first, tailEdge.second, i);
+          SPDLOG_TRACE(logger::console(), "edge {} {} is already local in parition {}", tailEdge.first, tailEdge.second,
+                       i);
         }
       }
     }
@@ -171,28 +156,25 @@ UnifiedMemoryCSR::partition_nonzeros(const size_t numPartitions) const {
     auto &localSet = localEdges[i];
     auto &remoteSet = remoteEdges[i];
 
-    SPDLOG_TRACE(logger::console,
-                 "building CSR from {} local and {} remote edges",
-                 localSet.size(), remoteSet.size());
+    SPDLOG_TRACE(logger::console(), "building CSR from {} local and {} remote edges", localSet.size(),
+                 remoteSet.size());
 
     EdgeList localList(localSet.begin(), localSet.end());
     EdgeList remoteList(remoteSet.begin(), remoteSet.end());
 
-    std::sort(localList.begin(), localList.end(),
-              [](const Edge &a, const Edge &b) -> bool {
-                if (a.first == b.first) {
-                  return a.second < b.second;
-                }
-                return a.first < b.first;
-              });
+    std::sort(localList.begin(), localList.end(), [](const Edge &a, const Edge &b) -> bool {
+      if (a.first == b.first) {
+        return a.second < b.second;
+      }
+      return a.first < b.first;
+    });
 
-    std::sort(remoteList.begin(), remoteList.end(),
-              [](const Edge &a, const Edge &b) -> bool {
-                if (a.first == b.first) {
-                  return a.second < b.second;
-                }
-                return a.first < b.first;
-              });
+    std::sort(remoteList.begin(), remoteList.end(), [](const Edge &a, const Edge &b) -> bool {
+      if (a.first == b.first) {
+        return a.second < b.second;
+      }
+      return a.first < b.first;
+    });
 
     ret[i] = UnifiedMemoryCSR::from_sorted_edgelist(localList, remoteList);
   }

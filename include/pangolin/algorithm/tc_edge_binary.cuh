@@ -10,12 +10,12 @@
 template <size_t BLOCK_DIM_X, size_t C, typename CsrCooView>
 __global__ void kernel(uint64_t *count,                             //!< [inout] the count, caller should zero
                        const CsrCooView mat, const size_t numEdges, //!< the number of edges this kernel will count
-                       const size_t edgeStart                       //<! the edge this kernel will start counting at
+                       const size_t edgeStart                       //!< the edge this kernel will start counting at
 ) {
 
   typedef typename CsrCooView::index_type Index;
 
-  static_assert(BLOCK_DIM_X % 32 == 0, "Block is multiple of 32");
+  static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
   constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
 
   const size_t lx = threadIdx.x % 32;
@@ -77,7 +77,7 @@ public:
     const int dimGrid = (32 * numEdges + (dimBlock * c) - 1) / (dimBlock * c);
     assert(edgeOffset + numEdges <= mat.nnz());
     assert(count_);
-    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
+    LOG(debug, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     switch (c) {
     case 1:

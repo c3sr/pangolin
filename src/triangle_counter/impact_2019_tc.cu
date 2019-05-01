@@ -110,7 +110,7 @@ __global__ static void kernel_binary(uint64_t *__restrict__ edgeTriangleCounts, 
 
 IMPACT2019TC::IMPACT2019TC(Config &c) : CUDATriangleCounter(c) {
   nvtxRangePush(__PRETTY_FUNCTION__);
-  SPDLOG_DEBUG(logger::console, "IMPACT 2019 TC, sizeof(Int) = {}", sizeof(Int));
+  LOG(debug, "IMPACT 2019 TC, sizeof(Int) = {}", sizeof(Int));
 
   if (c.storage_ == "um") {
     GPUMemoryKind_ = GPUMemoryKind::Unified;
@@ -165,7 +165,7 @@ void IMPACT2019TC::read_data(const std::string &path) {
   if (edgeList.size() == 0) {
     LOG(warn, "empty edge list");
   }
-  SPDLOG_DEBUG(logger::console, "building DAG");
+  LOG(debug, "building DAG");
   hostDAG_ = DAG2019::from_edgelist(edgeList);
 
   LOG(info, "{} nodes", hostDAG_.num_nodes());
@@ -186,7 +186,7 @@ void IMPACT2019TC::setup_data() {
     CUDA_RUNTIME(cudaMallocManaged(&cols_d_, nodeBytes));
     CUDA_RUNTIME(cudaMallocManaged(&triangleCounts_, countBytes));
 
-    SPDLOG_DEBUG(logger::console, "copying to unified memory");
+    LOG(debug, "copying to unified memory");
     CUDA_RUNTIME(cudaMemcpy(edgeSrc_d_, hostDAG_.edgeSrc_.data(), edgeBytes, cudaMemcpyDefault));
     CUDA_RUNTIME(cudaMemcpy(edgeDst_d_, hostDAG_.edgeDst_.data(), edgeBytes, cudaMemcpyDefault));
     CUDA_RUNTIME(cudaMemcpy(cols_d_, hostDAG_.nodes_.data(), nodeBytes, cudaMemcpyDefault));
@@ -246,35 +246,35 @@ size_t IMPACT2019TC::count() {
 
   // split edges among devices
   size_t edgesPerDevice = (hostDAG_.num_edges() + numDev - 1) / numDev;
-  SPDLOG_DEBUG(logger::console, "{} edges per GPU", edgesPerDevice);
+  LOG(debug, "{} edges per GPU", edgesPerDevice);
 
   size_t edgeOffset = 0;
   for (int i : gpus_) {
     CUDA_RUNTIME(cudaSetDevice(i));
 
     size_t edgeCount = std::min(edgesPerDevice, hostDAG_.num_edges() - edgeOffset);
-    SPDLOG_DEBUG(logger::console, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
+    LOG(debug, "GPU {} edges {}+{}", i, edgeOffset, edgeCount);
 
     // Launch the correct kind of kernel
     switch (kernelKind_) {
     case KernelKind::Linear: {
-      SPDLOG_DEBUG(logger::console, "linear kernel");
+      LOG(debug, "linear kernel");
       dim3 dimBlock(256);
       size_t desiredGridSize = (edgeCount + dimBlock.x - 1) / dimBlock.x;
       dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
       kernel_tc<<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
       CUDA_RUNTIME(cudaGetLastError());
       break;
     }
     case KernelKind::Binary: {
-      SPDLOG_DEBUG(logger::console, "binary kernel");
+      LOG(debug, "binary kernel");
       constexpr int dimBlock = 256;
       static_assert(dimBlock % 32 == 0, "Expect integer warps per block");
       const int warpsPerBlock = dimBlock / 32;
       size_t desiredGridSize = (edgeCount + warpsPerBlock - 1) / warpsPerBlock;
       dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
-      SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock);
+      LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock);
       kernel_binary<dimBlock>
           <<<dimGrid, dimBlock>>>(triangleCounts_, edgeSrc_d_, edgeDst_d_, cols_d_, edgeOffset, edgeCount);
       CUDA_RUNTIME(cudaGetLastError());
@@ -291,7 +291,7 @@ size_t IMPACT2019TC::count() {
 
   for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
     CUDA_RUNTIME(cudaSetDevice(i));
-    SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
+    LOG(debug, "Waiting for GPU {}", i);
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
 
@@ -300,21 +300,21 @@ size_t IMPACT2019TC::count() {
   auto start = std::chrono::system_clock::now();
   if (0) // CPU
   {
-    SPDLOG_DEBUG(logger::console, "CPU reduction");
+    LOG(debug, "CPU reduction");
     size_t total = 0;
     for (size_t i = 0; i < hostDAG_.num_edges(); ++i) {
       total += triangleCounts_[i];
     }
     final_total = total;
   } else { // GPU
-    SPDLOG_DEBUG(logger::console, "GPU reduction");
+    LOG(debug, "GPU reduction");
     size_t *total;
     CUDA_RUNTIME(cudaMallocManaged(&total, sizeof(*total)));
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, triangleCounts_, total, hostDAG_.num_edges());
     // Allocate temporary storage
-    SPDLOG_DEBUG(logger::console, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
+    LOG(debug, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
     CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
     // Run sum-reduction
     cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, triangleCounts_, total, hostDAG_.num_edges());
@@ -325,7 +325,7 @@ size_t IMPACT2019TC::count() {
   }
   auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
   nvtxRangePop(); // final reduction
-  SPDLOG_DEBUG(logger::console, "Final reduction {}s", elapsed);
+  LOG(debug, "Final reduction {}s", elapsed);
 
   nvtxRangePop();
   return final_total;

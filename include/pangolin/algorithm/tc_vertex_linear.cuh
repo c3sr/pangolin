@@ -159,7 +159,7 @@ public:
     const int dimGrid = (numRows + dimBlock - 1) / dimBlock;
     assert(rowOffset + numRows <= mat.num_rows());
     assert(count_);
-    SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
+    LOG(debug, "device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     launcher<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numRows, rowOffset);
     CUDA_RUNTIME(cudaGetLastError());

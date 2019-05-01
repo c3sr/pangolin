@@ -1,9 +1,10 @@
+#include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
+
 #include <cmath>
 #include <memory>
 
 #include "pangolin/logger.hpp"
 #include "pangolin/reader/gc_tsv_reader.hpp"
-#include "pangolin/triangle_counter/nvgraph_triangle_counter.hpp"
 #include "pangolin/utilities.hpp"
 
 #include <nvToolsExt.h>
@@ -13,8 +14,7 @@ namespace pangolin {
 NvGraphTriangleCounter::NvGraphTriangleCounter(Config &c) {
   if (c.gpus_.size() > 1) {
     gpu_ = c.gpus_[0];
-    LOG(warn, "NvGraphTriangleCounter requires exactly 1 GPU. Selected GPU {}",
-        gpu_);
+    LOG(warn, "NvGraphTriangleCounter requires exactly 1 GPU. Selected GPU {}", gpu_);
   } else if (c.gpus_.size() == 0) {
     LOG(critical, "NvGraphTriangleCounter requires 1 GPU");
     exit(-1);
@@ -27,11 +27,11 @@ void NvGraphTriangleCounter::read_data(const std::string &path) {
   const auto sz = r.size();
 
   auto edgeList = r.read_edges(0, sz);
-  SPDLOG_DEBUG(logger::console, "building DAG");
+  LOG(debug, "building DAG");
   dag_ = DAGLowerTriangularCSR::from_edgelist(edgeList);
 
-  SPDLOG_DEBUG(logger::console, "{} nodes", dag_.num_nodes());
-  SPDLOG_DEBUG(logger::console, "{} edges", dag_.num_edges());
+  LOG(debug, "{} nodes", dag_.num_nodes());
+  LOG(debug, "{} edges", dag_.num_edges());
 
   csr_ = new struct nvgraphCSRTopology32I_st;
   csr_->nvertices = dag_.num_nodes();
@@ -45,20 +45,15 @@ void NvGraphTriangleCounter::setup_data() {
   const size_t dstBytes = dag_.destinationIndices_.size() * sizeof(Int);
   CUDA_RUNTIME(cudaMalloc((void **)&(csr_->source_offsets), srcBytes));
   CUDA_RUNTIME(cudaMalloc((void **)&(csr_->destination_indices), dstBytes));
-  CUDA_RUNTIME(cudaMemcpy(csr_->source_offsets, dag_.sourceOffsets_.data(),
-                          srcBytes, cudaMemcpyDefault));
-  CUDA_RUNTIME(cudaMemcpy(csr_->destination_indices,
-                          dag_.destinationIndices_.data(), dstBytes,
-                          cudaMemcpyDefault));
+  CUDA_RUNTIME(cudaMemcpy(csr_->source_offsets, dag_.sourceOffsets_.data(), srcBytes, cudaMemcpyDefault));
+  CUDA_RUNTIME(cudaMemcpy(csr_->destination_indices, dag_.destinationIndices_.data(), dstBytes, cudaMemcpyDefault));
 
-  SPDLOG_TRACE(logger::console, "dag with {} edges and {} nodes", csr_->nedges,
-               csr_->nvertices);
+  SPDLOG_TRACE(logger::console(), "dag with {} edges and {} nodes", csr_->nedges, csr_->nvertices);
   for (size_t i = 0; i < dag_.num_nodes(); ++i) {
     Int rowStart = dag_.sourceOffsets_[i];
     Int rowEnd = dag_.sourceOffsets_[i + 1];
     for (Int o = rowStart; o < rowEnd; ++o) {
-      SPDLOG_TRACE(logger::console, "node {} off {} = {}", i, o,
-                   dag_.destinationIndices_[o]);
+      SPDLOG_TRACE(logger::console(), "node {} off {} = {}", i, o, dag_.destinationIndices_[o]);
     }
   }
 }
@@ -76,10 +71,11 @@ size_t NvGraphTriangleCounter::count() {
   NVGRAPH(nvgraphCreate(&handle));
   NVGRAPH(nvgraphCreateGraphDescr(handle, &graphDes));
 
-  NVGRAPH(
-      nvgraphSetGraphStructure(handle, graphDes, (void *)csr_, NVGRAPH_CSR_32));
+  NVGRAPH(nvgraphSetGraphStructure(handle, graphDes, (void *)csr_, NVGRAPH_CSR_32));
 
+#if __CUDACC_VER_MAJOR__ > 8
   NVGRAPH(nvgraphTriangleCount(handle, graphDes, &trcount));
+#endif // __CUDACC_VER_MAJOR__ > 8
 
   NVGRAPH(nvgraphDestroyGraphDescr(handle, graphDes));
   NVGRAPH(nvgraphDestroy(handle));

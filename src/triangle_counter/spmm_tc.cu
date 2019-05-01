@@ -42,20 +42,18 @@ __device__ static uint64_t intersection_count(const U *ab, //!< beginning of a
 One thread per row
 */
 template <typename Index>
-__global__ void
-spmm_csr_csr(Index *edgeSrc,     //!< src of edge (at least # edges long)
-             Index *edgeDst,     //!< dst of edge (at least # edges long)
-             uint64_t *edgeCnt,  //!< tri count of edge (at least # edges long)
-             uint64_t *nextEdge, //!< pointer to next available edge
-             const pangolin::GPUCSRView<Index> aL, //!< aL*aU, lower-triangular
-             const pangolin::GPUCSRView<Index> aU  //!< aL*aU, upper-triagular
+__global__ void spmm_csr_csr(Index *edgeSrc,                       //!< src of edge (at least # edges long)
+                             Index *edgeDst,                       //!< dst of edge (at least # edges long)
+                             uint64_t *edgeCnt,                    //!< tri count of edge (at least # edges long)
+                             uint64_t *nextEdge,                   //!< pointer to next available edge
+                             const pangolin::GPUCSRView<Index> aL, //!< aL*aU, lower-triangular
+                             const pangolin::GPUCSRView<Index> aU  //!< aL*aU, upper-triagular
 ) {
   static_assert(sizeof(long long unsigned) == sizeof(uint64_t), "");
   const size_t num_rows = aL.num_rows();
 
   // each thread handles a row
-  for (Index row = blockDim.x * blockIdx.x + threadIdx.x; row < num_rows;
-       row += blockDim.x * gridDim.x) {
+  for (Index row = blockDim.x * blockIdx.x + threadIdx.x; row < num_rows; row += blockDim.x * gridDim.x) {
     // printf("working on src %lu\n", row);
     const Index row_start = aL.rowOffset_[row];
     const Index row_end = aL.rowOffset_[row + 1];
@@ -77,12 +75,10 @@ spmm_csr_csr(Index *edgeSrc,     //!< src of edge (at least # edges long)
       }
       // printf("\n");
       // find the number of equal non-zero elements in the rows and column
-      uint64_t dot = intersection_count(&aL.col_[row_start], &aL.col_[row_end],
-                                        &aU.col_[dst_start], &aU.col_[dst_end]);
+      uint64_t dot = intersection_count(&aL.col_[row_start], &aL.col_[row_end], &aU.col_[dst_start], &aU.col_[dst_end]);
       // printf("dot is %lu\n", dot);
       // save triangle count for edge
-      uint64_t edgeIdx =
-          atomicAdd(reinterpret_cast<long long unsigned *>(nextEdge), 1ull);
+      uint64_t edgeIdx = atomicAdd(reinterpret_cast<long long unsigned *>(nextEdge), 1ull);
       edgeSrc[edgeIdx] = row;
       edgeDst[edgeIdx] = col;
       edgeCnt[edgeIdx] = dot;
@@ -113,15 +109,11 @@ void SpmmTC::read_data(const std::string &path) {
   if (edgeList.size() == 0) {
     LOG(warn, "empty edge list");
   }
-  SPDLOG_DEBUG(logger::console, "building GPUCSR");
-  aL_ = std::move(
-      pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {
-        return e.first <= e.second;
-      })); // keep src > dst
-  aU_ = std::move(
-      pangolin::GPUCSR<Uint>::from_edgelist(edgeList, [](const Edge &e) {
-        return e.first >= e.second;
-      })); // keep src < dst
+  LOG(debug, "building GPUCSR");
+  aL_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(
+      edgeList, [](const Edge &e) { return e.first <= e.second; })); // keep src > dst
+  aU_ = std::move(pangolin::GPUCSR<Uint>::from_edgelist(
+      edgeList, [](const Edge &e) { return e.first >= e.second; })); // keep src < dst
 
   // LOG(info, "Lower-triangular: {} nodes", aL_.num_nodes());
   LOG(info, "Lower-triangular: {} edges", aL_.nnz());
@@ -137,17 +129,13 @@ void SpmmTC::setup_data() {
   const size_t edgeSrcBytes = edgeCount * sizeof(*edgeSrc_);
   const size_t edgeDstBytes = edgeCount * sizeof(*edgeDst_);
   const size_t edgeCntBytes = edgeCount * sizeof(*edgeCnt_);
-  SPDLOG_DEBUG(logger::console, "allocating {}B for edge sources",
-               edgeSrcBytes);
+  LOG(debug, "allocating {}B for edge sources", edgeSrcBytes);
   CUDA_RUNTIME(cudaMallocManaged(&edgeSrc_, edgeSrcBytes));
-  SPDLOG_DEBUG(logger::console, "allocating {}B for edge destinations",
-               edgeDstBytes);
+  LOG(debug, "allocating {}B for edge destinations", edgeDstBytes);
   CUDA_RUNTIME(cudaMallocManaged(&edgeDst_, edgeDstBytes));
-  SPDLOG_DEBUG(logger::console, "allocating {}B for edge triangle counts",
-               edgeCntBytes);
+  LOG(debug, "allocating {}B for edge triangle counts", edgeCntBytes);
   CUDA_RUNTIME(cudaMallocManaged(&edgeCnt_, edgeCntBytes));
-  SPDLOG_DEBUG(logger::console, "allocating {}B for next edge offset counter",
-               sizeof(*nextEdge_));
+  LOG(debug, "allocating {}B for next edge offset counter", sizeof(*nextEdge_));
   CUDA_RUNTIME(cudaMallocManaged(&nextEdge_, sizeof(*nextEdge_)));
   nvtxRangePop();
 }
@@ -164,19 +152,17 @@ size_t SpmmTC::count() {
 
   dim3 dimBlock(256);
   size_t desiredGridSize = (aL_.nnz() + dimBlock.x - 1) / dimBlock.x;
-  dim3 dimGrid(
-      std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
+  dim3 dimGrid(std::min(size_t(std::numeric_limits<int>::max()), desiredGridSize));
   // dim3 dimBlock(1);
   // dim3 dimGrid(1);
-  SPDLOG_DEBUG(logger::console, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
-  spmm_csr_csr<<<dimGrid, dimBlock>>>(edgeSrc_, edgeDst_, edgeCnt_, nextEdge_,
-                                      aL_.view(), aU_.view());
-  SPDLOG_DEBUG(logger::console, "launched kernel");
+  LOG(debug, "kernel dims {} x {}", dimGrid.x, dimBlock.x);
+  spmm_csr_csr<<<dimGrid, dimBlock>>>(edgeSrc_, edgeDst_, edgeCnt_, nextEdge_, aL_.view(), aU_.view());
+  LOG(debug, "launched kernel");
   CUDA_RUNTIME(cudaGetLastError());
 
   for (int i : std::set<int>(gpus_.begin(), gpus_.end())) {
     CUDA_RUNTIME(cudaSetDevice(i));
-    SPDLOG_DEBUG(logger::console, "Waiting for GPU {}", i);
+    LOG(debug, "Waiting for GPU {}", i);
     CUDA_RUNTIME(cudaDeviceSynchronize());
   }
 
@@ -185,27 +171,24 @@ size_t SpmmTC::count() {
   auto start = std::chrono::system_clock::now();
   if (1) // CPU
   {
-    SPDLOG_DEBUG(logger::console, "CPU reduction");
+    LOG(debug, "CPU reduction");
     size_t total = 0;
     for (size_t i = 0; i < aL_.nnz(); ++i) {
       total += edgeCnt_[i];
     }
     final_total = total;
   } else { // GPU
-    SPDLOG_DEBUG(logger::console, "GPU reduction");
+    LOG(debug, "GPU reduction");
     size_t *total;
     CUDA_RUNTIME(cudaMallocManaged(&total, sizeof(*total)));
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total,
-                           aL_.nnz());
+    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total, aL_.nnz());
     // Allocate temporary storage
-    SPDLOG_DEBUG(logger::console, "{}B for cub::DeviceReduce::Sum temp storage",
-                 temp_storage_bytes);
+    LOG(debug, "{}B for cub::DeviceReduce::Sum temp storage", temp_storage_bytes);
     CUDA_RUNTIME(cudaMalloc(&d_temp_storage, temp_storage_bytes));
     // Run sum-reduction
-    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total,
-                           aL_.nnz());
+    cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, edgeCnt_, total, aL_.nnz());
     CUDA_RUNTIME(cudaDeviceSynchronize());
     final_total = *total;
     CUDA_RUNTIME(cudaFree(total));
@@ -213,7 +196,7 @@ size_t SpmmTC::count() {
   }
   auto elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
   nvtxRangePop(); // final reduction
-  SPDLOG_DEBUG(logger::console, "Final reduction {}s", elapsed);
+  LOG(debug, "Final reduction {}s", elapsed);
 
   nvtxRangePop();
   return final_total;

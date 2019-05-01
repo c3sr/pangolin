@@ -4,17 +4,20 @@
 
 #include "pangolin/algorithm/tc_vertex_linear.cuh"
 #include "pangolin/generator/complete.hpp"
+#include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
 #include "pangolin/sparse/csr.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("ctor", "[gpu]") {
+  pangolin::init();
   VertexLinearTC c;
   REQUIRE(c.count() == 0);
 }
 
 TEST_CASE("complete(3)", "[gpu]") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   using NodeTy = int;
 
@@ -32,6 +35,7 @@ TEST_CASE("complete(3)", "[gpu]") {
 }
 
 TEST_CASE("complete(4)", "[gpu]") {
+  pangolin::init();
   logger::set_level(logger::Level::TRACE);
   using NodeTy = int;
 

@@ -41,10 +41,10 @@ public:
 
   const Index *row_ptr() const { return rowPtr_; }                    //!< row offset array
   const Index *col_ind() const { return colInd_; }                    //!< column index array
-  const Index *row_ind() const { return rowInd_; }                    //<! row index array
+  const Index *row_ind() const { return rowInd_; }                    //!< row index array
   HOST DEVICE const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
   HOST DEVICE const Index *device_col_ind() const { return colInd_; } //!< column index array
-  HOST DEVICE const Index *device_row_ind() const { return rowInd_; } //<! row index array
+  HOST DEVICE const Index *device_row_ind() const { return rowInd_; } //!< row index array
 };
 
 /*! \brief A COO matrix backed by CUDA Unified Memory, with a CSR rowPtr
@@ -85,25 +85,39 @@ public:
   static COO<Index> from_edges(EdgeIter begin, EdgeIter end,
                                std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
 
+  /*! Add a single edge to the COO.
+
+  The edge should either
+    start a new row
+    be in the current row and have a NZ column index larger than the previous one in the row
+
+  */
+  void add_next_edge(const EdgeTy<Index> &e);
+
+  /*!
+    Should be called after add_next_edge
+  */
+  void finish_edges();
+
   COOView<Index> view() const; //!< create a COOView for this COO
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on all data
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
-  HOST void read_mostly(const int dev);
+  HOST void read_mostly();
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
    */
   HOST void accessed_by(const int dev);
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
-  HOST void prefetch_async(const int dev);
+  HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
-  const Index *row_ind() const { return rowInd_.data(); } //<! row index array
+  const Index *row_ind() const { return rowInd_.data(); } //!< row index array
 
   HOST DEVICE const Index *device_row_ptr() const { return rowPtr_.data(); } //!< row offset array
   HOST DEVICE const Index *device_col_ind() const { return colInd_.data(); } //!< column index array
-  HOST DEVICE const Index *device_row_ind() const { return rowInd_.data(); } //<! row index array
+  HOST DEVICE const Index *device_row_ind() const { return rowInd_.data(); } //!< row index array
 };
 
 } // namespace pangolin

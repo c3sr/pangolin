@@ -15,8 +15,7 @@ namespace pangolin {
 
 template <typename Index> GPUCSR<Index>::GPUCSR() : maxCol_(0) {}
 
-template <typename Index>
-PANGOLIN_CUDA_MEMBER uint64_t GPUCSR<Index>::num_rows() const {
+template <typename Index> PANGOLIN_CUDA_MEMBER uint64_t GPUCSR<Index>::num_rows() const {
   if (rowOffset_.size() == 0) {
     return 0;
   } else {
@@ -42,8 +41,7 @@ template <typename Index> uint64_t GPUCSR<Index>::num_nodes() const {
 }
 
 template <typename Index>
-GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es,
-                                           bool (*edgeFilter)(const Edge &)) {
+GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
   GPUCSR<Index> csr;
 
   if (es.size() == 0) {
@@ -62,7 +60,7 @@ GPUCSR<Index> GPUCSR<Index>::from_edgelist(const EdgeList &es,
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
       assert(src >= csr.rowOffset_.size());
-      // SPDLOG_TRACE(logger::console, "node {} edges start at {}", edge.src_,
+      // SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.src_,
       // csr.edgeSrc_.size());
       csr.rowOffset_.push_back(csr.col_.size());
     }
