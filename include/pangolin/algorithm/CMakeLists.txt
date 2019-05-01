@@ -1,0 +1,11 @@
+set(PANGOLIN_CU_HEADERS
+  ${PANGOLIN_CU_HEADERS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/count.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/elementwise.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/fill.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh  
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
+  PARENT_SCOPE
+)
