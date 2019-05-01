@@ -74,15 +74,15 @@ public:
 
   CSRView<Index> view() const; //!< create a CSRView for this CSR
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on all data
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
-  PANGOLIN_HOST void read_mostly(const int dev);
+  PANGOLIN_HOST void read_mostly();
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
    */
   PANGOLIN_HOST void accessed_by(const int dev);
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
-  PANGOLIN_HOST void prefetch_async(const int dev);
+  PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
