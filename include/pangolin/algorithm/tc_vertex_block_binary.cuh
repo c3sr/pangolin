@@ -13,17 +13,18 @@ Each threadblock handles a chunk of the src row and puts it in shared memory.
 Each thread handles a column index and does a binary search of the dst row into the src row
 
 \tparam BLOCK_DIM_X the number of threads in a block
-\tparam SHMEM_SZ the amount of shared memory for caching small rows
 \tparam CsrView A CSR adjacency matrix
 */
-template <size_t BLOCK_DIM_X, size_t SHMEM_SZ = BLOCK_DIM_X, typename CsrView>
-__global__ void row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                                 const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                                 const size_t rowOffset, //<! [in] the row that this kernel should start at
-                                 const size_t numRows    //<! [in] the number of rows this kernel should operate on
+template <size_t BLOCK_DIM_X, typename CsrView>
+__global__ void
+row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
+                 const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
+                 const size_t rowOffset, //<! [in] the row that this kernel should start at
+                 const size_t numRows,   //<! [in] the number of rows this kernel should operate on
+                 const size_t shmemSz    //<! [in] the number of row elements that can be cached in shared memory
 ) {
   typedef typename CsrView::index_type Index;
-  __shared__ Index srcShared[SHMEM_SZ];
+  extern __shared__ Index srcShared[];
 
   uint64_t threadCount = 0;
   for (Index src = rowOffset + blockIdx.x; src < numRows; src += gridDim.x) {
@@ -35,7 +36,7 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
     // if the row fits in shared memory, put in in there
     // srcBegin will point at the beginning of the row's nonzeros, whether it's in shared memory or not
     const Index *srcBegin = nullptr;
-    if (srcLen < SHMEM_SZ) {
+    if (srcLen < shmemSz) {
       for (size_t i = threadIdx.x; i < srcLen; i += blockDim.x) {
         srcShared[i] = adj.colInd_[srcStart + i];
       }
@@ -78,16 +79,16 @@ private:
   cudaStream_t stream_; //<! a stream used by this counter
   uint64_t *count_;     //<! the triangle count
   dim3 maxGridSize_;    //<! the maximum grid size allowed by this device
+  size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
 
 public:
-  VertexBlockBinaryTC(int dev) : dev_(dev), count_(nullptr) {
+  VertexBlockBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
 
-    // get the maximum grid size
     {
       cudaDeviceProp prop;
       CUDA_RUNTIME(cudaGetDeviceProperties(&prop, dev));
@@ -95,7 +96,9 @@ public:
     }
   }
 
-  VertexBlockBinaryTC() : VertexBlockBinaryTC(0) {}
+  /*! default constructor on GPU0 with a row cache size of 512 elements.
+   */
+  VertexBlockBinaryTC() : VertexBlockBinaryTC(0, 512) {}
 
   /*! count triangles in mat. May return before count is complete
    */
@@ -104,6 +107,9 @@ public:
                    const size_t numRows,  //!< [in] the number of rows this count will handle
                    const size_t rowOffset //<! [in] the first row to count
   ) {
+
+    typedef typename CsrView::index_type Index;
+
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // one block per row
@@ -112,9 +118,12 @@ public:
     LOG(debug, "counting rows [{}, {}), adj has {} rows", rowOffset, rowOffset + numRows, adj.num_rows());
     assert(rowOffset + numRows <= adj.num_rows());
     assert(count_);
-    LOG(debug, "row_block_kernel: device = {}, blocks = {}, threads = {}", dev_, dimGrid, dimBlock);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    row_block_kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, adj, rowOffset, numRows);
+    const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
+    LOG(debug, "row_block_kernel: device = {}, blocks = {}, threads = {} shmem = {}", dev_, dimGrid, dimBlock,
+        shmemBytes);
+    row_block_kernel<dimBlock>
+        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, rowOffset, numRows, rowCacheSize_);
     CUDA_RUNTIME(cudaGetLastError());
   }
 
