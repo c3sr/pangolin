@@ -74,6 +74,11 @@ pangolin_add_test(
   SRCS test_tc_edge_merge.cu
 )
 
+# pangolin_add_test(
+#   NAME test_tc_vertex_block_binary
+#   SRCS test_tc_vertex_block_binary.cu
+# )
+
 pangolin_add_test(
   NAME test_topology
   SRCS test_topology.cpp
