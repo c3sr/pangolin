@@ -61,7 +61,7 @@ __device__ UT getEdgeId(const CsrCooView mat, UT sn, UT dn)
 //This function is so stupid, 1 thread does linear search !!
 //I will fix this for sure
 template <typename CsrCooView>
-__device__ TriResult CountTriangleOneEdge(const UT i, const int k, const CsrCooView mat, bool *deleted)
+__device__ TriResult CountTriangleOneEdge(const UT i, const int k, const CsrCooView mat, bool *keep)
 {
 	TriResult t; //whether we found k triangles?
 
@@ -96,7 +96,7 @@ __device__ TriResult CountTriangleOneEdge(const UT i, const int k, const CsrCooV
 		{
 			if (mat.colInd_[sp] == mat.colInd_[dp])
 			{
-				if (!deleted[sp] && !deleted[dp])
+				if (keep[sp] && keep[dp])
 				{
 					edgeCount++;
 					if (firstHit)
@@ -136,7 +136,7 @@ __device__ TriResult CountTriangleOneEdge(const UT i, const int k, const CsrCooV
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays(int edgeStart, int numEdges, const CsrCooView mat, bool *deleted, bool *affected, UT *reversed)
+__global__ void InitializeArrays(int edgeStart, int numEdges, const CsrCooView mat, bool *keep, bool *affected, UT *reversed)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -145,7 +145,7 @@ __global__ void InitializeArrays(int edgeStart, int numEdges, const CsrCooView m
 
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			deleted[i]=false;
+			keep[i] = true;
 			affected[i] = false;
 			UT sn = mat.rowInd_[i];
 			UT dn = mat.colInd_[i];
@@ -155,32 +155,9 @@ __global__ void InitializeArrays(int edgeStart, int numEdges, const CsrCooView m
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void NodalUpdateKernel(UT *k, int nodeStart, int numNodes, const CsrCooView mat, bool *nodeEliminated)
+__global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected, bool *globalMtd, bool *assumpAffected, const UT k, const size_t edgeStart, 
+	const size_t numEdges, const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool *firstTry)
 {
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + nodeStart; i< nodeStart + numNodes; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			nodeEliminated[i] = false;
-				UT sp = mat.rowPtr_[i];
-				UT dp = mat.rowPtr_[i + 1];
-				UT count = dp - sp;
-				if (!nodeEliminated[i] && count < *k - 1)
-				{
-					nodeEliminated[i] = true;
-				}
-		}
-}
-
-
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected, bool *globalMtd,bool *assumpAffected,
-	UT *kk, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *deleted, bool *affected, UT *reversed, bool *firstTry)
-{
-
-	const UT k = *kk;
 	  // kernel call
 	  typedef typename CsrCooView::index_type Index;
 	  size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
@@ -208,12 +185,11 @@ __global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected,
 	  //edges assigned to this thread
 	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
 	  {
-		  if (!deleted[i] && (affected[i]==true || ft==true ))
+		  if (keep[i] && (affected[i]==true || ft==true ))
 		  {
 			  affected[i] = false;
-			  TriResult t = CountTriangleOneEdge(i, k-2, mat, deleted);
-
-			 if (!t.largerThanK)
+			  TriResult t = CountTriangleOneEdge(i, k-2, mat, keep);
+				if (!t.largerThanK)
 			  {
 				  //node
 				  const UT sn = mat.rowInd_[i];
@@ -240,22 +216,22 @@ __global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected,
 							  int y1 = reversed[sp]; //getEdgeId(neighborPointer, dest, dest[sp], sn);
 							  int y2 = reversed[dp]; //getEdgeId(neighborPointer, dest, dest[sp], dn);
 
-							  if ( !affected[sp] && !deleted[sp])
+							  if ( !affected[sp] && keep[sp])
 							  {
 								  affected[sp] = true;
 								  numberAffected++;
 							  }
-							  if ( !affected[dp] && !deleted[dp])
+							  if ( !affected[dp] && keep[dp])
 							  {
 								  affected[dp] = true;
 								  numberAffected++;
 							  }
-							  if (!affected[y1] && !deleted[y1])
+							  if (!affected[y1] && keep[y1])
 							  {
 								  affected[y1] = true;
 								  numberAffected++;
 							  }
-							  if (!affected[y2] && !deleted[y2])
+							  if (!affected[y2] && keep[y2])
 							  {
 								  affected[y2] = true;
 								  numberAffected++;
@@ -273,12 +249,13 @@ __global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected,
 				  }
 
 				  UT y1 = reversed[i]; //getEdgeId(neighborPointer, dest, dn, sn);
-				  deleted[i] = true;
-				  deleted[y1] = true;
+				  keep[i] = false;
+				  keep[y1] = false;
 			  }
 		  }
 
-		  if(deleted[i])
+		
+		  if(!keep[i])
 			  numberDeleted++;
 	  }
 
@@ -313,41 +290,6 @@ __global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected,
 
 }
 
-
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void ktruss_kernel(UT *count, //!< [inout] the count, caller should zero
-                       const CsrCooView mat, const size_t numEdges, const size_t edgeStart)
-{
-  typedef typename CsrCooView::index_type Index;
-
-  size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-  UT threadCount = 0;
-
-  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
-  {
-  
-    const Index src = mat.rowInd_[i];
-    const Index dst = mat.colInd_[i];
-
-    const Index *srcBegin = &mat.colInd_[mat.rowPtr_[src]];
-    const Index *srcEnd = &mat.colInd_[mat.rowPtr_[src + 1]];
-    const Index *dstBegin = &mat.colInd_[mat.rowPtr_[dst]];
-    const Index *dstEnd = &mat.colInd_[mat.rowPtr_[dst + 1]];
-
-    threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
-  }
-
-  // Block-wide reduction of threadCount
-  typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage tempStorage;
-  UT aggregate = BlockReduce(tempStorage).Sum(threadCount);
-
-  // Add to total count
-  if (0 == threadIdx.x) {
-    atomicAdd(count, aggregate);
-  }
-}
-
 namespace pangolin {
 
 class SingleGPU_Ktruss {
@@ -366,9 +308,7 @@ private:
 	bool *globalMtd;
 	bool *assumpAffected;
 	bool *firstTry;
-
-	UT *k;
-
+	UT k;
 
 public:
   SingleGPU_Ktruss(int dev) : dev_(dev), count_(nullptr) {
@@ -383,8 +323,6 @@ public:
 	CUDA_RUNTIME(cudaMallocManaged(&gnumaffected, sizeof(*gnumaffected)));
 	CUDA_RUNTIME(cudaMallocManaged(&globalCounter, sizeof(*globalCounter)));
 
-	CUDA_RUNTIME(cudaMallocManaged(&k, sizeof(*k)));
-
 	//zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 	zero_async<1>(gnumdeleted, dev_, stream_); // zero on the device that will do the counting
 	zero_async<1>(gnumaffected, dev_, stream_); // zero on the device that will do the counting
@@ -394,39 +332,14 @@ public:
 
   SingleGPU_Ktruss() : SingleGPU_Ktruss(0) {}
   
- 
-  
-  template <typename CsrCoo> void GetMaxK_Incremental(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  
-  template <typename CsrCoo> void Store(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  template <typename CsrCoo> void Rewind(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  template <typename CsrCoo> void GetMaxK_Binary(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  
-  
 
 	template <typename CsrCoo> 
 	void findKtrussIncremental_async(int kmin, int kmax, const CsrCoo &mat, 
 		const size_t numNodes, const size_t numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) 
   {
-		bool *deleted, *affected;
+		bool *keep, *affected;
 		UT *reversed;
-		CUDA_RUNTIME(cudaMalloc((void **) &deleted, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMalloc((void **) &keep, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc((void **) &affected, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc((void **) &reversed, numEdges*sizeof(UT)));
 
@@ -440,16 +353,15 @@ public:
 	
 		//KTRUSS skeleton
 		//Initialize Private Data
-		InitializeArrays<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, deleted, affected, reversed);
+		InitializeArrays<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, keep, affected, reversed);
 		cudaDeviceSynchronize();
-		*k=3;
+	
+		k=3;
 		while(true)
 		{
 			UT numDeleted = 0;
 			*firstTry = true;
 			*globalCounter=0;
-			//NodalUpdateKernel
-			//NodalUpdateKernel<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(k, nodeOffset, numNodes, mat, nodeEliminated);
 			cudaDeviceSynchronize();
 
 			while(*assumpAffected)
@@ -457,7 +369,7 @@ public:
 				*assumpAffected = false;
 
 				core<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
-					mat, deleted, affected, reversed, firstTry);
+					mat, keep, affected, reversed, firstTry);
 				cudaDeviceSynchronize();
 
 				*firstTry = false;	
@@ -469,7 +381,8 @@ public:
 
 				//printf("At k = %d, Inside Affected, num deleted=%d, num affected = %d\n", *k, numDeleted, *gnumaffected);
 
-				zero_async<1>(gnumdeleted, dev_, stream_);
+				*gnumdeleted=0;
+				//zero_async<1>(gnumdeleted, dev_, stream_);
 				//zero_async<1>(gnumaffected, dev_, stream_);
 				cudaDeviceSynchronize();
 			}
@@ -480,7 +393,7 @@ public:
 			}
 			else
 			{
-				(*k)++;
+				k++;
 				//zero_async<1>(gnumdeleted, dev_, stream_);
 				*assumpAffected = true;
 			}
@@ -503,7 +416,7 @@ public:
 
   void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
-  UT count() const { return *k-1; }
+  UT count() const { return k-1; }
   int device() const { return dev_; }
 };
 
