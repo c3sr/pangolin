@@ -7,3 +7,4 @@
 #include "algorithm/tc_edge_linear.cuh"
 #include "algorithm/tc_vertex_block_binary.cuh"
 #include "dense/vector.hu"
+#include "sparse/csr.hpp"
