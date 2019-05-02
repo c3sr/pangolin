@@ -34,6 +34,8 @@ public:
   PANGOLIN_HOST Vector &operator=(Vector &&other) noexcept;
   PANGOLIN_HOST Vector &operator=(const Vector &other);
 
+  PANGOLIN_HOST bool operator==(const Vector &other) const noexcept;
+
   PANGOLIN_HOST void swap(Vector &other) noexcept;
 
   PANGOLIN_HOST_DEVICE inline value_type *data() noexcept;
@@ -56,10 +58,10 @@ public:
   PANGOLIN_HOST_DEVICE inline reference operator[](size_t n);
   PANGOLIN_HOST_DEVICE inline const_reference operator[](size_t n) const;
 
-  PANGOLIN_HOST_DEVICE value_type *begin() { return data_; }
-  PANGOLIN_HOST_DEVICE const value_type *begin() const { return data_; }
-  PANGOLIN_HOST_DEVICE value_type *end() { return data_; }
-  PANGOLIN_HOST_DEVICE const value_type *end() const { return data_; }
+  PANGOLIN_HOST_DEVICE inline value_type *begin() noexcept { return data_; }
+  PANGOLIN_HOST_DEVICE inline value_type *end() noexcept { return data_ + size_; }
+  PANGOLIN_HOST_DEVICE inline const value_type *begin() const noexcept { return data_; }
+  PANGOLIN_HOST_DEVICE inline const value_type *end() const noexcept { return data_ + size_; }
 };
 
 } // namespace pangolin

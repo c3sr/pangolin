@@ -6,19 +6,40 @@
 
 using namespace pangolin;
 
-TEST_CASE("Vector ctor(1)") {
+TEMPLATE_TEST_CASE("default ctor", "[gpu]", int, size_t) {
   pangolin::init();
-  Vector<int> v(10);
+  Vector<TestType> v(10);
   REQUIRE(v.size() == 10);
 }
 
-TEST_CASE("Vector ctor(2)") {
+TEMPLATE_TEST_CASE("fill ctor", "[gpu]", int, size_t) {
+  pangolin::init();
+  Vector<TestType> v(1);
+  v[0] = 0;
+  REQUIRE(*v.data() == 0);
+}
+
+TEST_CASE("fill ctor with val") {
   pangolin::init();
   Vector<int> v(10, 1);
   REQUIRE(v.size() == 10);
   for (size_t i = 0; i < v.size(); ++i) {
     REQUIRE(v[i] == 1);
   }
+}
+
+TEMPLATE_TEST_CASE("iterators", "[gpu]", int, size_t) {
+  pangolin::init();
+  Vector<TestType> v(1);
+  REQUIRE(v.begin() != v.end());
+  REQUIRE(v.end() - v.begin() == 1);
+}
+
+TEMPLATE_TEST_CASE("const iterators", "[gpu]", int, size_t) {
+  pangolin::init();
+  const Vector<TestType> v(1);
+  REQUIRE(v.begin() != v.end());
+  REQUIRE(v.end() - v.begin() == 1);
 }
 
 TEST_CASE("Vector copy-ctor") {

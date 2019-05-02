@@ -130,6 +130,21 @@ PANGOLIN_HOST Vector<VALUE_TYPE> &Vector<VALUE_TYPE>::operator=(Vector &&other) 
   return *this;
 }
 
+/*! Compare for equality
+ */
+template <typename VALUE_TYPE> PANGOLIN_HOST bool Vector<VALUE_TYPE>::operator==(const Vector &other) const noexcept {
+  if (size_ == other.size_) {
+    for (size_t i = 0; i < size_; ++i) {
+      if (data_[i] != other.data_[i]) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
 /*! swap the state of the container with other
  */
 template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::swap(Vector &other) noexcept {
