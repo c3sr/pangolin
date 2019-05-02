@@ -63,14 +63,16 @@ public:
   uint64_t num_nodes() const;                                                   //!< number of unique row/col indices
   PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const;                      //!< number of matrix rows
 
-  /*! Build a CSR from a sequence of edges
+  /*! Build a CSR from a range of edges [first, last)
 
     Only include edges where f is true (default = all edges)
-
   */
   template <typename EdgeIter>
   static CSR<Index> from_edges(EdgeIter begin, EdgeIter end,
-                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
+                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) {
+                                 (void)e;
+                                 return true;
+                               });
 
   CSRView<Index> view() const; //!< create a CSRView for this CSR
 
