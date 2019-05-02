@@ -121,6 +121,8 @@ add_library(pangolin::pangolin ALIAS pangolin)
 # there is no way to do this through targets, so we do it
 # the old fashioned way
 # include PTX for at least dynamic paralellism, plus binaries for Pascal, Volta, and Turing as supported
+# -arch specifies the class of virtual architecture the source must be compiled for 
+# -compute specifies the PTX (compute) and SASS (sm) embedded in the binary
 if (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 10)
 set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61,sm_70,sm_75")
 elseif (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 9)
@@ -128,7 +130,7 @@ set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61,sm_70")
 elseif (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 8)
 set(CMAKE_CUDA_FLAGS "-arch=compute_35 -code=compute_35,sm_61")
 else()
-set(CMAKE_CUDA_FLAGS "-arch=compute_35")
+set(CMAKE_CUDA_FLAGS "-arch=compute_35") # -code implicitly is also compute_35
 endif()
 
 ## Add CUDA flags
