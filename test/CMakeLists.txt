@@ -46,7 +46,7 @@ pangolin_add_test(
 
 pangolin_add_test(
   NAME test_load_balance
-  SRCS test_load_balance.cpp
+  SRCS test_load_balance.cu
 )
 
 pangolin_add_test(
