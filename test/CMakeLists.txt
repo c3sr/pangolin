@@ -45,6 +45,11 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
+  NAME test_load_balance
+  SRCS test_load_balance.cpp
+)
+
+pangolin_add_test(
   NAME test_logger
   SRCS test_logger.cpp test_logger_helper.cpp
 )
