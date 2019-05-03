@@ -87,6 +87,45 @@ TEST_CASE("Vector reserve") {
   REQUIRE(v.capacity() >= 10);
 }
 
+TEMPLATE_TEST_CASE("Vector size", "[gpu]", int, size_t) {
+  pangolin::init();
+  Vector<int> v;
+
+  SECTION("vectors can be resized") {
+  v.resize(1);
+  REQUIRE(v.size() == 1);
+  v[0] = 5;
+
+  v.resize(10);
+  REQUIRE(v.size() == 10);
+  v[9] = 100;
+  REQUIRE(v[9] == 100);
+  REQUIRE(v[0] == 5);
+
+  v.resize(1);
+  REQUIRE(v.size() == 1);
+  REQUIRE(v[0] == 5);
+  }
+
+  SECTION("vectors can be push_backed") {
+    v.push_back(4);
+    REQUIRE(v.size() == 1);
+    REQUIRE(v[0] == 4);
+
+    for (size_t i = 0; i < 99; ++i) {
+      v.push_back(i);
+    }
+    REQUIRE(v[99] == 98);
+
+    v.resize(5);
+    REQUIRE(v.size() == 5);
+
+    v.push_back(1);
+    REQUIRE(v.size() == 6);
+    REQUIRE(v[5] == 1);
+  }
+}
+
 TEST_CASE("initializer-list 3") {
   pangolin::init();
   Vector<int> v{0, 1, 2};
