@@ -77,16 +77,24 @@ __device__ TriResult CountTriangleOneEdge_b(const UT i, const int k, const CsrCo
 	//Search for intersection
 	//pointer
 	UT sp = mat.rowPtr_[sn];
-	uint64_t dp = mat.rowPtr_[dn];
+	UT dp = mat.rowPtr_[dn];
 
 	UT send = mat.rowPtr_[sn + 1];
 	UT dend = mat.rowPtr_[dn + 1];
 
+	t.startS = sp;
+	t.startD = dp;
+	t.endS = send;
+	t.endD = dend;
+
 	//length
 	UT sl = send - sp; /*source: end node   - start node*/
 	UT dl = dend - dp; /*dest: end node   - start node*/
+
+	int maxTri = sl<dl?sl:dl;
+
 	bool firstHit = true;
-	if(sl>k && dl>k)
+	if(sl>1 && dl>1)
 	{
 		while (sp < send && dp < dend && edgeCount<k)
 		{
@@ -401,7 +409,7 @@ public:
 		InitializeArrays_b<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, keep, affected, reversed, prevKept/*, keepPointer*/);
 		cudaDeviceSynchronize();
 		
-		
+		UT numDeleted = 0;
 		float minPercentage = 0.8;
 		float maxPercentage = 0.2;
 		while (kmax - kmin > 1)
@@ -411,7 +419,7 @@ public:
 		minPercentage = 0.5;
 		maxPercentage = 0.5;
 
-			UT numDeleted = 0;
+			numDeleted = 0;
 			*firstTry = true;
 			*globalCounter=0;
 			*assumpAffected = true;
@@ -421,7 +429,7 @@ public:
 			{
 				*assumpAffected = false;
 
-				core_binary<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
+				core_binary<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
 					mat, keep, affected, reversed, firstTry);
 				cudaDeviceSynchronize();
 
@@ -460,6 +468,7 @@ public:
 
 		//printf("MAX k = %d\n", *k);
 
+		k=(numDeleted >= numEdges)?k-1:k;
 
 		//CUDA_RUNTIME(cudaGetLastError());
 		
@@ -503,7 +512,7 @@ public:
 		//Initialize Private Data
 		InitializeArrays_b<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, keep, affected, reversed, prevKept, keep_initial);
 		cudaDeviceSynchronize();
-
+		UT numDeleted = 0;
 		float minPercentage = 0.8;
 		float maxPercentage = 0.2;
 		while (kmax - kmin > 1)
@@ -513,7 +522,7 @@ public:
 		minPercentage = 0.5;
 		maxPercentage = 0.5;
 
-			UT numDeleted = 0;
+			numDeleted = 0;
 			*firstTry = true;
 			*globalCounter=0;
 			*assumpAffected = true;
@@ -523,7 +532,7 @@ public:
 			{
 				*assumpAffected = false;
 
-				core_binary<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
+				core_binary<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
 					mat, keep, affected, reversed, firstTry);
 				cudaDeviceSynchronize();
 
@@ -548,7 +557,11 @@ public:
 				kmin = k;
 			}
 			cudaDeviceSynchronize();
+
+
+			
 		}
+		k=(numDeleted >= numEdges)?k-1:k;
 		//CUDA_RUNTIME(cudaGetLastError());
 	
 		cudaFree(keep);
@@ -566,7 +579,7 @@ public:
 
   void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
-  UT count() const { return k-1; }
+  UT count() const { return k; }
   int device() const { return dev_; }
 };
 
