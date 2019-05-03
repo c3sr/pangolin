@@ -34,6 +34,7 @@ API documentation is available at [pangolin-docs.netlify.com](https://pangolin-d
 |-|-|-|-|-|-|
 | test_cuda92-ubuntu1804.Dockerfile         | amd64  | 9.2     | g++ 7.3.0   | 3.11.0 | &#9745; |
 | test_cuda100-ubuntu1804.Dockerfile        | amd64  | 10.0    | g++ 7.3.0   | 3.11.0 | &#9745; |
+| - | amd64 (Ubuntu 16.04) | 10.0.130 | g++ 5.4.0 | 3.14.3 | &#9745; |
 |                                           | POWER9 | 9.2.148 | clang 5.0.0 | 3.12.0 | &#9745; |
 |                                           | POWER9 | 9.2.148 | g++ ??? | 3.12.0 | ??? |
 | test_cuda80-ubuntu1404.Dockerfile         | amd64  | 8.0.61  | g++ 4.8.4   | 3.11.0 | &#9745; |
@@ -41,6 +42,7 @@ API documentation is available at [pangolin-docs.netlify.com](https://pangolin-d
 | test_cuda80-ubuntu1604.Dockerfile         | amd64  | 8.0.61  | g++ 5.4.0   | 3.11.0 | (needs check) x: problem parsing Vector |
 | test_cuda92_ubuntu1604-clang5.Dockerfile  | amd64  | 9.2.148 | clang 5.0.0 | 3.11.0 | x: problem with simd intrinsics |
 | - | amd64 | 9.2.148 | g++5.4.1 | 3.13.3 | x: problem with std::to_string in catch2 | 
+
 
 
 1. Install CUDA
