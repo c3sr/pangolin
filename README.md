@@ -124,7 +124,22 @@ find_package(pangolin CONFIG REQUIRED)
 target_link_libraries(... pangolin::pangolin)
 ```
 
+## Running tests
 
+Tests can be built and run with 
+
+```
+make
+make test
+```
+
+Most tests require a GPU.
+To run individual tests, you can do something like
+
+```
+make
+test/test_csr
+```
 
 
 ## Profiling
