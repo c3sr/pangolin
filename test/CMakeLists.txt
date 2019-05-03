@@ -55,6 +55,11 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
+  NAME test_managed_allocator
+  SRCS test_managed_allocator.cu
+)
+
+pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cpp
 )
@@ -97,6 +102,11 @@ pangolin_add_test(
 pangolin_add_test(
   NAME test_zero
   SRCS test_zero.cu
+)
+
+pangolin_add_test(
+  NAME test_zero_copy_allocator
+  SRCS test_zero_copy_allocator.cu
 )
 
 # pangolin_add_test(
