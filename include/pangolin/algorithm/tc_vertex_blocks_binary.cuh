@@ -3,8 +3,33 @@
 #include <cub/cub.cuh>
 
 #include "count.cuh"
+#include "pangolin/algorithm/load_balance.cuh"
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
+
+template <size_t BLOCK_DIM_X, typename Index>
+__device__ size_t
+block_csr_row_tc(const Index *rowPtr,      //<! [in] the CSR rowPtr array
+                 const Index *colInd,      //<! [in] the CSR colInd array
+                 const Index *colIndBegin, //<! [in] the first non-zero in the colInd array this
+                 const Index *colIndEnd    //<! [in] the last non-zero in the colInd array this block is responsible for
+) {
+
+  size_t threadCount = 0;
+
+  for (const Index *edgePtr = colIndBegin + threadIdx.x; edgePtr < colIndEnd; edgePtr += blockDim.x) {
+    Index dst = *edgePtr;
+    const size_t dstStart = rowPtr[dst];
+    const size_t dstStop = rowPtr[dst + 1];
+    const Index *dstBegin = colInd[dstStart];
+    const Index *dstEnd = colInd[dstStop];
+    for (const Index *dstPtr = dstBegin; dstPtr < dstEnd; ++dstPtr) {
+      threadCount += pangolin::serial_sorted_count_binary(srcBegin, 0, srcLen, *dstPtr);
+    }
+  }
+
+  return threadCount;
+}
 
 /*!
 Each row of the adjacency matrix is covered by multiple thread blocks
@@ -26,33 +51,23 @@ __global__ void row_block_kernel(uint64_t *count,            //<! [out] the coun
                                  const size_t numWorkItems   //<! [in] the total number of work items
 ) {
   typedef typename CsrView::index_type Index;
-  extern __shared__ Index srcShared[BLOCK_DIM_X];
+  // __shared__ Index srcShared[BLOCK_DIM_X];
 
   uint64_t threadCount = 0;
 
-  for (size_t i = blockIdx.x; i < numWorkItems;)
-    for (Index src = rowOffset + blockIdx.x; src < numRows; src += gridDim.x) {
+  // one thread-block per work-item
+  for (size_t i = blockIdx.x; i < numWorkItems; i += gridDim.x) { // work item id
+    size_t row = workItemRow[i];
+    size_t rank = workItemRow[i];
 
-      const size_t srcStart = adj.rowPtr_[src];
-      const size_t srcStop = adj.rowPtr_[src + 1];
-      const size_t srcLen = srcStop - srcStart;
-
-      srcShared[i] = adj.colInd_[srcStart + i];
-      __syncthreads();
-      srcBegin = srcShared;
-
-      // each thread looks at one destination row and does a binary search into the source row
-      for (size_t i = threadIdx.x; i < srcLen; i += blockDim.x) {
-        Index dst = srcBegin[i]; // FIXME: already loaded once
-        const size_t dstStart = adj.rowPtr_[dst];
-        const size_t dstStop = adj.rowPtr_[dst + 1];
-        const Index *dstBegin = &adj.colInd_[dstStart];
-        const Index *dstEnd = &adj.colInd_[dstStop];
-        for (const Index *dstPtr = dstBegin; dstPtr < dstEnd; ++dstPtr) {
-          threadCount += pangolin::serial_sorted_count_binary(srcBegin, 0, srcLen, *dstPtr);
-        }
-      }
-    }
+    // each block gets a slice of the row
+    const Index srcStart = adj.rowPtr_[row] + BLOCK_DIM_X * rank;
+    const Index srcStop = max(srcStart + BLOCK_DIM_X, adj.rowPtr_[row + 1]);
+    const Index srcLen = srcStop - srcStart;
+    Index *srcBegin = &adj.colInd_[srcStart];
+    Index *srcEnd = &adj.colInd_[srcStop];
+    threadCount += block_csr_row_tc<BLOCK_DIM_X>(adj.rowPtr_, adj.colInd_, srcBegin, srcEnd)
+  }
 
   // FIXME: block reduction first
   atomicAdd(count, threadCount);
@@ -107,6 +122,14 @@ public:
 
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
+    // do the initial load-balancing search across rows
+    const Index numWorkItems = adj.num_rows();
+    Index *indices = nullptr;
+    const size_t indicesBytes = sizeof(Index) * numWorkItems;
+    LOG(debug, "allocate {}B for indices", indicesBytes);
+    CUDA_RUNTIME(cudaMalloc(&indices, sizeof(Index) * numWorkItems));
+    device_load_balance(indices, numWorkItems, );
+
     // one block per row
     constexpr int dimBlock = 512;
     const int dimGrid = std::min(numRows, static_cast<uint64_t>(maxGridSize_.x));
@@ -120,6 +143,8 @@ public:
     row_block_kernel<dimBlock>
         <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, rowOffset, numRows, rowCacheSize_);
     CUDA_RUNTIME(cudaGetLastError());
+
+    CUDA_RUNTIME(cudaFree(indices));
   }
 
   /*! Synchronous triangle count
