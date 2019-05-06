@@ -13,7 +13,6 @@ steps:
 
 - script: |
     mkdir -p $HOME/bin
-    export PATH="$HOME/bin:$PATH"
     echo '##vso[task.prependpath]$HOME/bin'
     echo $PATH
   displayName: 'make $HOME/bin'
@@ -41,6 +40,7 @@ steps:
   displayName: 'Install CUDA'
 
 - script: |
+    echo $PATH
     which cmake
     cmake --version
     mkdir build
