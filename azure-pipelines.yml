@@ -12,12 +12,6 @@ pool:
 steps:
 
 - script: |
-    mkdir -p $HOME/bin
-    echo '##vso[task.prependpath]$HOME/bin'
-    echo $PATH
-  displayName: 'make $HOME/bin'
-
-- script: |
     sudo apt-get update
     sudo apt-get install -y --no-install-suggests --no-install-recommends -y \
     curl \
@@ -27,8 +21,7 @@ steps:
 - script: |
     curl -SLO https://github.com/Kitware/CMake/releases/download/v3.14.3/cmake-3.14.3-Linux-x86_64.sh
     chmod +x cmake-3.14.3-Linux-x86_64.sh
-    sudo ./cmake-3.14.3-Linux-x86_64.sh --skip-license --prefix="$HOME"
-    ls $HOME/bin
+    sudo ./cmake-3.14.3-Linux-x86_64.sh --skip-license --prefix=/usr/local
   displayName: 'Install CMake'
 
 - script: |
