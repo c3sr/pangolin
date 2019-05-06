@@ -33,9 +33,9 @@ steps:
   displayName: 'Install CUDA'
 
 - script: |
-    echo $PATH
     which cmake
     cmake --version
+    find / -name nvcc
     mkdir build
     cd build
     cmake ..
