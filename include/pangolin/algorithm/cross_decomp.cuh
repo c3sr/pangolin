@@ -195,6 +195,7 @@ void CrossDecomp<pangolinCOO>::Host_repartition(bool one_iter, int num_iter, pan
     dim3 dimGrid(ceil(((float)num_nodes)/1024),1,1);
     dim3 dimBlock(1024,1,1); //1024
 
+    auto start = std::chrono::system_clock::now();
     if(one_iter){
         repartition_kernel<<<dimGrid, dimBlock>>>(  col_P.data(), row_P.data(), 
                                                     col_cardi.data(), col_new_cardi.data(),
@@ -219,6 +220,8 @@ void CrossDecomp<pangolinCOO>::Host_repartition(bool one_iter, int num_iter, pan
         }
     }
     CUDA_RUNTIME(cudaDeviceSynchronize());
+    double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+    LOG(info, "Cross Decomposition Runtime {}s", elapsed);
     return;
 }
 
