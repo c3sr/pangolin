@@ -1,0 +1,32 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: sudo apt-get innstall --no-suggests --no-recommends -y \
+  curl
+  displayName: 'Install curl'
+
+- script: |
+    echo Add other tasks to build, test, and deploy your project.
+    echo See https://aka.ms/yaml
+  displayName: 'Run a multi-line script'
+
+- script: |
+    curl -SLO https://github.com/Kitware/CMake/releases/download/v3.14.3/cmake-3.14.3-Linux-x86_64.sh
+  displayName: 'Download CMake'
+
+- script: |
+    chmod +x cmake-3.14.3-Linux-x86_64.sh
+    ./cmake-3.14.3-Linux-x86_64.sh
+  displayName: 'Install CMake'
+
+- script: |
+    cmake --version
