@@ -26,20 +26,7 @@ template <typename Index> PANGOLIN_HOST DEVICE uint64_t COO<Index>::num_rows() c
 }
 
 template <typename Index> uint64_t COO<Index>::num_nodes() const {
-  std::set<Index> nodes;
-  // add all dsts
-  for (Index ci = 0; ci < colInd_.size(); ++ci) {
-    nodes.insert(colInd_[ci]);
-  }
-  // add non-zero sources
-  for (Index i = 0; i < rowPtr_.size() - 1; ++i) {
-    Index row_start = rowPtr_[i];
-    Index row_end = rowPtr_[i + 1];
-    if (row_start != row_end) {
-      nodes.insert(i);
-    }
-  }
-  return nodes.size();
+  return num_rows();
 }
 
 template <typename Index> COO<Index> COO<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
