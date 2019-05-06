@@ -10,8 +10,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script: sudo apt-get innstall --no-suggests --no-recommends -y \
-  curl
+- script: sudo apt-get innstall --no-suggests --no-recommends -y curl
   displayName: 'Install curl'
 
 - script: |
