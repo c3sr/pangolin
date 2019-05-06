@@ -7,30 +7,6 @@
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
 
-template <size_t BLOCK_DIM_X, typename Index>
-__device__ size_t
-block_csr_row_tc(const Index *rowPtr,      //<! [in] the CSR rowPtr array
-                 const Index *colInd,      //<! [in] the CSR colInd array
-                 const Index *colIndBegin, //<! [in] the first non-zero in the colInd array this
-                 const Index *colIndEnd    //<! [in] the last non-zero in the colInd array this block is responsible for
-) {
-
-  size_t threadCount = 0;
-
-  for (const Index *edgePtr = colIndBegin + threadIdx.x; edgePtr < colIndEnd; edgePtr += blockDim.x) {
-    Index dst = *edgePtr;
-    const size_t dstStart = rowPtr[dst];
-    const size_t dstStop = rowPtr[dst + 1];
-    const Index *dstBegin = colInd[dstStart];
-    const Index *dstEnd = colInd[dstStop];
-    for (const Index *dstPtr = dstBegin; dstPtr < dstEnd; ++dstPtr) {
-      threadCount += pangolin::serial_sorted_count_binary(srcBegin, 0, srcLen, *dstPtr);
-    }
-  }
-
-  return threadCount;
-}
-
 /*!
 Each row of the adjacency matrix is covered by multiple thread blocks
 Each thread in the block handles an edge
@@ -60,13 +36,28 @@ __global__ void row_block_kernel(uint64_t *count,            //<! [out] the coun
     size_t row = workItemRow[i];
     size_t rank = workItemRow[i];
 
-    // each block gets a slice of the row
-    const Index srcStart = adj.rowPtr_[row] + BLOCK_DIM_X * rank;
-    const Index srcStop = max(srcStart + BLOCK_DIM_X, adj.rowPtr_[row + 1]);
-    const Index srcLen = srcStop - srcStart;
-    Index *srcBegin = &adj.colInd_[srcStart];
-    Index *srcEnd = &adj.colInd_[srcStop];
-    threadCount += block_csr_row_tc<BLOCK_DIM_X>(adj.rowPtr_, adj.colInd_, srcBegin, srcEnd)
+    // each block is responsible for counting triangles from a contiguous set of non-zeros in the row
+    // [srcStart ... srcStop)
+    const Index rowStart = adj.rowPtr_[row];
+    const Index rowStop = adj.rowPtr_[row + 1];
+    const Index rowLen = rowStop - rowStart;
+    const Index sliceStart = rowStart + BLOCK_DIM_X * rank;
+    const Index sliceStop = max(sliceStart + BLOCK_DIM_X, rowStop);
+
+    // one thread per non-zero in the slice
+    for (size_t j = sliceStart + threadIdx.x; j < sliceStop; j += BLOCK_DIM_X) {
+      // retrieve the nbrs of the edge dst
+      Index dst = adj.colInd_[j];
+      const Index dstStart = rowPtr[dst];
+      const Index dstStop = rowPtr[dst + 1];
+      const Index *dstNbrBegin = colInd[dstStart];
+      const Index *dstNbrEnd = colInd[dstStop];
+
+      // for each edge, need to search through the whole src row
+      for (const Index *dstNbr = dstNbrBegin; dstPtr < dstNbrEnd; ++dstPtr) {
+        threadCount += pangolin::serial_sorted_count_binary(&adj.colInd_[rowStart], 0, rowStop, *dstNbr);
+      }
+    }
   }
 
   // FIXME: block reduction first
@@ -83,7 +74,7 @@ namespace pangolin {
    binary search.
 
  */
-class VertexBlockBinaryTC {
+class VertexBlocksBinaryTC {
 private:
   int dev_;             //<! the CUDA device used by this counter
   cudaStream_t stream_; //<! a stream used by this counter
@@ -92,7 +83,7 @@ private:
   size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
 
 public:
-  VertexBlockBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
+  VertexBlocksBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
@@ -108,7 +99,7 @@ public:
 
   /*! default constructor on GPU0 with a row cache size of 512 elements.
    */
-  VertexBlockBinaryTC() : VertexBlockBinaryTC(0, 512) {}
+  VertexBlocksBinaryTC() : VertexBlocksBinaryTC(0, 512) {}
 
   /*! count triangles in mat. May return before count is complete
    */
@@ -123,12 +114,20 @@ public:
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // do the initial load-balancing search across rows
-    const Index numWorkItems = adj.num_rows();
+    const Index numWorkItems = adj.nnz();
+    const Index numObjects = adj.num_nodes();
+
+    std::vector<Index> rowLengths(numObjects);
+    // FIXME: on GPU
+    for (size_t i = 0; i < numObjects; ++i) {
+      rowLengths[i] = adj.rowPtr_[i + 1] - adj.rowPtr_[i];
+    }
+
     Index *indices = nullptr;
     const size_t indicesBytes = sizeof(Index) * numWorkItems;
     LOG(debug, "allocate {}B for indices", indicesBytes);
     CUDA_RUNTIME(cudaMalloc(&indices, sizeof(Index) * numWorkItems));
-    device_load_balance(indices, numWorkItems, );
+    device_load_balance(indices, numWorkItems, rowLengths, numRows, stream_);
 
     // one block per row
     constexpr int dimBlock = 512;

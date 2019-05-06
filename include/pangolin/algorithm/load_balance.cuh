@@ -74,9 +74,9 @@ __global__ void grid_load_balance_kernel(
   \return an array of length numWorkItems containing the object index that produced each work item
 */
 template <typename OI, typename WI>
-void device_load_balance(OI *indices,            //<! [out] the object index that produced each work item
-                         const WI numWorkItems,  //<! [in] the total number of work items
-                         const WI *counts,       //<! [in] the number of work items produced by each object
+void device_load_balance(OI *indices, //<! [out] the object index that produced each work item (size=numWorkItems)
+                         const WI numWorkItems, //<! [in] the total number of work items
+                         const WI *counts, //<! [in] the number of work items produced by each object (size=numObjects)
                          const OI numObjects,    //<! [in] the number of objects
                          cudaStream_t stream = 0 //<! [in] the stream to execute in (default 0)
 

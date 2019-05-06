@@ -85,6 +85,11 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
+  NAME test_tc_vertex_blocks_binary
+  SRCS test_tc_vertex_blocks_binary.cu
+)
+
+pangolin_add_test(
   NAME test_topology
   SRCS test_topology.cpp
 )
