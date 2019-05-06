@@ -30,6 +30,7 @@ steps:
     sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
     sudo apt-get update
     sudo apt-get install cuda-command-line-tools-10-1
+    echo '##vso[task.prependpath]/usr/local/cuda-10.1/bin/'
   displayName: 'Install CUDA'
 
 - script: |
