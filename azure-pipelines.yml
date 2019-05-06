@@ -11,8 +11,8 @@ pool:
 
 steps:
 - script: |
-    apt-get update
-    apt-get install -y --no-install-suggests --no-install-recommends -y \
+    sudo apt-get update
+    sudo apt-get install -y --no-install-suggests --no-install-recommends -y \
     curl \
     libnuma-dev 
   displayName: 'Install curl'
@@ -23,7 +23,7 @@ steps:
 
 - script: |
     chmod +x cmake-3.14.3-Linux-x86_64.sh
-    ./cmake-3.14.3-Linux-x86_64.sh
+    sudo ./cmake-3.14.3-Linux-x86_64.sh --skip-license
   displayName: 'Install CMake'
 
 - script: |
