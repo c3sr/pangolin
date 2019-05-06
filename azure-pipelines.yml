@@ -36,7 +36,6 @@ steps:
 - script: |
     which cmake
     cmake --version
-    find / -name nvcc
     mkdir build
     cd build
     cmake ..
