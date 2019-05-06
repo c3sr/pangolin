@@ -53,5 +53,5 @@ steps:
 
 - script: |
     cd build
-    make test
-  displayName: 'test'
+    ctest -L "^gpu"
+  displayName: 'non-gpu tests'
