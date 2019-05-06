@@ -32,7 +32,7 @@ steps:
     sudo apt-get install -y \
     cuda-command-line-tools-10-1 \
     cuda-nvml-dev-10-1 \
-    cuda-nvgraph-10-1
+    cuda-nvgraph-dev-10-1
     echo '##vso[task.prependpath]/usr/local/cuda-10.1/bin/'
   displayName: 'Install CUDA'
 
