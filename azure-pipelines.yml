@@ -42,9 +42,11 @@ steps:
   displayName: 'configure'
 
 - script: |
+    cd build
     make
   displayName: 'build'
 
 - script: |
+    cd build
     make test
   displayName: 'test'
