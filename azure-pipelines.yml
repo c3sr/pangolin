@@ -6,7 +6,7 @@
 
 
 stages:
-- stage: "NUMA Build"
+- stage: "NUMA_Build"
   jobs:
   - job: TheJob
     strategy:
