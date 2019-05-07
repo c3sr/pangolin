@@ -14,13 +14,16 @@ TEST_CASE("device_load_balance", "[gpu]") {
 
   SECTION("no work items") {
     // here we just expect no crash
+    pangolin::logger::set_level(logger::Level::DEBUG);
 
     Vector<size_t> counts{0, 0, 0, 0};
     size_t numWorkItems = std::accumulate(counts.begin(), counts.end(), 0);
     Vector<size_t> indices(numWorkItems);
-    size_t *ranks = nullptr;
 
-    SECTION("no ranks") { device_load_balance(indices.data(), ranks, numWorkItems, counts.data(), counts.size()); }
+    SECTION("no ranks") {
+      size_t *ranks = nullptr;
+      device_load_balance(indices.data(), ranks, numWorkItems, counts.data(), counts.size());
+    }
 
     SECTION("ranks") {
       Vector<size_t> ranks(numWorkItems);

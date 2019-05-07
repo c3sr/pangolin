@@ -64,14 +64,17 @@ __global__ void grid_load_balance_kernel(
   }
 }
 
-/*! Compute x[i] = i-x[i]
+/*! ranks[i] = i - exclScanCounts[indices[i]]
  */
-template <typename T>
-__global__ void sub_from_index_inplace_kernel(T *x,          //<! [inout]  data array
-                                              const size_t n //<! [in] size of x
+template <typename T, typename U, typename V>
+__global__ void ranks_kernel(T *__restrict__ ranks,    //<! [out]  data array
+                             const U *indices,         //<! [in]
+                             const V *exclScanCounts,  //<! [in]
+                             const size_t numWorkItems //<! [in] size of ranks, indices
+
 ) {
-  for (size_t i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
-    x[i] = i - x[i];
+  for (size_t i = blockDim.x * blockIdx.x + threadIdx.x; i < numWorkItems; i += gridDim.x * blockDim.x) {
+    ranks[i] = i - exclScanCounts[indices[i]];
   }
 }
 
@@ -95,7 +98,10 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
 
 ) {
 
-  assert(nullptr != indices);
+  LOG(debug, "device_load_balance numWorkItems = {} numObjects = {}", numWorkItems, numObjects);
+
+  assert((numWorkItems && (nullptr != indices) || !numWorkItems) &&
+         "if there are work items, indices should not be null");
 
   // allocate space for counts exclusive scan results
   size_t exclScanBytes = sizeof(*counts) * numObjects;
@@ -119,9 +125,22 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   CUDA_RUNTIME(cudaGetLastError());
 
   // run load-balanced search
-  LOG(debug, "launch grid_load_balance_kernel blocks = {} threads = {}", 512, 512);
+  LOG(debug, "launch grid_load_balance_kernel<<<{}, {}, 0, {}>>>", 512, 512, uintptr_t(stream));
   grid_load_balance_kernel<<<512, 512, 0, stream>>>(indices, numWorkItems, exclScanCounts, numObjects);
   CUDA_RUNTIME(cudaGetLastError());
+
+  if (nullptr != ranks) {
+    // use ranks array as the spaceholder for the intermediate exclusive scan of indices
+
+    assert(numWorkItems && "there should be >0 work items if ranks is not null");
+
+    // ranks[i] = i - exclScanCounts[indices[i]]
+    const size_t dimGrid = 512;
+    const size_t dimBlock = 512;
+    LOG(debug, "launch rank_kernel<<<{}, {}, 0, {}>>>", dimGrid, dimBlock, uintptr_t(stream));
+    ranks_kernel<<<dimGrid, dimBlock, 0, stream>>>(ranks, indices, exclScanCounts, numWorkItems);
+    CUDA_RUNTIME(cudaGetLastError());
+  }
 
   // free temporary storage
   LOG(debug, "free temporary storage");
@@ -133,48 +152,6 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   CUDA_RUNTIME(cudaFree(exclScanCounts));
   exclScanCounts = nullptr;
   exclScanBytes = 0;
-
-  if (nullptr != ranks) {
-    // allocate space for indices exclusive scan results
-    exclScanBytes = sizeof(*indices) * numWorkItems;
-    LOG(debug, "allocate {}B for indices exclusive scan output", exclScanBytes);
-    OI *exclScanIndices = nullptr;
-    CUDA_RUNTIME(cudaMalloc(&exclScanIndices, exclScanBytes));
-
-    // compute temp storage needed for exclusive sum
-    tempStorage = nullptr;
-    tempStorageBytes = 0;
-    cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, indices, exclScanIndices, numWorkItems,
-                                  stream = stream);
-    CUDA_RUNTIME(cudaGetLastError());
-
-    // allocate temporary storage
-    LOG(debug, "allocate {}B for indices exclusive scan temp storage", tempStorageBytes);
-    CUDA_RUNTIME(cudaMalloc(&tempStorage, tempStorageBytes));
-
-    // run exclusive scan
-    LOG(debug, "launch exclusive scan");
-    cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, indices, exclScanIndices, numWorkItems,
-                                  stream = stream);
-    CUDA_RUNTIME(cudaGetLastError());
-
-    // free temporary storage
-    LOG(debug, "free temporary storage");
-    CUDA_RUNTIME(cudaFree(tempStorage));
-    tempStorage = nullptr;
-    tempStorageBytes = 0;
-
-    LOG(debug, "free exclusive scan of counts");
-    CUDA_RUNTIME(cudaFree(exclScanIndices));
-    exclScanIndices = nullptr;
-    exclScanBytes = 0;
-
-    const size_t dimGrid = 512;
-    const size_t dimBlock = 512;
-    LOG(debug, "launch sub_from_index_inplace_kernel blocks = {} threads = {}", dimGrid, dimBlock);
-    sub_from_index_inplace_kernel<<<dimGrid, dimBlock>>>(exclScanIndices, numWorkItems);
-    CUDA_RUNTIME(cudaGetLastError());
-  }
 }
 
 } // namespace pangolin

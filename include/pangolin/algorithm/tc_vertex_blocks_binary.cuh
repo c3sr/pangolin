@@ -110,6 +110,7 @@ public:
                    const size_t rowOffset //<! [in] the first row to count
   ) {
 
+    const size_t dimBlock = 512;
     typedef typename CsrView::index_type Index;
 
     if (rowOffset != 0) {
@@ -119,16 +120,20 @@ public:
 
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
-    // do the initial load-balancing search across rows
-    const Index numWorkItems = adj.nnz();
-    const Index numObjects = adj.num_nodes();
-
-    std::vector<Index> rowLengths(numObjects);
-    // FIXME: on GPU
-    for (size_t i = 0; i < numObjects; ++i) {
-      rowLengths[i] = adj.rowPtr_[i + 1] - adj.rowPtr_[i];
+    // compute the number of dimBlock-sized chunks that make up each row (counts)
+    assert(dimBlock > 0);
+    const Index numObjects = adj.num_rows();
+    std::vector<Index> counts(numObjects);
+    Index numWorkItems = 0;
+    // each workItem is dimBlock elements from a row
+    for (Index i = 0; i < numObjects; ++i) {
+      const Index rowSize = adj.rowPtr_[i + 1] - adj.rowPtr_[i];
+      const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
+      counts[i] = rowWorkItems;
+      numWorkItems += rowWorkItems;
     }
 
+    // do the initial load-balancing search across rows
     Index *indices = nullptr;
     Index *ranks = nullptr;
     const size_t indicesBytes = sizeof(Index) * numWorkItems;
@@ -136,10 +141,9 @@ public:
     CUDA_RUNTIME(cudaMalloc(&indices, sizeof(Index) * numWorkItems));
     LOG(debug, "allocate {}B for ranks", indicesBytes);
     CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems));
-    device_load_balance(indices, ranks, numWorkItems, rowLengths.data(), numObjects, stream_);
+    device_load_balance(indices, ranks, numWorkItems, counts.data(), numObjects, stream_);
 
     // one block per row
-    constexpr int dimBlock = 512;
     const int dimGrid = std::min(numRows, static_cast<uint64_t>(maxGridSize_.x));
     LOG(debug, "counting rows [{}, {}), adj has {} rows", rowOffset, rowOffset + numRows, adj.num_rows());
     assert(rowOffset + numRows <= adj.num_rows());
@@ -152,6 +156,7 @@ public:
     CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaFree(indices));
+    CUDA_RUNTIME(cudaFree(ranks));
   }
 
   /*! Synchronous triangle count
