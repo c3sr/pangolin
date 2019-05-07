@@ -2,6 +2,11 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/9996fcec-ff4e-4664-ae94-3734b469d5d9/deploy-status)](https://app.netlify.com/sites/pangolin-docs/deploys)
 
+| Branch | Status |
+|-|-|
+| master | [![Build Status](https://dev.azure.com/trekinator/trekinator/_apis/build/status/c3sr.pangolin?branchName=master)](https://dev.azure.com/trekinator/trekinator/_build/latest?definitionId=1&branchName=master)|
+| develop | [![Build Status](https://dev.azure.com/trekinator/trekinator/_apis/build/status/c3sr.pangolin?branchName=develop)](https://dev.azure.com/trekinator/trekinator/_build/latest?definitionId=1&branchName=develop) |
+
 A header-only C++/CUDA library for GPU graph operations
 
 ## Getting Started

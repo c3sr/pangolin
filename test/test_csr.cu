@@ -58,6 +58,15 @@ TEST_CASE("CSR<uint64_t>::view lower triangular") {
   auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
-  REQUIRE(csr.nnz() == csr.view().nnz());
-  REQUIRE(csr.num_rows() == csr.view().num_rows());
+  SECTION("nnz") {
+    REQUIRE(csr.nnz() == 8);
+    REQUIRE(csr.nnz() == csr.view().nnz());
+  }
+
+  SECTION("num_nodes") {
+    REQUIRE(csr.num_nodes() == 5);
+    REQUIRE(csr.num_nodes() == csr.view().num_nodes());
+  }
+
+  SECTION("num_rows") { REQUIRE(csr.num_rows() == csr.view().num_rows()); }
 }

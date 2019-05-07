@@ -35,8 +35,9 @@ public:
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *colInd_; //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const noexcept { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_nodes() const noexcept { return num_rows(); }
 
   const Index *row_ptr() const { return rowPtr_; }                                      //!< row offset array
   const Index *col_ind() const { return colInd_; }                                      //!< column index array
