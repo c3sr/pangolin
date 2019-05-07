@@ -3,11 +3,10 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-pool:
-  vmImage: 'ubuntu-latest'
+
 
 stages:
-- stage: TheStage
+- stage: "NUMA Build"
   jobs:
   - job: TheJob
     strategy:
@@ -16,6 +15,8 @@ stages:
           CMAKE_BUILD_TYPE: 'Debug'
         Release:
           CMAKE_BUILD_TYPE: 'Release'
+    pool:
+      vmImage: 'ubuntu-latest'
     steps:
     - script: |
         sudo apt-get update
