@@ -49,5 +49,5 @@ steps:
 
 - script: |
     cd build
-    ctest -LE "gpu" --output-on-failure
+    ctest -LE "gpu" --output-on-failure --timeout 300
   displayName: 'non-gpu tests'
