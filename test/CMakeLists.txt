@@ -19,6 +19,18 @@ function(pangolin_add_test)
   add_test(NAME ${PARSED_ARGS_NAME} COMMAND ${PARSED_ARGS_NAME} -a)
 endfunction()
 
+function(pangolin_add_gpu_test)
+  cmake_parse_arguments(
+    PARSED_ARGS # prefix of output variables
+    "" # list of names of boolean arguments
+    "NAME" # list of names of mono-valued arguments
+    "SRCS" # list of names of nuluti-valued arguments
+    ${ARGN} # arguments of the function to parse
+  )
+  pangolin_add_test(${ARGN})
+  set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu")
+endfunction()
+
 pangolin_add_test(
   NAME test_binary_search
   SRCS test_binary_search.cpp
@@ -29,32 +41,32 @@ pangolin_add_test(
   SRCS test_complete.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_coo
   SRCS test_coo.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_count
   SRCS test_count.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_csr
   SRCS test_csr.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_load_balance
   SRCS test_load_balance.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_logger
   SRCS test_logger.cpp test_logger_helper.cpp
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_managed_allocator
   SRCS test_managed_allocator.cu
 )
@@ -64,47 +76,47 @@ pangolin_add_test(
   SRCS test_merge_path.cpp
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_numa
   SRCS test_numa.cpp
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_tc_edge_binary
   SRCS test_tc_edge_binary.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_tc_edge_linear
   SRCS test_tc_edge_linear.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_tc_edge_merge
   SRCS test_tc_edge_merge.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_tc_vertex_block_binary
   SRCS test_tc_vertex_block_binary.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_topology
   SRCS test_topology.cpp
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_vector
   SRCS test_vector.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_zero
   SRCS test_zero.cu
 )
 
-pangolin_add_test(
+pangolin_add_gpu_test(
   NAME test_zero_copy_allocator
   SRCS test_zero_copy_allocator.cu
 )

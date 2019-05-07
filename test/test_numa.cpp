@@ -15,8 +15,11 @@ TEST_CASE("available") {
 
 TEST_CASE("node_of_cpu") {
   pangolin::init();
+  INFO("set strict");
   pangolin::numa::set_strict();
+  INFO("get cpus");
   auto cpus = pangolin::topology::get_cpus();
+  INFO("get node of each cpu");
   for (const auto cpu : cpus) {
     pangolin::numa::node_of_cpu(cpu);
   }

@@ -139,6 +139,12 @@ make test
 ```
 
 Most tests require a GPU.
+
+```
+ctest -LE "gpu" # run tests that do not require a GPU
+ctest -L "gpu" # run tests that require a GPU
+```
+
 To run individual tests, you can do something like
 
 ```
@@ -146,6 +152,14 @@ make
 test/test_csr
 ```
 
+## Continuous Integration
+
+We automatically build and test the following configurations.
+
+| CI Platform | CUDA | NUMA | Build | Test |
+|-|-|-|-|-|
+| Azure Pipelines | 10.1 | Yes |  Yes | non-gpu |
+| Azure Pipelines | 10.1 | No | planned | planned |
 
 ## Profiling
 

@@ -49,5 +49,5 @@ steps:
 
 - script: |
     cd build
-    ctest -L "^gpu"
+    ctest -LE "gpu" --output-on-failure
   displayName: 'non-gpu tests'
