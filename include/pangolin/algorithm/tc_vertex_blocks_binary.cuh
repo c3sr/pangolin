@@ -29,6 +29,7 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
                                  const WI numWorkItems   //<! [in] the total number of work items
 ) {
   typedef typename CsrView::index_type Index;
+  extern __shared__ Index srcShared[];
   // __shared__ Index srcShared[BLOCK_DIM_X];
 
   uint64_t threadCount = 0;
@@ -36,14 +37,19 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
   // one thread-block per work-item
   for (size_t i = blockIdx.x; i < numWorkItems; i += gridDim.x) { // work item id
     OI row = workItemRow[i];
-    OI rank = workItemRow[i];
+    OI rank = workItemRank[i];
 
     // each block is responsible for counting triangles from a contiguous set of non-zeros in the row
     // [srcStart ... srcStop)
     const Index rowStart = adj.rowPtr_[row];
     const Index rowStop = adj.rowPtr_[row + 1];
     const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
-    const Index sliceStop = max(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
+    const Index sliceStop = min(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
+    // if (sizeof(Index) == 4) {
+    //   printf("row %d: colInd[%d, %d)\n", row, sliceStart, sliceStop);
+    // } else {
+    //   printf("row %lu: colInd[%lu, %lu)\n", row, sliceStart, sliceStop);
+    // }
 
     // one thread per non-zero in the slice
     for (size_t j = sliceStart + threadIdx.x; j < sliceStop; j += BLOCK_DIM_X) {
@@ -123,7 +129,7 @@ public:
     // compute the number of dimBlock-sized chunks that make up each row (counts)
     assert(dimBlock > 0);
     const Index numObjects = adj.num_rows();
-    std::vector<Index> counts(numObjects);
+    Vector<Index> counts(numObjects);
     Index numWorkItems = 0;
     // each workItem is dimBlock elements from a row
     for (Index i = 0; i < numObjects; ++i) {
@@ -150,8 +156,8 @@ public:
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
-    LOG(debug, "row_block_kernel: device = {}, blocks = {}, threads = {} shmem = {}", dev_, dimGrid, dimBlock,
-        shmemBytes);
+    LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
+        uintptr_t(stream_));
     row_block_kernel<dimBlock><<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices, ranks, numWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
 

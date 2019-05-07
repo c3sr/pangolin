@@ -120,9 +120,12 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   CUDA_RUNTIME(cudaMalloc(&tempStorage, tempStorageBytes));
 
   // run exclusive scan
+  assert(tempStorage);
+  assert(counts);
+  assert(exclScanCounts);
   LOG(debug, "launch exclusive scan");
   cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream = stream);
-  CUDA_RUNTIME(cudaGetLastError());
+  CUDA_RUNTIME(cudaDeviceSynchronize());
 
   // run load-balanced search
   LOG(debug, "launch grid_load_balance_kernel<<<{}, {}, 0, {}>>>", 512, 512, uintptr_t(stream));
