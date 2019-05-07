@@ -64,6 +64,17 @@ __global__ void grid_load_balance_kernel(
   }
 }
 
+/*! Compute x[i] = i-x[i]
+ */
+template <typename T>
+__global__ void sub_from_index_inplace_kernel(T *x,          //<! [inout]  data array
+                                              const size_t n //<! [in] size of x
+) {
+  for (size_t i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+    x[i] = i - x[i];
+  }
+}
+
 /*! An exclusive scan followed by a grid_load_balance_kernel
 
   The executing device can be controlled with a prior call to cudaSetDevice
@@ -72,9 +83,11 @@ __global__ void grid_load_balance_kernel(
   \tparam WI the work-item index type
 
   \return an array of length numWorkItems containing the object index that produced each work item
+  if ranks is not NULL, also return the rank of each work-item within the producing object
 */
 template <typename OI, typename WI>
 void device_load_balance(OI *indices, //<! [out] the object index that produced each work item (size=numWorkItems)
+                         OI *ranks,   //<! [out] rank of the work item within each object (size=numWorkItems)
                          const WI numWorkItems, //<! [in] the total number of work items
                          const WI *counts, //<! [in] the number of work items produced by each object (size=numObjects)
                          const OI numObjects,    //<! [in] the number of objects
@@ -82,8 +95,10 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
 
 ) {
 
-  // allocate space for exclusive scan results
-  size_t exclScanBytes = sizeof(WI) * numObjects;
+  assert(nullptr != indices);
+
+  // allocate space for counts exclusive scan results
+  size_t exclScanBytes = sizeof(*counts) * numObjects;
   LOG(debug, "allocate {}B for exclusive scan output", exclScanBytes);
   WI *exclScanCounts = nullptr;
   CUDA_RUNTIME(cudaMalloc(&exclScanCounts, exclScanBytes));
@@ -111,6 +126,55 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   // free temporary storage
   LOG(debug, "free temporary storage");
   CUDA_RUNTIME(cudaFree(tempStorage));
+  tempStorage = nullptr;
+  tempStorageBytes = 0;
+
+  LOG(debug, "free exclusive scan of counts");
+  CUDA_RUNTIME(cudaFree(exclScanCounts));
+  exclScanCounts = nullptr;
+  exclScanBytes = 0;
+
+  if (nullptr != ranks) {
+    // allocate space for indices exclusive scan results
+    exclScanBytes = sizeof(*indices) * numWorkItems;
+    LOG(debug, "allocate {}B for indices exclusive scan output", exclScanBytes);
+    OI *exclScanIndices = nullptr;
+    CUDA_RUNTIME(cudaMalloc(&exclScanIndices, exclScanBytes));
+
+    // compute temp storage needed for exclusive sum
+    tempStorage = nullptr;
+    tempStorageBytes = 0;
+    cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, indices, exclScanIndices, numWorkItems,
+                                  stream = stream);
+    CUDA_RUNTIME(cudaGetLastError());
+
+    // allocate temporary storage
+    LOG(debug, "allocate {}B for indices exclusive scan temp storage", tempStorageBytes);
+    CUDA_RUNTIME(cudaMalloc(&tempStorage, tempStorageBytes));
+
+    // run exclusive scan
+    LOG(debug, "launch exclusive scan");
+    cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, indices, exclScanIndices, numWorkItems,
+                                  stream = stream);
+    CUDA_RUNTIME(cudaGetLastError());
+
+    // free temporary storage
+    LOG(debug, "free temporary storage");
+    CUDA_RUNTIME(cudaFree(tempStorage));
+    tempStorage = nullptr;
+    tempStorageBytes = 0;
+
+    LOG(debug, "free exclusive scan of counts");
+    CUDA_RUNTIME(cudaFree(exclScanIndices));
+    exclScanIndices = nullptr;
+    exclScanBytes = 0;
+
+    const size_t dimGrid = 512;
+    const size_t dimBlock = 512;
+    LOG(debug, "launch sub_from_index_inplace_kernel blocks = {} threads = {}", dimGrid, dimBlock);
+    sub_from_index_inplace_kernel<<<dimGrid, dimBlock>>>(exclScanIndices, numWorkItems);
+    CUDA_RUNTIME(cudaGetLastError());
+  }
 }
 
 } // namespace pangolin

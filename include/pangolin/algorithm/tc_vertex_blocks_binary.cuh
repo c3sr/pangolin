@@ -17,14 +17,16 @@ Each thread block can look up which row and rank (slice within the row) it is.
 
 
 \tparam BLOCK_DIM_X the number of threads in a block
+\tparam OI object index type
+\tparam WI work-item index type
 \tparam CsrView A CSR adjacency matrix
 */
-template <size_t BLOCK_DIM_X, typename CsrView>
-__global__ void row_block_kernel(uint64_t *count,            //<! [out] the count will be accumulated into here
-                                 const CsrView adj,          //<! [in] the CSR adjacency matrix to operate on
-                                 const size_t *workItemRow,  //<! [in] the row associated with this work item
-                                 const size_t *workItemRank, //<! [in] the rank within the row for this work item
-                                 const size_t numWorkItems   //<! [in] the total number of work items
+template <size_t BLOCK_DIM_X, typename OI, typename WI, typename CsrView>
+__global__ void row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
+                                 const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
+                                 const OI *workItemRow,  //<! [in] the row associated with this work item
+                                 const OI *workItemRank, //<! [in] the rank within the row for this work item
+                                 const WI numWorkItems   //<! [in] the total number of work items
 ) {
   typedef typename CsrView::index_type Index;
   // __shared__ Index srcShared[BLOCK_DIM_X];
@@ -33,28 +35,27 @@ __global__ void row_block_kernel(uint64_t *count,            //<! [out] the coun
 
   // one thread-block per work-item
   for (size_t i = blockIdx.x; i < numWorkItems; i += gridDim.x) { // work item id
-    size_t row = workItemRow[i];
-    size_t rank = workItemRow[i];
+    OI row = workItemRow[i];
+    OI rank = workItemRow[i];
 
     // each block is responsible for counting triangles from a contiguous set of non-zeros in the row
     // [srcStart ... srcStop)
     const Index rowStart = adj.rowPtr_[row];
     const Index rowStop = adj.rowPtr_[row + 1];
-    const Index rowLen = rowStop - rowStart;
-    const Index sliceStart = rowStart + BLOCK_DIM_X * rank;
-    const Index sliceStop = max(sliceStart + BLOCK_DIM_X, rowStop);
+    const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
+    const Index sliceStop = max(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
 
     // one thread per non-zero in the slice
     for (size_t j = sliceStart + threadIdx.x; j < sliceStop; j += BLOCK_DIM_X) {
       // retrieve the nbrs of the edge dst
       Index dst = adj.colInd_[j];
-      const Index dstStart = rowPtr[dst];
-      const Index dstStop = rowPtr[dst + 1];
-      const Index *dstNbrBegin = colInd[dstStart];
-      const Index *dstNbrEnd = colInd[dstStop];
+      const Index dstStart = adj.rowPtr_[dst];
+      const Index dstStop = adj.rowPtr_[dst + 1];
+      const Index *dstNbrBegin = &adj.colInd_[dstStart];
+      const Index *dstNbrEnd = &adj.colInd_[dstStop];
 
       // for each edge, need to search through the whole src row
-      for (const Index *dstNbr = dstNbrBegin; dstPtr < dstNbrEnd; ++dstPtr) {
+      for (const Index *dstNbr = dstNbrBegin; dstNbr < dstNbrEnd; ++dstNbr) {
         threadCount += pangolin::serial_sorted_count_binary(&adj.colInd_[rowStart], 0, rowStop, *dstNbr);
       }
     }
@@ -111,6 +112,11 @@ public:
 
     typedef typename CsrView::index_type Index;
 
+    if (rowOffset != 0) {
+      LOG(critical, "rowOffset must be 0");
+      exit(-1);
+    }
+
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // do the initial load-balancing search across rows
@@ -124,10 +130,13 @@ public:
     }
 
     Index *indices = nullptr;
+    Index *ranks = nullptr;
     const size_t indicesBytes = sizeof(Index) * numWorkItems;
     LOG(debug, "allocate {}B for indices", indicesBytes);
     CUDA_RUNTIME(cudaMalloc(&indices, sizeof(Index) * numWorkItems));
-    device_load_balance(indices, numWorkItems, rowLengths, numRows, stream_);
+    LOG(debug, "allocate {}B for ranks", indicesBytes);
+    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems));
+    device_load_balance(indices, ranks, numWorkItems, rowLengths.data(), numObjects, stream_);
 
     // one block per row
     constexpr int dimBlock = 512;
@@ -139,8 +148,7 @@ public:
     const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
     LOG(debug, "row_block_kernel: device = {}, blocks = {}, threads = {} shmem = {}", dev_, dimGrid, dimBlock,
         shmemBytes);
-    row_block_kernel<dimBlock>
-        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, rowOffset, numRows, rowCacheSize_);
+    row_block_kernel<dimBlock><<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices, ranks, numWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaFree(indices));

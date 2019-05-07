@@ -50,6 +50,11 @@ pangolin_add_test(
 )
 
 pangolin_add_test(
+  NAME test_load_balance_gpu
+  SRCS test_load_balance_gpu.cu
+)
+
+pangolin_add_test(
   NAME test_logger
   SRCS test_logger.cpp test_logger_helper.cpp
 )
