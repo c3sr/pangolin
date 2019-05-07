@@ -1,20 +1,9 @@
 #include <algorithm>
 #include <map>
-
-
-// using namespace std::chrono;
-using namespace std;
-
-//if you change PARTITION Size
-//make sure to change the arg_sort in repartition kerenel and temp array in InitCrossDecomp
-#define PARTITION 4 
-
-typedef pangolin::Vector<uint8_t> pangolinVec8;
-typedef pangolin::Vector<uint32_t> pangolinVec32;
-typedef pangolin::Vector<uint64_t> pangolinVec64;
-
+ 
 namespace pangolin {
 
+template<uint8_t PARTITION>
 __global__ void __launch_bounds__(1024,2) repartition_kernel(   uint8_t* orig_P, uint8_t* new_P, 
                                                                 uint32_t* cardi, uint32_t* new_cardi,
                                                                 uint32_t* coo_col, uint32_t* coo_col_ptr,
@@ -31,6 +20,7 @@ __global__ void __launch_bounds__(1024,2) repartition_kernel(   uint8_t* orig_P,
         uint64_t degree = (coo_col_ptr[cur_node+1] - coo_col_ptr[cur_node]);
         uint32_t start_cur_col_ptr = coo_col_ptr[cur_node];
 
+        //calculate the nodes that are connected to cur_node and in same current partition
         for(uint64_t j=0; j<degree; j++){
             uint32_t cur_col_ptr = start_cur_col_ptr + j;
             uint32_t cur_col = coo_col[cur_col_ptr];
@@ -45,7 +35,12 @@ __global__ void __launch_bounds__(1024,2) repartition_kernel(   uint8_t* orig_P,
                         (1-h)*(num_nodes - (cardi[i] + degree - connected_and_in_curpart[i]));
         } 
 
-        int arg_sort[PARTITION] = {0,1,2,3};
+        //initialize arg_sort array
+        int arg_sort[PARTITION];
+        for (int i = 0; i < PARTITION; i++)
+            arg_sort[i] = i;
+        
+        //perform arg_sort with cost
         for (int i = 0; i < PARTITION-1; i++){       
             for (int j = 0; j < PARTITION-i-1; j++){
                 if (cost[j] < cost[j+1]){
@@ -88,6 +83,7 @@ __global__ void __launch_bounds__(1024,2) repartition_kernel(   uint8_t* orig_P,
     }
 }
 
+template<uint8_t PARTITION>
 __global__ void evalEdges(uint8_t* P, 
                           uint32_t* coo_row, uint32_t* coo_col, 
                           uint64_t* edges_per_part, uint64_t coo_size)
@@ -102,23 +98,25 @@ __global__ void evalEdges(uint8_t* P,
             atomicAdd( (unsigned int*)&edges_per_part[src_part*PARTITION+dest_part], (unsigned int) 1);
         }
     }
+    
     return;
 } 
 
 /* ! Cross-Decomposition Class definition
+If the Size of PARTITION gets larger and data type must be changed,
+change the type of PARTITION in template
 */ 
-
-template<typename pangolinCOO>
+template<typename pangolinCOO, uint8_t PARTITION>
 class CrossDecomp{
     private:
         float h;
         bool is_divisible = true;
         uint32_t num_nodes, part_size;
         uint32_t fixed_array[PARTITION];//this array contains partition sizes to initialize cardi arrays
-        pangolinVec8 row_P, col_P;
-        pangolinVec32 row_cardi, row_new_cardi, col_cardi, col_new_cardi;
-        pangolinVec64 edges_per_part;
-        map<uint32_t, uint32_t> renamed_map;
+        Vector<uint8_t> row_P, col_P;
+        Vector<uint32_t> row_cardi, row_new_cardi, col_cardi, col_new_cardi;
+        Vector<uint64_t> edges_per_part;
+        std::map<uint32_t, uint32_t> renamed_map;
         
     public:
         CrossDecomp(){};
@@ -127,7 +125,8 @@ class CrossDecomp{
         void Host_repartition_sync(bool one_iter, int num_iter, pangolinCOO COO);
         void initParts(uint8_t* P, uint32_t* cardi);
         void reset_cardi();
-        void Host_evalEdges(pangolinCOO COO);
+        void Host_evalEdges_async(pangolinCOO COO);
+        void Host_evalEdges_sync(pangolinCOO COO);
         void printEdgesPerPar();
         void rename();
 };
@@ -135,9 +134,10 @@ class CrossDecomp{
 /* ! Initialization function for Cross-Decomposition
     This function must be called after instantiating CrossDecomp obj
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::CrossDecompInit(pangolinCOO COO)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::CrossDecompInit(pangolinCOO COO)
 {
+    using namespace std;
     h = 0.9;
     num_nodes = COO.num_nodes();
 
@@ -154,27 +154,26 @@ void CrossDecomp<pangolinCOO>::CrossDecompInit(pangolinCOO COO)
 
     part_size = floor(num_nodes/PARTITION);
     uint32_t rem = num_nodes%PARTITION;
-    uint32_t temp[PARTITION];
-    std::fill(temp, temp+PARTITION, part_size);
+    std::fill(fixed_array, fixed_array+PARTITION, part_size);
     if(rem!=0){
         cout<<"Size of Each Partition is: "<<part_size<<endl;
         cout<<"Size of Last Partition is: "<<part_size+rem<<endl;
         is_divisible = false;
-        temp[PARTITION-1] = part_size+rem;
+        fixed_array[PARTITION-1] = part_size+rem;
     }
     else{
         cout<<"N is divided perfectly"<<endl;
         cout<<"Size of Each Partition is: "<<part_size<<endl;
     }
-    std::memcpy(fixed_array, temp, PARTITION);
 }
 
 /* ! Initialize the partitions for each node in the graph 
         with uniform random distribution
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::initParts(uint8_t* P, uint32_t* cardi)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::initParts(uint8_t* P, uint32_t* cardi)
 {
+    using namespace std;
 	random_device rd;
 	mt19937 mt(rd());
     // mt19937 mt(1);
@@ -190,15 +189,14 @@ void CrossDecomp<pangolinCOO>::initParts(uint8_t* P, uint32_t* cardi)
 
 /* ! This function invokes kernel for Cross-Decomposition asynchronous
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::Host_repartition_async(bool one_iter, int num_iter, pangolinCOO COO)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::Host_repartition_async(bool one_iter, int num_iter, pangolinCOO COO)
 {
     dim3 dimGrid(ceil(((float)num_nodes)/1024),1,1);
     dim3 dimBlock(1024,1,1); //1024
 
-    auto start = std::chrono::system_clock::now();
     if(one_iter){
-        repartition_kernel<<<dimGrid, dimBlock>>>(  col_P.data(), row_P.data(), 
+        repartition_kernel<PARTITION><<<dimGrid, dimBlock>>>(  col_P.data(), row_P.data(), 
                                                     col_cardi.data(), col_new_cardi.data(),
                                                     COO.colInd_.data(), COO.rowPtr_.data(), 
                                                     num_nodes, h, part_size,
@@ -207,13 +205,13 @@ void CrossDecomp<pangolinCOO>::Host_repartition_async(bool one_iter, int num_ite
     }
     else{
         for(int i=0; i<num_iter; i++){
-            repartition_kernel<<<dimGrid, dimBlock>>>(  row_P.data(), col_P.data(), 
+            repartition_kernel<PARTITION><<<dimGrid, dimBlock>>>(  row_P.data(), col_P.data(), 
                                                         row_cardi.data(), row_new_cardi.data(),
                                                         COO.colInd_.data(), COO.rowPtr_.data(), 
                                                         num_nodes, h, part_size,
                                                         is_divisible);
             CUDA_RUNTIME(cudaGetLastError());
-            repartition_kernel<<<dimGrid, dimBlock>>>(  col_P.data(), row_P.data(), 
+            repartition_kernel<PARTITION><<<dimGrid, dimBlock>>>(  col_P.data(), row_P.data(), 
                                                         col_cardi.data(), col_new_cardi.data(),
                                                         COO.colInd_.data(), COO.rowPtr_.data(), 
                                                         num_nodes, h, part_size,
@@ -223,18 +221,19 @@ void CrossDecomp<pangolinCOO>::Host_repartition_async(bool one_iter, int num_ite
         }
     }
     
-    double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
-    LOG(info, "Cross Decomposition Runtime {}s", elapsed);
     return;
 }
 
 /* ! This function invokes kernel for Cross-Decomposition synchronously
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::Host_repartition_sync(bool one_iter, int num_iter, pangolinCOO COO)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::Host_repartition_sync(bool one_iter, int num_iter, pangolinCOO COO)
 {
+    auto start = std::chrono::system_clock::now();
     Host_repartition_async(one_iter, num_iter, COO);
-    sync();
+    CUDA_RUNTIME(cudaDeviceSynchronize());
+    double elapsed = (std::chrono::system_clock::now() - start).count() / 1e9;
+    LOG(info, "Cross Decomposition Runtime {}s", elapsed);
     return;
 }
 
@@ -242,8 +241,8 @@ void CrossDecomp<pangolinCOO>::Host_repartition_sync(bool one_iter, int num_iter
 resetting cardinality arrays after each iteration is necessary.
 This function simply resets cardinality arrays with correct values. 
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::reset_cardi()
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::reset_cardi()
 {
     for(int i=0; i<PARTITION; i++){
         row_cardi[i]=fixed_array[i];
@@ -257,35 +256,36 @@ void CrossDecomp<pangolinCOO>::reset_cardi()
 /* ! Host function to invoke kernels asynchronous
 to evaluate edges inside and between partitions 
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::Host_evalEdges_async(pangolinCOO COO)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::Host_evalEdges_async(pangolinCOO COO)
 {
     std::fill(edges_per_part.begin(), edges_per_part.end() + PARTITION*PARTITION, 0);
     dim3 dimGrid0(ceil(((float)COO.nnz())/1024),1,1);
     dim3 dimBlock0(1024,1,1); //1024
 
-    evalEdges<<<dimGrid0, dimBlock0>>>(row_P.data(), COO.rowInd_.data(), COO.colInd_.data(), edges_per_part.data(), COO.nnz());
+    evalEdges<PARTITION><<<dimGrid0, dimBlock0>>>(row_P.data(), COO.rowInd_.data(), COO.colInd_.data(), edges_per_part.data(), COO.nnz());
     CUDA_RUNTIME(cudaGetLastError());
-    printEdgesPerPar();
     return;
 }
 
 /* ! Host function to invoke kernels synchronous
 to evaluate edges inside and between partitions 
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::Host_evalEdges_sync(pangolinCOO COO)
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::Host_evalEdges_sync(pangolinCOO COO)
 {
     Host_evalEdges_async(COO);
-    sync();
+    CUDA_RUNTIME(cudaDeviceSynchronize());
+    printEdgesPerPar();
     return;
 }
 
 /* ! This function simply prints out the result of evalEdges to terminal
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::printEdgesPerPar()
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::printEdgesPerPar()
 {
+    using namespace std;
     cout<<"********************************************************"<<endl;
     map<pair<uint8_t,uint8_t>, bool> track;
     for(uint8_t i=0; i<PARTITION; i++)
@@ -307,8 +307,8 @@ void CrossDecomp<pangolinCOO>::printEdgesPerPar()
 
 /*! Rename the nodes based on result of Cross-Decomposition Partition
 */
-template<typename pangolinCOO>
-void CrossDecomp<pangolinCOO>::rename()
+template<typename pangolinCOO, uint8_t PARTITION>
+void CrossDecomp<pangolinCOO, PARTITION>::rename()
 {
     uint32_t start[PARTITION];
     start[0] = 0;
@@ -316,11 +316,11 @@ void CrossDecomp<pangolinCOO>::rename()
         start[i] = start[i-1] + part_size;
     }
 
-    cout<<"Rename Starts at ";
+    std::cout<<"Rename Starts at ";
     for(int i=0; i<PARTITION; i++){
-       cout<<start[i]<<" ";
+       std::cout<<start[i]<<" ";
     }
-    cout<<endl;
+    std::cout<<std::endl;
 
     for(int i=0; i<num_nodes; i++){
         renamed_map[i] = start[row_P[i]];
@@ -328,7 +328,6 @@ void CrossDecomp<pangolinCOO>::rename()
     }
     return;
 }
-
 
 
 }//namespace Pangolin
