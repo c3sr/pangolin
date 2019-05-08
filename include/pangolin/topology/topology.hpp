@@ -5,7 +5,12 @@
 #include <set>
 #include <thread>
 
+#include <errno.h>
 #include <nvml.h>
+
+#if USE_NUMA == 1
+#include <numaif.h>
+#endif
 
 #include "pangolin/logger.hpp"
 #include "pangolin/numa.hpp"
@@ -166,7 +171,47 @@ struct Topology {
   std::map<int, CPU_t> cpus_;              //<! CPUs by OS id
   std::map<int, GPU_t> cudaGpus_;          //<! GPUs by CUDA device ID
   std::map<unsigned int, GPU_t> nvmlGpus_; //<! gpus by nvml index
-};
+
+  size_t pageSize_; //<! the page size on the system
+
+  /*! return the numa node that the page of ptr is allocated in.
+  If NUMA is not supported or otherwise it cannot be determined, return nullptr
+  */
+  NUMA_t page_numa(void *ptr) {
+
+    assert(pageSize_);
+
+#if USE_NUMA == 1
+    // round down to pageSize
+    void *alignedPtr = reinterpret_cast<void *>((uintptr_t(ptr) / pageSize_) * pageSize_);
+    int status[1];
+    status[0] = -1;
+    const int ret = move_pages(0 /*calling process*/, 1 /*1 page*/, &alignedPtr,
+                               NULL /* don't move, report page location*/, status, 0 /*no flags*/);
+    if (0 != ret) {
+      LOG(error, "error in move_pages");
+      return NUMA_t(nullptr);
+    } else {
+      if (-EFAULT == *status) {
+        LOG(error, "{:x} is in a zero page or memory area is not mapped", uintptr_t(ptr));
+        return NUMA_t(nullptr);
+      } else if (-ENOENT == *status) {
+        LOG(error, "the page containing {:x} is not present", uintptr_t(ptr));
+        return NUMA_t(nullptr);
+      } else if (*status < 0) {
+        LOG(error, "status was {}", *status);
+        return NUMA_t(nullptr);
+      } else {
+        return numas_[*status];
+      }
+    }
+#else  // USE_NUMA == 1
+    return NUMA_t(nullptr);
+#endif // USE_NUMA == 1
+  }
+
+  Topology() : pageSize_(0) {}
+}; // namespace topology
 
 /*! Lazily build and return the system Topology
  */
@@ -178,6 +223,9 @@ Topology &topology() {
   static Topology topology;
 
   if (!init) {
+
+    topology.pageSize_ = sysconf(_SC_PAGESIZE);
+
     // if NUMA is available and installed, add NUMA nodes
 #if USE_NUMA == 1
     if (-1 != numa_available()) {
