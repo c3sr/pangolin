@@ -160,7 +160,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
-    LOG(info, "made it");
+    CUDA_RUNTIME(cudaDeviceSynchronize());
   }
 
   SECTION("1") {
@@ -169,22 +169,12 @@ TEST_CASE("device_load_balance", "[gpu]") {
     producer index
     0
     */
-    LOG(info, "set log level");
-    pangolin::logger::set_level(pangolin::logger::Level::TRACE);
-    LOG(info, "create vec");
     Vector<size_t> counts{1};
-    LOG(info, "{}", counts[0]);
-    LOG(info, "accumulate");
     size_t numWorkItems = std::accumulate(counts.begin(), counts.end(), 0);
-    LOG(info, "create vec");
     Vector<size_t> indices(numWorkItems);
-    LOG(info, "load balance");
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
-    LOG(info, "load balance done");
-
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    // REQUIRE(*indices.data() == 0);
     REQUIRE(indices == Vector<size_t>{0});
   }
 
@@ -220,6 +210,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 1, 2});
   }
@@ -237,6 +228,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0});
   }
@@ -254,6 +246,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 0});
   }
@@ -271,6 +264,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 0, 2});
   }
@@ -288,6 +282,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{1, 1, 3});
   }
