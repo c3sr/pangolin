@@ -402,7 +402,7 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 		  didAffectAnybody[0] = true;
 		
 		__syncthreads();
-		ft=false;//4
+		ft=false;
 
 	  if (0 == threadIdx.x) 
 	  {
@@ -464,7 +464,16 @@ public:
 
   SingleGPU_Ktruss_Binary() : SingleGPU_Ktruss_Binary(0) {}
   
-
+	/*! Find K-Truss of undirected graph asyncrounously, K traversing is done in binary-fashion
+  
+     \tparam kmin  			Min k in binary traversing
+     \tparam kmax 			Max k in binary traversing 
+     \tparam mat   			COO+CSR represnrarion of graph (Readonly)
+		 \tparam numNodes 	Number of nodes in graph
+		 \tparam numEdges 	Number of edges in graph
+		 \tparam nodeOffset Start index on nodes (For multi GPU or CPU+GPU)
+		 \tparam nodeOffset Start index on edges (For multi GPU or CPU+GPU)
+  */ 
 	template <typename CsrCoo> 
 	void findKtrussBinary_async(int kmin, int kmax, const CsrCoo &mat, 
 		const size_t numNodes, const size_t numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) 
@@ -476,7 +485,6 @@ public:
 		int numSM = deviceProp.multiProcessorCount;
 		int maxThPSM = deviceProp.maxThreadsPerMultiProcessor;
 		const int maxGridDim = numSM * maxThPSM/dimBlock;
-
 
 		bool *keep, *affected, *prevKept;
 		//UT *keepPointer;
@@ -504,25 +512,22 @@ public:
 		*selectedOut = numEdges;
 		cudaDeviceSynchronize();
 		
-		/*void     *d_temp_storage = NULL;
-		size_t   temp_storage_bytes = 0;
-		cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, srcKP, keep, destKP, selectedOut, numEdges);
-		cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, srcKP, keep, destKP, selectedOut, numEdges);
-		cudaFree(d_temp_storage);
-		cudaDeviceSynchronize();*/
-
+		int originalKmin = kmin;
+		int originalKmax = kmax;
 
 		UT numDeleted = 0;
 		UT totalEdges = numEdges;
 		float minPercentage = 0.8;
 		float percDeleted = 0.0;
 		bool cond = kmax - kmin > 1;
+		int count = 0;
 		while (cond)
 		{
 			k =  kmin*minPercentage + kmax*(1-minPercentage);
-			printf("%d %d %d\n", kmin, k, kmax);
-			minPercentage = 0.5;
+			//printf("%d %d %d\n", kmin, k, kmax);
+
+			if((kmax-kmin)*1.0/(originalKmax-originalKmin) < 0.2)
+				minPercentage = 0.5;
 			 
 			numDeleted = 0;
 			*firstTry = true;
@@ -552,12 +557,12 @@ public:
 				cudaDeviceSynchronize();
 
 				numAffectedLoops++;
-				
 			}
 
 			 percDeleted= (numDeleted + numEdges - *selectedOut)*1.0/numEdges;
 
-			printf("Blocks = %d, k=%d, numAffectedLoops=%d, NumDeleted=%d, Edges=%d, prog_deleted=%d, prog_total=%d, percentage=%f\n", dimGridEdges, k, numAffectedLoops, (numDeleted + numEdges - *selectedOut), numEdges, numDeleted, *selectedOut, percDeleted);
+			//printf("Blocks = %d, k=%d, numAffectedLoops=%d, NumDeleted=%d, Edges=%d, prog_deleted=%d, prog_total=%d, percentage=%f\n", dimGridEdges, k, 
+			//numAffectedLoops, (numDeleted + numEdges - *selectedOut), numEdges, numDeleted, *selectedOut, percDeleted);
 			if(percDeleted==1.0)
 			{
 				Rewind<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep, prevKept);
