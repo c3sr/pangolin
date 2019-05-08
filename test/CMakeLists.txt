@@ -78,7 +78,7 @@ pangolin_add_test(
 
 pangolin_add_gpu_test(
   NAME test_numa
-  SRCS test_numa.cpp
+  SRCS test_numa.cu
 )
 
 pangolin_add_gpu_test(
@@ -103,7 +103,7 @@ pangolin_add_gpu_test(
 
 pangolin_add_gpu_test(
   NAME test_topology
-  SRCS test_topology.cpp
+  SRCS test_topology.cu
 )
 
 pangolin_add_gpu_test(
