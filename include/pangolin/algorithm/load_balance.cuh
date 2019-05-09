@@ -72,11 +72,11 @@ __global__ void grid_load_balance_kernel(
   \return an array of length numWorkItems containing the object index that produced each work item
 */
 template <typename OI, typename WI>
-void device_load_balance(OI *indices,           //<! [out] the object index that produced each work item
-                         const WI numWorkItems, //<! [in] the total number of work items
-                         const WI *counts,      //<! [in] the number of work items produced by each object
-                         const OI numObjects    //<! [in] the number of objects
-
+void device_load_balance(OI *indices,            //<! [out] the object index that produced each work item
+                         const WI numWorkItems,  //<! [in] the total number of work items
+                         const WI *counts,       //<! [in] the number of work items produced by each object
+                         const OI numObjects,    //<! [in] the number of objects
+                         cudaStream_t stream = 0 //<! [in] the stream to execute in
 ) {
 
   // allocate space for exclusive scan results
@@ -88,7 +88,7 @@ void device_load_balance(OI *indices,           //<! [out] the object index that
   // compute temp storage needed for exclusive sum
   void *tempStorage = nullptr;
   size_t tempStorageBytes = 0;
-  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects);
+  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream);
   CUDA_RUNTIME(cudaGetLastError());
 
   // allocate temporary storage
@@ -97,12 +97,12 @@ void device_load_balance(OI *indices,           //<! [out] the object index that
 
   // run exclusive scan
   LOG(debug, "launch exclusive scan");
-  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects);
+  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream);
   CUDA_RUNTIME(cudaGetLastError());
 
   // run load-balanced search
-  LOG(debug, "launch grid_load_balance_kernel blocks = {} threads = {}", 512, 512);
-  grid_load_balance_kernel<<<512, 512>>>(indices, numWorkItems, exclScanCounts, numObjects);
+  LOG(debug, "launch grid_load_balance_kernel<<<{}, {}, 0, {}>>>", 512, 512, uintptr_t(stream));
+  grid_load_balance_kernel<<<512, 512, 0, stream>>>(indices, numWorkItems, exclScanCounts, numObjects);
   CUDA_RUNTIME(cudaGetLastError());
 
   // free temporary storage
