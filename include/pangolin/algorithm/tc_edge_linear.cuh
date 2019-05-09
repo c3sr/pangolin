@@ -88,7 +88,7 @@ public:
     CUDA_RUNTIME(cudaFree(count_));
   }
 
-  template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0) {
+  template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
@@ -110,6 +110,12 @@ public:
 
   template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
     count_async(mat, edgeOffset, n);
+    sync();
+    return count();
+  }
+
+  template <typename CsrCoo> uint64_t count_sync(const CsrCoo &adj) {
+    count_async(adj, 0, adj.nnz());
     sync();
     return count();
   }
