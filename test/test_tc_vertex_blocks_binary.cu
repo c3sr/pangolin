@@ -44,6 +44,20 @@ TEST_CASE("ctor", "[gpu]") {
     REQUIRE(4 == c.count_sync(csr.view()));
   }
 
+  SECTION("complete(33)", "[gpu]") { // 33*32 /2 edges = 528
+    using NodeTy = int;
+
+    // complete graph with 4 nodes
+    generator::Complete<NodeTy> g(4);
+
+    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
+
+    REQUIRE(csr.nnz() == 6);
+    REQUIRE(c.count() == 0);
+    REQUIRE(4 == c.count_sync(csr.view()));
+  }
+
   SECTION("complete(4) row partition", "[gpu]") {
     using NodeTy = int;
 
