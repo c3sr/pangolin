@@ -58,7 +58,7 @@ TEST_CASE("ctor", "[gpu]") {
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
     REQUIRE(csr.nnz() == 6);
 
-    uint64_t a = cs[0].count_sync(csr.view(), 0, 2); // first 2 rows
+    uint64_t a = cs[0].count_sync(csr.view(), 2, 0); // first 2 rows
     uint64_t b = cs[1].count_sync(csr.view(), 2, 2); // next 2 rows
     REQUIRE(4 == a + b);
   }

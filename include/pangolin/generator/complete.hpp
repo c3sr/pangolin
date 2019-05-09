@@ -6,6 +6,10 @@ namespace pangolin {
 
 namespace generator {
 
+/*! A directed complete graph, with N(N-1) edges.
+
+    No nodes have self-edges
+*/
 template <typename Node> class Complete {
 
 private:

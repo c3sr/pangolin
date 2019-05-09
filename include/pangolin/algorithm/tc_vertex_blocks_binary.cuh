@@ -108,7 +108,8 @@ public:
    */
   VertexBlocksBinaryTC() : VertexBlocksBinaryTC(0, 512) {}
 
-  /*! count triangles in mat. May return before count is complete
+  /*! count triangles in adj for rows [rowOffset, rowOffset + numRows).
+      May return before count is complete.
    */
   template <typename CsrView>
   void count_async(const CsrView &adj,    //<! [in] a CSR adjacency matrix to count
@@ -119,38 +120,39 @@ public:
     const size_t dimBlock = 512;
     typedef typename CsrView::index_type Index;
 
-    if (rowOffset != 0) {
-      LOG(critical, "rowOffset must be 0");
-      exit(-1);
-    }
-
+    LOG(debug, "zero_async final count");
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
-    // compute the number of dimBlock-sized chunks that make up each row (counts)
-    assert(dimBlock > 0);
-    const Index numObjects = adj.num_rows();
-    Vector<Index> counts(numObjects);
-    Index numWorkItems = 0;
+    // compute the number (counts) of dimBlock-sized chunks that make up each row [rowOffset, rowOffset + numRows)
     // each workItem is dimBlock elements from a row
-    for (Index i = 0; i < numObjects; ++i) {
-      const Index rowSize = adj.rowPtr_[i + 1] - adj.rowPtr_[i];
+    // FIXME: on device
+    Vector<Index> counts(numRows);
+    Index numWorkItems = 0;
+    for (Index i = 0; i < numRows; ++i) {
+      Index row = i + rowOffset;
+      const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
       const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
       counts[i] = rowWorkItems;
       numWorkItems += rowWorkItems;
     }
 
     // do the initial load-balancing search across rows
-    Index *indices = nullptr;
+    Vector<Index> indices(numWorkItems);
     Index *ranks = nullptr;
-    const size_t indicesBytes = sizeof(Index) * numWorkItems;
-    LOG(debug, "allocate {}B for indices", indicesBytes);
-    CUDA_RUNTIME(cudaMalloc(&indices, sizeof(Index) * numWorkItems));
-    LOG(debug, "allocate {}B for ranks", indicesBytes);
+    size_t ranksBytes = sizeof(Index) * numWorkItems;
+    LOG(debug, "allocate {}B for ranks", ranksBytes);
     CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems));
-    device_load_balance(indices, ranks, numWorkItems, counts.data(), numObjects, stream_);
+    // FIXME: static_cast
+    device_load_balance(indices.data(), ranks, numWorkItems, counts.data(), static_cast<Index>(numRows), stream_);
 
-    // one block per row
-    const int dimGrid = std::min(numRows, static_cast<uint64_t>(maxGridSize_.x));
+    // indices says which row is associated with each work item, so offset all entries by rowOffset
+    // FIXME: on device
+    for (auto &e : indices) {
+      e += rowOffset;
+    }
+
+    // each slice is handled by one thread block
+    const int dimGrid = std::min(numWorkItems, static_cast<typeof(numWorkItems)>(maxGridSize_.x));
     LOG(debug, "counting rows [{}, {}), adj has {} rows", rowOffset, rowOffset + numRows, adj.num_rows());
     assert(rowOffset + numRows <= adj.num_rows());
     assert(count_);
@@ -158,10 +160,10 @@ public:
     const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
     LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
-    row_block_kernel<dimBlock><<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices, ranks, numWorkItems);
+    row_block_kernel<dimBlock>
+        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, numWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
 
-    CUDA_RUNTIME(cudaFree(indices));
     CUDA_RUNTIME(cudaFree(ranks));
   }
 
