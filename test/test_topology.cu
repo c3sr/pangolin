@@ -12,5 +12,9 @@ TEST_CASE("get_cpus") {
 
   auto &topology = topology::topology();
 
-  SECTION("") { REQUIRE(topology.cpus_.size() > 0); }
+  SECTION("at least 1 cpu") { REQUIRE(topology.cpus_.size() >= 1); }
+
+  SECTION("numa region of address") {
+    auto numa = topology.page_numa(nullptr);
+  }
 }
