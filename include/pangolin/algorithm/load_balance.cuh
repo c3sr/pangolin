@@ -112,7 +112,7 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   // compute temp storage needed for exclusive sum
   void *tempStorage = nullptr;
   size_t tempStorageBytes = 0;
-  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream = stream);
+  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream);
   CUDA_RUNTIME(cudaGetLastError());
 
   // allocate temporary storage
@@ -124,8 +124,8 @@ void device_load_balance(OI *indices, //<! [out] the object index that produced 
   assert(counts);
   assert(exclScanCounts);
   LOG(debug, "launch exclusive scan");
-  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream = stream);
-  CUDA_RUNTIME(cudaDeviceSynchronize());
+  cub::DeviceScan::ExclusiveSum(tempStorage, tempStorageBytes, counts, exclScanCounts, numObjects, stream);
+  CUDA_RUNTIME(cudaGetLastError());
 
   // run load-balanced search
   LOG(debug, "launch grid_load_balance_kernel<<<{}, {}, 0, {}>>>", 512, 512, uintptr_t(stream));

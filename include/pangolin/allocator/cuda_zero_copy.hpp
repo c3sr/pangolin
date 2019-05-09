@@ -5,6 +5,8 @@
 
 #include <cuda_runtime.h>
 
+namespace pangolin {
+
 template <class T> struct CUDAZeroCopyAllocator {
   typedef T value_type;
   CUDAZeroCopyAllocator() = default;
@@ -33,3 +35,5 @@ bool operator!=(const CUDAZeroCopyAllocator<T> &,
                 const CUDAZeroCopyAllocator<U> &) {
   return false;
 }
+
+} // namespace pangolin
