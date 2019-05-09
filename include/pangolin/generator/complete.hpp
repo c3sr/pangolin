@@ -6,6 +6,10 @@ namespace pangolin {
 
 namespace generator {
 
+/*! A complete graph
+
+    Nodes do not have self-edges.
+*/
 template <typename Node> class Complete {
 
 private:
@@ -17,41 +21,36 @@ public:
 
   private:
     const uint64_t numNodes_;
-    Node src_;
-    Node dst_;
-    bool done_;
+    Node pos_; //<! flat position in 2D numNodes_ * numNodes_ space
 
-    iterator(uint64_t numNodes, Node src, Node dst) : numNodes_(numNodes), src_(src), dst_(dst) {
-      done_ = (static_cast<uint64_t>(src) >= numNodes) || (static_cast<uint64_t>(dst) >= numNodes);
+    iterator(uint64_t numNodes, Node pos) : numNodes_(numNodes), pos_(pos) {
+      // possible that the first edge should be skipped
+      if (skip_edge()) {
+        (*this)++;
+      }
+    }
+
+    Node get_src() const { return 0 == numNodes_ ? 0 : pos_ / numNodes_; }
+    Node get_dst() const { return 0 == numNodes_ ? 0 : pos_ % numNodes_; }
+    bool done() const { return uint64_t(pos_) >= numNodes_ * numNodes_; }
+    bool skip_edge() const {
+      if (done()) {
+        return false;
+      }
+      return get_src() == get_dst();
     }
 
   public:
     const EdgeTy<Node> operator*() const {
-      assert(src_ < numNodes_);
-      assert(dst_ < numNodes_);
-      assert(!done_);
-      return EdgeTy<Node>(src_, dst_);
+      assert(!done());
+      return EdgeTy<Node>(get_src(), get_dst());
     }
 
     iterator &operator++() // ++prefix
     {
-      if (!done_) {
-        ++dst_;
-        if (static_cast<uint64_t>(dst_) >= numNodes_) {
-          dst_ = 0;
-          ++src_;
-        }
-        if (static_cast<uint64_t>(src_) >= numNodes_) {
-          done_ = true;
-        }
-      }
-
-      if (!done_) {
-        if (dst_ == src_) {
-          ++*this;
-        }
-      }
-
+      do {
+        ++pos_;
+      } while (skip_edge());
       return *this;
     }
 
@@ -63,12 +62,12 @@ public:
     }
 
     bool operator==(const iterator &rhs) const {
-      if (done_ && rhs.done_) {
+      if (done() && rhs.done()) {
         return true;
-      } else if (done_ ^ rhs.done_) { // one only one is done, not equal
+      } else if (done() ^ rhs.done()) { // one only one is done, not equal
         return false;
       } else {
-        return (src_ == rhs.src_) && (dst_ == rhs.dst_);
+        return pos_ == rhs.pos_;
       }
     }
     bool operator!=(const iterator &rhs) const { return !((*this) == rhs); }
@@ -76,8 +75,8 @@ public:
 
   Complete(const uint64_t numNodes) : numNodes_(numNodes) {}
 
-  iterator begin() const { return iterator(numNodes_, 0, 1); }
-  iterator end() const { return iterator(numNodes_, numNodes_, numNodes_); }
+  iterator begin() const { return iterator(numNodes_, 0); }
+  iterator end() const { return iterator(numNodes_, numNodes_ * numNodes_); }
 };
 
 } // namespace generator

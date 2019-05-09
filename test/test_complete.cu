@@ -3,47 +3,82 @@
 
 #include "pangolin/generator/complete.hpp"
 #include "pangolin/init.hpp"
+#include "pangolin/logger.hpp"
 
 using namespace pangolin;
 
-TEST_CASE("c2") {
+TEMPLATE_TEST_CASE("complete graph", "", int, size_t) {
   pangolin::init();
-  using NodeTy = unsigned;
+  pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
 
-  generator::Complete<NodeTy> c2(2);
+  SECTION("0 nodes") {
+    generator::Complete<TestType> c(0);
 
-  // all edges are within graph
-  for (auto e : c2) {
-    REQUIRE(e.first < 2);
-    REQUIRE(e.second < 2);
-  }
+    REQUIRE(c.begin() == c.end());
 
-  // expected number of edges
-  size_t count = 0;
-  for (auto _ : c2) {
-    (void)_;
-    ++count;
-  }
-  REQUIRE(count == 2);
-}
+    // expected number of edges
+    size_t count = 0;
+    for (auto _ : c) {
+      (void)_;
+      ++count;
+    }
+    REQUIRE(count == 0);
+  };
 
-TEST_CASE("c3") {
-  pangolin::init();
-  using NodeTy = int;
+  SECTION("1 node") {
+    generator::Complete<TestType> c(1);
 
-  generator::Complete<NodeTy> c3(3);
+    // all edges are within graph
+    for (auto e : c) {
+      LOG(debug, "{} -> {}", e.first, e.second);
+      REQUIRE(e.first < 1);
+      REQUIRE(e.second < 1);
+    }
 
-  // all edges are within graph
-  for (auto e : c3) {
-    REQUIRE(e.first < 3);
-    REQUIRE(e.second < 3);
-  }
+    // expected number of edges
+    size_t count = 0;
+    for (auto _ : c) {
+      (void)_;
+      ++count;
+    }
+    REQUIRE(count == 0);
+  };
 
-  // expected number of edges
-  size_t count = 0;
-  for (auto _ : c3) {
-    (void)_;
-    ++count;
-  }
-  REQUIRE(count == 6);
+  SECTION("2 nodes") {
+    generator::Complete<TestType> c(2);
+
+    // all edges are within graph
+    for (auto e : c) {
+      LOG(debug, "{} -> {}", e.first, e.second);
+      REQUIRE(e.first < 2);
+      REQUIRE(e.second < 2);
+    }
+
+    // expected number of edges
+    size_t count = 0;
+    for (auto _ : c) {
+      (void)_;
+      ++count;
+    }
+    REQUIRE(count == 2);
+  };
+
+  SECTION("3 nodes") {
+    generator::Complete<TestType> c3(3);
+
+    // all edges are within graph
+    for (auto e : c3) {
+      LOG(debug, "{} -> {}", e.first, e.second);
+      REQUIRE(e.first < 3);
+      REQUIRE(e.second < 3);
+    }
+
+    // expected number of edges
+    size_t count = 0;
+    for (auto _ : c3) {
+      (void)_;
+      ++count;
+    }
+    REQUIRE(count == 6);
+  };
 }
