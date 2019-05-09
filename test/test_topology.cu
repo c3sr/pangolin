@@ -8,6 +8,9 @@ using namespace pangolin;
 
 TEST_CASE("get_cpus") {
   pangolin::init();
-  auto cpus = pangolin::topology::get_cpus();
-  REQUIRE(cpus.size() > 0);
+  logger::set_level(logger::Level::TRACE);
+
+  auto &topology = topology::topology();
+
+  SECTION("") { REQUIRE(topology.cpus_.size() > 0); }
 }

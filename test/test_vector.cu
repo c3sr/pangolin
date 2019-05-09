@@ -28,6 +28,27 @@ TEST_CASE("fill ctor with val") {
   }
 }
 
+TEMPLATE_TEST_CASE("initializer_list", "[gpu]", int, size_t) {
+  pangolin::init();
+  SECTION("{}") {
+    Vector<TestType> v{};
+    REQUIRE(v.size() == 0);
+  }
+
+  SECTION("{1}") {
+    Vector<TestType> v{1};
+    REQUIRE(v[0] == 1);
+    REQUIRE(v.size() == 1);
+  }
+
+  SECTION("{1,3}") {
+    Vector<TestType> v{1, 3};
+    REQUIRE(v[0] == 1);
+    REQUIRE(v[1] == 3);
+    REQUIRE(v.size() == 2);
+  }
+}
+
 TEMPLATE_TEST_CASE("iterators", "[gpu]", int, size_t) {
   pangolin::init();
   Vector<TestType> v(1);
@@ -92,19 +113,19 @@ TEMPLATE_TEST_CASE("Vector size", "[gpu]", int, size_t) {
   Vector<int> v;
 
   SECTION("vectors can be resized") {
-  v.resize(1);
-  REQUIRE(v.size() == 1);
-  v[0] = 5;
+    v.resize(1);
+    REQUIRE(v.size() == 1);
+    v[0] = 5;
 
-  v.resize(10);
-  REQUIRE(v.size() == 10);
-  v[9] = 100;
-  REQUIRE(v[9] == 100);
-  REQUIRE(v[0] == 5);
+    v.resize(10);
+    REQUIRE(v.size() == 10);
+    v[9] = 100;
+    REQUIRE(v[9] == 100);
+    REQUIRE(v[0] == 5);
 
-  v.resize(1);
-  REQUIRE(v.size() == 1);
-  REQUIRE(v[0] == 5);
+    v.resize(1);
+    REQUIRE(v.size() == 1);
+    REQUIRE(v[0] == 5);
   }
 
   SECTION("vectors can be push_backed") {
@@ -124,19 +145,4 @@ TEMPLATE_TEST_CASE("Vector size", "[gpu]", int, size_t) {
     REQUIRE(v.size() == 6);
     REQUIRE(v[5] == 1);
   }
-}
-
-TEST_CASE("initializer-list 3") {
-  pangolin::init();
-  Vector<int> v{0, 1, 2};
-  REQUIRE(v.size() == 3);
-  REQUIRE(v[0] == 0);
-  REQUIRE(v[1] == 1);
-  REQUIRE(v[2] == 2);
-}
-
-TEST_CASE("initializer-list 0") {
-  pangolin::init();
-  Vector<int> v{};
-  REQUIRE(v.size() == 0);
 }

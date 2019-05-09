@@ -160,6 +160,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
   }
 
   SECTION("1") {
@@ -168,15 +169,12 @@ TEST_CASE("device_load_balance", "[gpu]") {
     producer index
     0
     */
-
     Vector<size_t> counts{1};
     size_t numWorkItems = std::accumulate(counts.begin(), counts.end(), 0);
     Vector<size_t> indices(numWorkItems);
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
-
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    // REQUIRE(*indices.data() == 0);
     REQUIRE(indices == Vector<size_t>{0});
   }
 
@@ -212,6 +210,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 1, 2});
   }
@@ -229,6 +228,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0});
   }
@@ -246,6 +246,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 0});
   }
@@ -263,6 +264,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{0, 0, 2});
   }
@@ -280,6 +282,7 @@ TEST_CASE("device_load_balance", "[gpu]") {
     Vector<size_t> indices(numWorkItems);
 
     device_load_balance(indices.data(), numWorkItems, counts.data(), counts.size());
+    CUDA_RUNTIME(cudaDeviceSynchronize());
 
     REQUIRE(indices == Vector<size_t>{1, 1, 3});
   }

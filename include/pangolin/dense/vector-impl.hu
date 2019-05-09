@@ -82,6 +82,7 @@ PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(Vector &&other)
 template <typename VALUE_TYPE>
 PANGOLIN_HOST Vector<VALUE_TYPE>::Vector(std::initializer_list<VALUE_TYPE> il)
     : capacity_(0), size_(0), data_(nullptr) {
+  SPDLOG_TRACE(logger::console(), "il ctor");
   resize(il.size());
   auto it = il.begin();
   for (size_t i = 0; i < il.size(); ++i) {
@@ -172,10 +173,8 @@ PANGOLIN_HOST void Vector<VALUE_TYPE>::push_back(
     const Vector<VALUE_TYPE>::value_type &val //<! [in] the value to be copied to the new element
 ) {
   if (0 == capacity_) {
-    SPDLOG_TRACE(logger::console(), "reserve from 0 -> 1");
     reserve(1);
   } else if (size_ == capacity_) {
-    SPDLOG_TRACE(logger::console(), "reserve from {} -> {}", capacity_, capacity_ * 2);
     reserve(capacity_ * 2);
   }
   data_[size_] = val;
@@ -201,16 +200,15 @@ template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(siz
     }
     size_ = n;
   } else if (n > size_) {
-    size_t initialSize = size_;
     reserve(n);
-    for (size_t i = initialSize; i < n; ++i) {
+    for (size_t i = size_; i < n; ++i) {
       new (&data_[i]) value_type(); // new elements are value-initialized
     }
     size_ = n;
   }
 }
 
-template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(size_t n, const value_type &val) {
+template <typename T> PANGOLIN_HOST void Vector<T>::resize(size_t n, const value_type &val) {
   if (n < size_) {
     // destroy elements beyond n
     for (size_t i = n; i < size_; ++i) {
@@ -225,7 +223,7 @@ template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::resize(siz
   }
 }
 
-template <typename VALUE_TYPE> PANGOLIN_HOST void Vector<VALUE_TYPE>::shrink_to_fit() {
+template <typename T> PANGOLIN_HOST void Vector<T>::shrink_to_fit() {
   assert(capacity_ >= size_);
   if (capacity_ > size_) {
     value_type *newData = nullptr;
