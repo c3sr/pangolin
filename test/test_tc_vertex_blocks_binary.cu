@@ -4,6 +4,7 @@
 
 #include "pangolin/algorithm/tc_vertex_blocks_binary.cuh"
 #include "pangolin/generator/complete.hpp"
+#include "pangolin/generator/hubspoke.hpp"
 #include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
 #include "pangolin/sparse/csr.hpp"
@@ -44,18 +45,17 @@ TEST_CASE("ctor", "[gpu]") {
     REQUIRE(4 == c.count_sync(csr.view()));
   }
 
-  SECTION("complete(33)", "[gpu]") { // 33*32 /2 edges = 528
+  SECTION("hub-spoke 3", "[gpu]") {
     using NodeTy = int;
 
-    // complete graph with 4 nodes
-    generator::Complete<NodeTy> g(4);
+    generator::HubSpoke<NodeTy> g(3);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    // highest index node is the hub, so keep those for high out-degree
+    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
-    REQUIRE(csr.nnz() == 6);
     REQUIRE(c.count() == 0);
-    REQUIRE(4 == c.count_sync(csr.view()));
+    REQUIRE(2 == c.count_sync(csr.view()));
   }
 
   SECTION("complete(4) row partition", "[gpu]") {

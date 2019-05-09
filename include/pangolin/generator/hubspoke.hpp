@@ -35,8 +35,10 @@ public:
       }
     }
 
+    // defined to order by src
     Node get_src() const { return 0 == N ? 0 : pos_ / N; }
     Node get_dst() const { return 0 == N ? 0 : pos_ % N; }
+
     bool done() const { return uint64_t(pos_) >= N * N; }
     bool skip_edge() const {
       if (done()) {
