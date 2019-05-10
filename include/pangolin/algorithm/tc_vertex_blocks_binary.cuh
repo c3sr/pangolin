@@ -39,16 +39,22 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
     OI row = workItemRow[i];
     OI rank = workItemRank[i];
 
+    // if (threadIdx.x == 0) {
+    //   printf("block %d row %d rank %d\n", blockIdx.x, row, rank);
+    // }
+
     // each block is responsible for counting triangles from a contiguous set of non-zeros in the row
     // [srcStart ... srcStop)
     const Index rowStart = adj.rowPtr_[row];
     const Index rowStop = adj.rowPtr_[row + 1];
     const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
     const Index sliceStop = min(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
-    // if (sizeof(Index) == 4) {
-    //   printf("row %d: colInd[%d, %d)\n", row, sliceStart, sliceStop);
-    // } else {
-    //   printf("row %lu: colInd[%lu, %lu)\n", row, sliceStart, sliceStop);
+    // if (threadIdx.x == 0) {
+    //   if (sizeof(Index) == 4) {
+    //     printf("row %d rank %d: dsts from colInd[%d, %d)\n", row, rank, sliceStart, sliceStop);
+    //   } else {
+    //     printf("row %lu rank %lu: dsts from colInd[%lu, %lu)\n", row, rank, sliceStart, sliceStop);
+    //   }
     // }
 
     // one thread per non-zero in the slice
@@ -59,12 +65,21 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
       const Index dstStop = adj.rowPtr_[dst + 1];
       const Index *dstNbrBegin = &adj.colInd_[dstStart];
       const Index *dstNbrEnd = &adj.colInd_[dstStop];
+      // printf("%d->%d  [%d %d) -> [%d %d)\n", row, dst, rowStart, rowStop, dstStart, dstStop);
 
       // for each edge, need to search through the whole src row
       for (const Index *dstNbr = dstNbrBegin; dstNbr < dstNbrEnd; ++dstNbr) {
-        threadCount += pangolin::serial_sorted_count_binary(&adj.colInd_[rowStart], 0, rowStop, *dstNbr);
+        threadCount += pangolin::serial_sorted_count_binary(adj.colInd_, rowStart, rowStop, *dstNbr);
       }
+
+      // printf("bid %d tid %d row %d rank %d: %d->%d = %lu\n", blockIdx.x, threadIdx.x, row, rank, row, dst,
+      // threadCount);
     }
+
+    // if (threadCount != 0) {
+    //   printf("bid %d tid %d row %d rank %d: colInd[%d, %d): count %lu\n", blockIdx.x, threadIdx.x, row, rank,
+    //          sliceStart, sliceStop, threadCount);
+    // }
   }
 
   // FIXME: block reduction first

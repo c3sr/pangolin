@@ -46,6 +46,7 @@ TEST_CASE("ctor", "[gpu]") {
   }
 
   SECTION("hub-spoke 3", "[gpu]") {
+    LOG(debug, "hub-spoke 3");
     using NodeTy = int;
 
     generator::HubSpoke<NodeTy> g(3);
