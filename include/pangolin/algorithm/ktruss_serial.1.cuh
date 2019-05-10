@@ -7,40 +7,45 @@
 #include "pangolin/dense/vector.hu"
 #include "search.cuh"
 
+#define UT uint32_t
 
-__device__ UT binarySearch_b(const UT *arr, UT l, UT r, UT x)
+
+//Misc
+struct TriResult
 {
-	if (r >= l) {
-		UT mid = l + (r - l) / 2;
+	UT startS = 0;
+	UT startD = 0;
+	UT endS = 0;
+	UT endD = 0;
+	bool largerThanK = false;
+	bool largerThan0 = false;
+};
 
-		// If the element is present at the middle
-		// itself
-		if (arr[mid] == x)
-			return mid;
-
-		// If element is smaller than mid, then
-		// it can only be present in left subarray
-		if (arr[mid] > x)
-			return binarySearch_b(arr, l, mid - 1, x);
-
-		// Else the element can only be present
-		// in right subarray
-		return binarySearch_b(arr, mid + 1, r, x);
-	}
-
-	// We reach here when element is not
-	// present in array
-	return 0;
+__device__ UT binarySearch(const UT *arr, UT l, UT r, UT x)
+{
+	size_t left = l;
+  size_t right = r;
+  while (left < right) {
+    const size_t mid = (left + right) / 2;
+    UT val = arr[mid];
+    bool pred =  val < x;
+    if (pred) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return left;
 }
 
 template <typename CsrCooView>
-__device__ UT getEdgeId_b(const CsrCooView mat, UT sn, UT dn)
+__device__ UT getEdgeId(const CsrCooView mat, UT sn, UT dn)
 {
 	UT index = 0;
 
 	UT start = mat.rowPtr_[sn];
 	UT end2 = mat.rowPtr_[sn+1];
-	index = binarySearch_b(mat.colInd_, start, end2, dn); //pangolin::binary_search(&(mat.colInd_[start]), end2-start, dn); //
+	index = binarySearch(mat.colInd_, start, end2, dn);
 	return index;
 }
 
@@ -48,13 +53,14 @@ __device__ UT getEdgeId_b(const CsrCooView mat, UT sn, UT dn)
 //This function is so stupid, 1 thread does linear search !!
 //I will fix this for sure
 template <typename CsrCooView>
-__device__ TriResult CountTriangleOneEdge_b(const UT i, const int k, const CsrCooView mat, bool *deleted)
+__device__ TriResult CountTriangleOneEdge(const UT i, const int k, const CsrCooView mat, bool *keep)
 {
 	TriResult t; //whether we found k triangles?
 
 	//node
 	UT sn = mat.rowInd_[i];
 	UT dn = mat.colInd_[i];
+
 	UT edgeCount = 0;
 
 	//Search for intersection
@@ -75,7 +81,7 @@ __device__ TriResult CountTriangleOneEdge_b(const UT i, const int k, const CsrCo
 		{
 			if (mat.colInd_[sp] == mat.colInd_[dp])
 			{
-				if (!deleted[sp] && !deleted[dp])
+				if (keep[sp] && keep[dp])
 				{
 					edgeCount++;
 					if (firstHit)
@@ -115,7 +121,7 @@ __device__ TriResult CountTriangleOneEdge_b(const UT i, const int k, const CsrCo
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView mat, bool *deleted, bool *affected, UT *reversed, bool *prevDeleted)
+__global__ void InitializeArrays(int edgeStart, int numEdges, const CsrCooView mat, bool *keep, bool *affected, UT *reversed, UT *src, UT *dest)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -124,48 +130,20 @@ __global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView
 
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			deleted[i]=false;
-			prevDeleted[i] = false;
+			keep[i] = true;
 			affected[i] = false;
 			UT sn = mat.rowInd_[i];
 			UT dn = mat.colInd_[i];
-			reversed[i] = getEdgeId_b(mat, dn, sn);
+			src[i] = i;
+			dest[i] = i;
+			reversed[i] = getEdgeId(mat, dn, sn);
 		}
 }
-
-
-template <size_t BLOCK_DIM_X>
-__global__ void Store(const size_t edgeStart, const size_t numEdges, bool *deleted, bool *prevDeleted)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			prevDeleted[i] = deleted[i];
-			
-		}
-}
-
-template <size_t BLOCK_DIM_X>
-__global__ void Rewind(const size_t edgeStart, const size_t numEdges, bool *deleted, bool *prevDeleted)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			deleted[i]=prevDeleted[i];
-		}
-}
-
-
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core_binary(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected, bool *globalMtd,bool *assumpAffected,
-	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *deleted, bool *affected, UT *reversed, bool *firstTry)
+__global__ void core(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, bool *globalMtd, bool *assumpAffected, const UT k, const size_t edgeStart, 
+	const size_t numEdges, const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool *firstTry)
 {
 	  // kernel call
 	  typedef typename CsrCooView::index_type Index;
@@ -192,14 +170,15 @@ __global__ void core_binary(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaf
 		}		
 		__syncthreads();	
 	  //edges assigned to this thread
-	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
+	  for (size_t ii = gx + edgeStart; ii < edgeStart + numEdges; ii += BLOCK_DIM_X * gridDim.x) 
 	  {
-		  if (!deleted[i] && (affected[i]==true || ft==true ))
+			size_t i = keepPointer[ii];
+
+		  if (keep[i] && (affected[i]==true || ft==true ))
 		  {
 			  affected[i] = false;
-			  TriResult t = CountTriangleOneEdge_b(i, k-2, mat, deleted);
-
-			 if (!t.largerThanK)
+			  TriResult t = CountTriangleOneEdge(i, k-2, mat, keep);
+				if (!t.largerThanK)
 			  {
 				  //node
 				  const UT sn = mat.rowInd_[i];
@@ -226,22 +205,22 @@ __global__ void core_binary(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaf
 							  int y1 = reversed[sp]; //getEdgeId(neighborPointer, dest, dest[sp], sn);
 							  int y2 = reversed[dp]; //getEdgeId(neighborPointer, dest, dest[sp], dn);
 
-							  if ( !affected[sp] && !deleted[sp])
+							  if ( !affected[sp] && keep[sp])
 							  {
 								  affected[sp] = true;
 								  numberAffected++;
 							  }
-							  if ( !affected[dp] && !deleted[dp])
+							  if ( !affected[dp] && keep[dp])
 							  {
 								  affected[dp] = true;
 								  numberAffected++;
 							  }
-							  if (!affected[y1] && !deleted[y1])
+							  if (!affected[y1] && keep[y1])
 							  {
 								  affected[y1] = true;
 								  numberAffected++;
 							  }
-							  if (!affected[y2] && !deleted[y2])
+							  if (!affected[y2] && keep[y2])
 							  {
 								  affected[y2] = true;
 								  numberAffected++;
@@ -259,12 +238,13 @@ __global__ void core_binary(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaf
 				  }
 
 				  UT y1 = reversed[i]; //getEdgeId(neighborPointer, dest, dn, sn);
-				  deleted[i] = true;
-				  deleted[y1] = true;
+				  keep[i] = false;
+				  keep[y1] = false;
 			  }
 		  }
 
-		  if(deleted[i])
+		
+		  if(!keep[i])
 			  numberDeleted++;
 	  }
 
@@ -288,25 +268,25 @@ __global__ void core_binary(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaf
 
 
  	// Block-wide reduction of threadCount
- 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
+ 	/*typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
  	__shared__ typename BlockReduce::TempStorage tempStorage;
  	UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
 
  	if (0 == threadIdx.x) 
 	  {
 				atomicAdd(gnumdeleted, deletedByBlock);
-		}
+		}*/
 
 }
 
-
 namespace pangolin {
 
-class SingleGPU_Ktruss_Binary {
+class SingleGPU_Ktruss {
 private:
   int dev_;
   cudaStream_t stream_;
-	uint64_t *globalCounter;
+	UT *count_;
+	UT *selectedOut;;
 
 
 	UT *gnumdeleted;
@@ -317,21 +297,20 @@ private:
 	bool *globalMtd;
 	bool *assumpAffected;
 	bool *firstTry;
-
-	int k;
-
+	UT k;
 
 public:
-  SingleGPU_Ktruss_Binary(int dev) : dev_(dev) {
+  SingleGPU_Ktruss(int dev) : dev_(dev), count_(nullptr) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
+	CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
 	CUDA_RUNTIME(cudaMallocManaged(&globalMtd, sizeof(*globalMtd)));
 	CUDA_RUNTIME(cudaMallocManaged(&assumpAffected, sizeof(*assumpAffected)));
 	CUDA_RUNTIME(cudaMallocManaged(&firstTry, sizeof(*firstTry)));
 
 	CUDA_RUNTIME(cudaMallocManaged(&gnumdeleted, sizeof(*gnumdeleted)));
 	CUDA_RUNTIME(cudaMallocManaged(&gnumaffected, sizeof(*gnumaffected)));
-	CUDA_RUNTIME(cudaMallocManaged(&globalCounter, sizeof(*globalCounter)));
+	CUDA_RUNTIME(cudaMallocManaged(&selectedOut, sizeof(*selectedOut)));
 
 	//zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 	zero_async<1>(gnumdeleted, dev_, stream_); // zero on the device that will do the counting
@@ -340,99 +319,109 @@ public:
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
   }
 
-  SingleGPU_Ktruss_Binary() : SingleGPU_Ktruss_Binary(0) {}
+  SingleGPU_Ktruss() : SingleGPU_Ktruss(0) {}
   
 
 	template <typename CsrCoo> 
-	void findKtrussBinary_async(int kmin, int kmax, const CsrCoo &mat, 
+	void findKtrussIncremental_async(int kmin, int kmax, const CsrCoo &mat, 
 		const size_t numNodes, const size_t numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) 
   {
 
 
-		
-		bool *deleted, *affected, *prevDeleted;
-		UT *reversed;
-		CUDA_RUNTIME(cudaMalloc((void **) &deleted, numEdges*sizeof(bool)));
+
+		CUDA_RUNTIME(cudaSetDevice(dev_));
+
+		bool *keep, *affected;
+		UT *reversed, *srcKP, *destKP;
+		CUDA_RUNTIME(cudaMallocManaged((void **) &keep, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc((void **) &affected, numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMalloc((void **) &prevDeleted, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc((void **) &reversed, numEdges*sizeof(UT)));
-		
+		CUDA_RUNTIME(cudaMalloc((void **) &srcKP, numEdges*sizeof(UT)));
+		CUDA_RUNTIME(cudaMalloc((void **) &destKP, numEdges*sizeof(UT)));
 
     constexpr int dimBlock = 512; //For edges and nodes
-		const int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
-		const int dimGridNodes = (numNodes + dimBlock - 1) / dimBlock;
+		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
     //assert(edgeOffset + numEdges <= mat.nnz());
     //assert(count_);
-    //SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGridEdges, dimBlock);
-		CUDA_RUNTIME(cudaSetDevice(dev_));
-	
-		//KTRUSS skeleton
-		//Initialize Private Data
-		InitializeArrays_b<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, deleted, affected, reversed, prevDeleted);
+		//SPDLOG_DEBUG(logger::console, "device = {}, blocks = {}, threads = {}", dev_, dimGridEdges, dimBlock);
+		
+
+		UT ne=numEdges;
+		k=3;
+		InitializeArrays<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, keep, affected, reversed, srcKP, destKP);
+		*selectedOut = numEdges;
 		cudaDeviceSynchronize();
-		
-		
-	float minPercentage = 0.8;
-	float maxPercentage = 0.2;
-	while (kmax - kmin > 1)
-	{
-		k =  kmin*minPercentage + kmax*maxPercentage;
 
-		minPercentage = 0.5;
-		maxPercentage = 0.5;
-
+		while(true)
+		{
 			UT numDeleted = 0;
 			*firstTry = true;
-			*globalCounter=0;
-			*assumpAffected = true;
-			cudaDeviceSynchronize();
+
+
+			dimGridEdges =  (*selectedOut + dimBlock - 1) / dimBlock;
+			//dimGridEdges = dimGridEdges > 768? 768: dimGridEdges;
+			//printf("Blocks=%d\n", dimGridEdges);
+			//cudaDeviceSynchronize();
 
 			while(*assumpAffected)
 			{
 				*assumpAffected = false;
+				core<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(destKP,gnumdeleted, gnumaffected,globalMtd,assumpAffected,
+					k, edgeOffset, *selectedOut,
+					mat, keep, affected, reversed, firstTry);
 
-				core_binary<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
-					mat, deleted, affected, reversed, firstTry);
 				cudaDeviceSynchronize();
 
 				*firstTry = false;	
 				numDeleted = *gnumdeleted;
-			
 				if(*gnumaffected > 0)
 					 *assumpAffected = true;
 
-
-				//printf("At k = %d, Inside Affected, num deleted=%d, num affected = %d\n", *k, numDeleted, *gnumaffected);
-
-				zero_async<1>(gnumdeleted, dev_, stream_);
-				//zero_async<1>(gnumaffected, dev_, stream_);
+				*gnumdeleted=0;
 				cudaDeviceSynchronize();
 			}
+			
+			void     *d_temp_storage = NULL;
+			size_t   temp_storage_bytes = 0;
+			cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, srcKP, keep, destKP, selectedOut, numEdges);
+			cudaMalloc(&d_temp_storage, temp_storage_bytes);
+			cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, srcKP, keep, destKP, selectedOut, numEdges);
+			cudaFree(d_temp_storage);
+		
+			//printf("%d, %d, %d\n", *selectedOut, numEdges - numDeleted, numEdges - sum);
 
-			if(numDeleted >= numEdges)
+			if(*selectedOut == 0)
 			{
-				Rewind<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, deleted, prevDeleted);
-				kmax = k;
+					break;
 			}
 			else
 			{
-
-				Store<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, deleted, prevDeleted);
-				kmin = k;
+				//Attempt simple stream compaction, no physical deletion of edges: using CUB partition
+				k++;
+				*assumpAffected = true;
 			}
 			cudaDeviceSynchronize();
 
-		//	printf("finished k = %d\n", k);
+			//printf("finished k = %d\n", *k);
 		}
+
+	
 
 		//printf("MAX k = %d\n", *k);
 
 
-    //CUDA_RUNTIME(cudaGetLastError());
+		//CUDA_RUNTIME(cudaGetLastError());
+		
+		 cudaFree(keep);
+		 cudaFree(reversed);
+		 cudaFree(affected);
+		 cudaFree(srcKP);
+		 cudaFree(destKP);
+
   }
 
-  template <typename CsrCoo> UT findKtrussBinary_sync(int kmin, int kmax, const CsrCoo &mat, const size_t numNodes, const size_t numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) {
-    findKtrussBinary_async(kmin, kmax, mat, numNodes, numEdges, nodeOffset, edgeOffset);
+  template <typename CsrCoo> UT findKtrussIncremental_sync(int kmin, int kmax, const CsrCoo &mat, const size_t numNodes, const size_t numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) {
+    findKtrussIncremental_async(kmin, kmax, mat, numNodes, numEdges, nodeOffset, edgeOffset);
     sync();
     return count();
   }
