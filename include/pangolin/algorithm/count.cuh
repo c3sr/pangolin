@@ -69,8 +69,11 @@ __device__ static size_t serial_sorted_count_linear(const T *const A, //!< begin
 /*! \brief return 1 if search_val is in array between [left, right). return 0 otherwise
  */
 template <typename T>
-__device__ static uint8_t serial_sorted_count_binary(const T *const array, size_t left, size_t right,
-                                                     const T search_val) {
+__device__ static uint8_t serial_sorted_count_binary(const T *const array, //<! [in] array to search through
+                                                     size_t left,          //<! [in] lower bound of search
+                                                     size_t right,         //<! [in] upper bound of search
+                                                     const T search_val    //<! [in] value to search for
+) {
   while (left < right) {
     size_t mid = (left + right) / 2;
     T val = array[mid];
