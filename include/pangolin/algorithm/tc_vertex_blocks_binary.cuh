@@ -127,9 +127,9 @@ public:
       May return before count is complete.
    */
   template <typename CsrView>
-  void count_async(const CsrView &adj,    //<! [in] a CSR adjacency matrix to count
-                   const size_t numRows,  //!< [in] the number of rows this count will handle
-                   const size_t rowOffset //<! [in] the first row to count
+  void count_async(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
+                   const size_t rowOffset, //<! [in] the first row to count
+                   const size_t numRows    //!< [in] the number of rows to count
   ) {
 
     const size_t dimBlock = 512;
@@ -187,18 +187,18 @@ public:
       Counts triangles for rows [rowOffset, rowOffset + numRows)
   */
   template <typename CsrView>
-  uint64_t count_sync(const CsrView &adj,    //<! [in] a CSR adjacency matrix to count
-                      const size_t numRows,  //<! [in] the number of rows to count
-                      const size_t rowOffset //<! [in] the first row to count
+  uint64_t count_sync(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
+                      const size_t rowOffset, //<! [in] the first row to count
+                      const size_t numRows    //<! [in] the number of rows to count
   ) {
-    count_async(adj, numRows, rowOffset);
+    count_async(adj, rowOffset, numRows);
     sync();
     return count();
   }
 
   /*! Synchronous triangle count
    */
-  template <typename CsrView> uint64_t count_sync(const CsrView &adj) { return count_sync(adj, adj.num_rows(), 0); }
+  template <typename CsrView> uint64_t count_sync(const CsrView &adj) { return count_sync(adj, 0, adj.num_rows()); }
 
   /*! make the triangle count available in count()
    */
