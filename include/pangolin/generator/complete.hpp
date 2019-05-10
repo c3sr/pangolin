@@ -8,7 +8,9 @@ namespace generator {
 
 /*! A directed complete graph, with N(N-1) edges.
 
-    No nodes have self-edges
+    No nodes have self-edges.
+
+    N choose 3 triangles
 */
 template <typename Node> class Complete {
 
@@ -16,6 +18,12 @@ private:
   uint64_t numNodes_;
 
 public:
+  /*! the number of unique triangles in the graph
+
+  numNodes_ choose 3.
+  */
+  uint64_t num_triangles() const { return numNodes_ * (numNodes_ - 1) * (numNodes_ - 2) / 6; }
+
   class iterator {
     friend class Complete;
 

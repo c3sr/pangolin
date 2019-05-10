@@ -22,6 +22,16 @@ private:
   uint64_t numSpokes_;
 
 public:
+  /*! get the number of unique triangles in this graph
+   */
+  uint64_t num_triangles() const {
+    if (numSpokes_ < 1) {
+      return 0;
+    } else {
+      return numSpokes_ - 1;
+    }
+  }
+
   class iterator {
     friend class HubSpoke;
 
