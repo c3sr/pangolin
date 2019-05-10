@@ -49,7 +49,7 @@ public:
       const Node dst = get_dst();
 
       // if either src or dst is the hub, keep the edge
-      if ((dst == N - 1) ^ (src == N - 1)) {
+      if ((uint64_t(dst + 1) == N) ^ (uint64_t(src + 1) == N)) {
         return false;
       }
 
@@ -58,7 +58,7 @@ public:
         if (dst == 1) {
           return false;
         }
-      } else if (src < N - 1) { // otherwise keep n-1 -> n -> n+1
+      } else if (uint64_t(src) + 1 < N) { // otherwise keep n-1 -> n -> n+1
         if (dst + 1 == src || src + 1 == dst) {
           return false;
         }
