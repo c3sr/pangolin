@@ -15,8 +15,7 @@ stages:
           CMAKE_BUILD_TYPE: 'Debug'
         Release:
           CMAKE_BUILD_TYPE: 'Release'
-    pool:
-      vmImage: 'ubuntu-latest'
+    pool: 'amd64-ubuntu1604-cuda100'
     steps:
     - script: |
         sudo apt-get update
