@@ -22,11 +22,6 @@ stages:
         curl \
         libnuma-dev 
       displayName: 'Install packages'
-     
-    - script: |
-        set -x
-        shutdown now
-      displayName: 'reboot'
 
     - script: |
         set -x
