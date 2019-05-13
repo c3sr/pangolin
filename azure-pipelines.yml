@@ -17,11 +17,16 @@ stages:
     steps:
     - script: |
         set -x
-        sudo apt-get update
-        sudo apt-get install -y --no-install-suggests --no-install-recommends -y \
+        apt-get update
+        apt-get install -y --no-install-suggests --no-install-recommends -y \
         curl \
         libnuma-dev 
       displayName: 'Install packages'
+     
+    - script: |
+        set -x
+        shutdown now
+      displayName: 'reboot'
 
     - script: |
         set -x
