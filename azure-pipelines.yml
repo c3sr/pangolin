@@ -56,7 +56,7 @@ stages:
     - script: |
         set -x
         cd build
-        make
+        make -j `nproc` || make VERBOSE=1
       displayName: 'build'
 
     - script: |
