@@ -61,6 +61,11 @@ stages:
 
     - script: |
         set -x
+        nvidia-smi
+      displayName: 'nvidia-smi'
+
+    - script: |
+        set -x
         cd build
         ctest --output-on-failure --timeout 300
       displayName: 'test'
