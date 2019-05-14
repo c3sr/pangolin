@@ -27,16 +27,16 @@ stages:
         set -x
         curl -SLO https://github.com/Kitware/CMake/releases/download/v3.14.3/cmake-3.14.3-Linux-x86_64.sh
         chmod +x cmake-3.14.3-Linux-x86_64.sh
-        sudo ./cmake-3.14.3-Linux-x86_64.sh --skip-license --prefix=/usr/local
+        ./cmake-3.14.3-Linux-x86_64.sh --skip-license --prefix=/usr/local
       displayName: 'Install CMake'
 
     - script: |
         set -x
         curl -SLO https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_10.0.130-1_amd64.deb
-        sudo dpkg -i cuda-repo-ubuntu1604_10.0.130-1_amd64.deb
-        sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
-        sudo apt-get update
-        sudo apt-get install -y \
+        dpkg -i cuda-repo-ubuntu1604_10.0.130-1_amd64.deb
+        apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+        apt-get update
+        apt-get install -y \
         cuda-command-line-tools-10-0 \
         cuda-cusparse-dev-10-0 \
         cuda-nvml-dev-10-0 \
