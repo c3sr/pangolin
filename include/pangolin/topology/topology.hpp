@@ -238,6 +238,8 @@ Topology &topology() {
     } else {
       LOG(debug, "NUMA is not available, not adding NUMA nodes to topology");
     }
+#else
+    LOG(debug, "NUMA is not available, not adding NUMA nodes to topology");
 #endif
 
     const int numCPUs = std::thread::hardware_concurrency();
@@ -283,11 +285,16 @@ Topology &topology() {
         auto gpu = topology.nvmlGpus_[nvmlIdx];
 
         SPDLOG_TRACE(logger::console(), "discover gpu {} has affinity with cpu {}", gpu->cudaId_, cpuId);
-        // the gpu is associated with all numa regions of the cpus it is associated with
-        gpu->numas_.insert(cpu->numa_);
 
-        // add the gpu to the NUMA region
-        cpu->numa_->gpus_.insert(gpu);
+#if USE_NUMA == 1
+        if (-1 != numa_available()) {
+          // the gpu is associated with all numa regions of the cpus it is associated with
+          gpu->numas_.insert(cpu->numa_);
+
+          // add the gpu to the NUMA region
+          cpu->numa_->gpus_.insert(gpu);
+        }
+#endif
 
         // add the cpu to the gpu
         cpu->gpus_.insert(gpu);
