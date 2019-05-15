@@ -15,7 +15,10 @@ It should otherwise be consistent with libnuma.
 
 #if USE_NUMA == 1
 #include <numa.h>
+#include <numaif.h>
 #endif // USE_NUMA == 1
+
+#include <errno.h>
 
 #include "logger.hpp"
 
@@ -29,9 +32,9 @@ namespace numa {
 */
 inline bool available() {
 #if USE_NUMA == 1
-  return ::numa_available();
+  return -1 == ::numa_available() ? false : true;
 #else  // USE_NUMA == 1
-  LOG(debug, "USE_NUMA not defined. numa_available() = false");
+  SPDLOG_TRACE(logger::console(), "USE_NUMA not defined. numa_available() = false");
   return false;
 #endif // USE_NUMA == 1
 }
@@ -54,14 +57,53 @@ inline int num_configured_cpus() {
 #endif
 }
 
+/*! return the node that cpu is in
+
+    returns -1 if it cannot be determined
+*/
 int node_of_cpu(const int cpu) {
 #if USE_NUMA == 1
   if (available()) {
     return ::numa_node_of_cpu(cpu);
   }
-#else  // USE_NUMA
 #endif // USE_NUMA
-  return 0;
+  return -1;
+}
+
+/*! return the numa node that the page of ptr is allocated in.
+  If NUMA is not supported or otherwise it cannot be determined, return -1
+  */
+int node_of_addr(void *ptr, size_t pageSize) {
+
+  assert(pageSize);
+
+#if USE_NUMA == 1
+  // round down to pageSize
+  void *alignedPtr = reinterpret_cast<void *>((uintptr_t(ptr) / pageSize) * pageSize);
+  int status[1];
+  status[0] = -1;
+  const int ret = move_pages(0 /*calling process*/, 1 /*1 page*/, &alignedPtr,
+                             NULL /* don't move, report page location*/, status, 0 /*no flags*/);
+  if (0 != ret) {
+    LOG(error, "error in move_pages");
+    return -1;
+  } else {
+    if (-EFAULT == *status) {
+      LOG(error, "{:x} is in a zero page or memory area is not mapped", uintptr_t(ptr));
+      return -1;
+    } else if (-ENOENT == *status) {
+      LOG(error, "the page containing {:x} is not present", uintptr_t(ptr));
+      return -1;
+    } else if (*status < 0) {
+      LOG(error, "status was {}", *status);
+      return -1;
+    } else {
+      return *status;
+    }
+  }
+#else  // USE_NUMA == 1
+  return -1;
+#endif // USE_NUMA == 1
 }
 
 /*! \brief cause errors if NUMA is not able to follow instructions
@@ -156,6 +198,8 @@ inline void unbind() {
 }
 
 /*! all nodes on which the calling task may allocate memory.
+
+\return a set of node ids. Empty if NUMA not available
  */
 inline std::set<int> all_nodes() {
   std::set<int> numas;
@@ -166,11 +210,7 @@ inline std::set<int> all_nodes() {
         numas.insert(i);
       }
     }
-  } else {
-    numas.insert(0);
   }
-#else
-  numas.insert(0);
 #endif
   return numas;
 }

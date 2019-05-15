@@ -16,5 +16,6 @@ TEST_CASE("get_cpus") {
 
   SECTION("numa region of address") {
     auto numa = topology.page_numa(nullptr);
+    REQUIRE(numa == nullptr);
   }
 }

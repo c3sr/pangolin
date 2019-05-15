@@ -5,12 +5,7 @@
 #include <set>
 #include <thread>
 
-#include <errno.h>
 #include <nvml.h>
-
-#if USE_NUMA == 1
-#include <numaif.h>
-#endif
 
 #include "pangolin/logger.hpp"
 #include "pangolin/numa.hpp"
@@ -181,33 +176,11 @@ struct Topology {
 
     assert(pageSize_);
 
-#if USE_NUMA == 1
-    // round down to pageSize
-    void *alignedPtr = reinterpret_cast<void *>((uintptr_t(ptr) / pageSize_) * pageSize_);
-    int status[1];
-    status[0] = -1;
-    const int ret = move_pages(0 /*calling process*/, 1 /*1 page*/, &alignedPtr,
-                               NULL /* don't move, report page location*/, status, 0 /*no flags*/);
-    if (0 != ret) {
-      LOG(error, "error in move_pages");
-      return NUMA_t(nullptr);
+    if (numa::available()) {
+      return numas_[numa::node_of_addr(ptr, pageSize_)];
     } else {
-      if (-EFAULT == *status) {
-        LOG(error, "{:x} is in a zero page or memory area is not mapped", uintptr_t(ptr));
-        return NUMA_t(nullptr);
-      } else if (-ENOENT == *status) {
-        LOG(error, "the page containing {:x} is not present", uintptr_t(ptr));
-        return NUMA_t(nullptr);
-      } else if (*status < 0) {
-        LOG(error, "status was {}", *status);
-        return NUMA_t(nullptr);
-      } else {
-        return numas_[*status];
-      }
+      return NUMA_t(nullptr);
     }
-#else  // USE_NUMA == 1
-    return NUMA_t(nullptr);
-#endif // USE_NUMA == 1
   }
 
   Topology() : pageSize_(0) {}
@@ -227,20 +200,14 @@ Topology &topology() {
     topology.pageSize_ = sysconf(_SC_PAGESIZE);
 
     // if NUMA is available and installed, add NUMA nodes
-#if USE_NUMA == 1
-    if (-1 != numa_available()) {
-      for (int numaId = 0; numaId < numa_num_possible_nodes(); ++numaId) {
-        if (numa_bitmask_isbitset(numa_all_nodes_ptr, numaId)) {
-          auto numa = std::make_shared<NUMA>(numaId);
-          topology.numas_.insert(std::make_pair(numaId, numa));
-        }
+    if (numa::available()) {
+      for (auto numaId : numa::all_nodes()) {
+        auto numa = std::make_shared<NUMA>(numaId);
+        topology.numas_.insert(std::make_pair(numaId, numa));
       }
     } else {
       LOG(debug, "NUMA is not available, not adding NUMA nodes to topology");
     }
-#else
-    LOG(debug, "NUMA is not available, not adding NUMA nodes to topology");
-#endif
 
     const int numCPUs = std::thread::hardware_concurrency();
     // add cpus to topology
@@ -250,15 +217,14 @@ Topology &topology() {
       topology.cpus_.insert(std::make_pair(cpuId, cpu));
 
       // if NUMA is available, associate each cpu with its numa region
-#if USE_NUMA == 1
-      if (-1 != numa_available()) {
-        int numaId = numa_node_of_cpu(cpuId);
+
+      if (numa::available()) {
+        int numaId = numa::node_of_cpu(cpuId);
         SPDLOG_TRACE(logger::console(), "discover numa {} for cpu {}", numaId, cpuId);
         auto numa = topology.numas_[numaId];
         cpu->numa_ = numa;
         numa->cpus_.insert(cpu);
       }
-#endif
     }
 
     // add gpus to topology
@@ -286,15 +252,13 @@ Topology &topology() {
 
         SPDLOG_TRACE(logger::console(), "discover gpu {} has affinity with cpu {}", gpu->cudaId_, cpuId);
 
-#if USE_NUMA == 1
-        if (-1 != numa_available()) {
+        if (cpu->numa_) {
           // the gpu is associated with all numa regions of the cpus it is associated with
           gpu->numas_.insert(cpu->numa_);
 
           // add the gpu to the NUMA region
           cpu->numa_->gpus_.insert(gpu);
         }
-#endif
 
         // add the cpu to the gpu
         cpu->gpus_.insert(gpu);
@@ -303,10 +267,11 @@ Topology &topology() {
         gpu->cpus_.insert(cpu);
       }
     }
-  } // if (!init)
+  }
 
   return topology;
 }
 
 } // namespace topology
+
 } // namespace pangolin
