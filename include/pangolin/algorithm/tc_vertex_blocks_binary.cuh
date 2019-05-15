@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cub/cub.cuh>
+#include <nvToolsExt.h>
 
 #include "count.cuh"
 #include "pangolin/algorithm/load_balance.cuh"
@@ -82,8 +83,13 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
     // }
   }
 
-  // FIXME: block reduction first
-  atomicAdd(count, threadCount);
+  // reduce counts within thread-block
+  typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
+  uint64_t aggregate = BlockReduce(temp_storage).Sum(threadCount);
+  if (0 == threadIdx.x) {
+    atomicAdd(count, aggregate);
+  }
 }
 
 namespace pangolin {
@@ -141,6 +147,7 @@ public:
     // compute the number (counts) of dimBlock-sized chunks that make up each row [rowOffset, rowOffset + numRows)
     // each workItem is dimBlock elements from a row
     // FIXME: on device
+    nvtxRangePush("enumerate work items");
     Vector<Index> counts(numRows);
     Index numWorkItems = 0;
     for (Index i = 0; i < numRows; ++i) {
@@ -150,8 +157,10 @@ public:
       counts[i] = rowWorkItems;
       numWorkItems += rowWorkItems;
     }
+    nvtxRangePop();
 
     // do the initial load-balancing search across rows
+    nvtxRangePush("device_load_balance");
     Vector<Index> indices(numWorkItems);
     Index *ranks = nullptr;
     size_t ranksBytes = sizeof(Index) * numWorkItems;
@@ -159,6 +168,7 @@ public:
     CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems));
     // FIXME: static_cast
     device_load_balance(indices.data(), ranks, numWorkItems, counts.data(), static_cast<Index>(numRows), stream_);
+    nvtxRangePop();
 
     // indices says which row is associated with each work item, so offset all entries by rowOffset
     // FIXME: on device
