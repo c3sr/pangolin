@@ -4,9 +4,9 @@
 # https://aka.ms/yaml
 
 stages:
-- stage: "NUMA_Build"
+- stage:
   jobs:
-  - job: TheJob
+  - job:
     strategy:
       matrix:
         DebugNUMA:
