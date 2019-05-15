@@ -36,7 +36,7 @@ stages:
         apt-get install -y --no-install-suggests --no-install-recommends -y \
         libnuma-dev; \
       displayName: 'Install numa'
-      condition: variables['INSTALL_NUMA']
+      condition: eq(variables['INSTALL_NUMA'], 'True')
 
     - script: |
         set -x
