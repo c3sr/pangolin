@@ -9,19 +9,34 @@ stages:
   - job: TheJob
     strategy:
       matrix:
-        Debug:
+        DebugNUMA:
           CMAKE_BUILD_TYPE: 'Debug'
-        Release:
+          INSTALL_NUMA: True
+        DebugNoNUMA:
+          CMAKE_BUILD_TYPE: 'Debug'
+          INSTALL_NUMA: False
+        ReleaseNUMA:
           CMAKE_BUILD_TYPE: 'Release'
+          INSTALL_NUMA: True
+        ReleaseNoNUMA:
+          CMAKE_BUILD_TYPE: 'Release'
+          INSTALL_NUMA: False
     pool: 'amd64-ubuntu1604-cuda100'
     steps:
     - script: |
         set -x
         apt-get update
         apt-get install -y --no-install-suggests --no-install-recommends -y \
-        curl \
-        libnuma-dev 
-      displayName: 'Install packages'
+        curl
+      displayName: 'Install curl'
+
+    - script: |
+        set -x
+        apt-get update;
+        apt-get install -y --no-install-suggests --no-install-recommends -y \
+        libnuma-dev; \
+      displayName: 'Install numa'
+      condition: $[variables['INSTALL_NUMA']]
 
     - script: |
         set -x
