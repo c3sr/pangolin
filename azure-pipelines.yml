@@ -57,7 +57,7 @@ stages:
       displayName: 'Install CUDA 10.0'
 
     - script: |
-        set e-x
+        set -x
         which cmake
         cmake --version
         mkdir build
