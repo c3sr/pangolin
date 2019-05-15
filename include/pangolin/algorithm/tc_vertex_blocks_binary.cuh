@@ -4,6 +4,7 @@
 #include <nvToolsExt.h>
 
 #include "count.cuh"
+#include "pangolin/algorithm/axpy.cuh"
 #include "pangolin/algorithm/load_balance.cuh"
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
@@ -23,15 +24,23 @@ Each thread block can look up which row and rank (slice within the row) it is.
 \tparam CsrView A CSR adjacency matrix
 */
 template <size_t BLOCK_DIM_X, typename OI, typename WI, typename CsrView>
-__global__ void row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                                 const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                                 const OI *workItemRow,  //<! [in] the row associated with this work item
-                                 const OI *workItemRank, //<! [in] the rank within the row for this work item
-                                 const WI numWorkItems   //<! [in] the total number of work items
-) {
+__global__ void __launch_bounds__(BLOCK_DIM_X)
+    row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
+                     const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
+                     const OI *workItemRow,  //<! [in] the row associated with this work item
+                     const OI *workItemRank, //<! [in] the rank within the row for this work item
+                     const WI numWorkItems   //<! [in] the total number of work items
+    ) {
   typedef typename CsrView::index_type Index;
-  extern __shared__ Index srcShared[];
+  typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
+
+  // reuse shared memory for src row and block reduction temporary storage
+  __shared__ union {
+    Index src[BLOCK_DIM_X];
+    typename BlockReduce::TempStorage reduce;
+  } shared;
   // __shared__ Index srcShared[BLOCK_DIM_X];
+  // __shared__ typename BlockReduce::TempStorage temp_storage;
 
   uint64_t threadCount = 0;
 
@@ -40,53 +49,54 @@ __global__ void row_block_kernel(uint64_t *count,        //<! [out] the count wi
     OI row = workItemRow[i];
     OI rank = workItemRank[i];
 
-    // if (threadIdx.x == 0) {
-    //   printf("block %d row %d rank %d\n", blockIdx.x, row, rank);
-    // }
-
     // each block is responsible for counting triangles from a contiguous set of non-zeros in the row
     // [srcStart ... srcStop)
     const Index rowStart = adj.rowPtr_[row];
     const Index rowStop = adj.rowPtr_[row + 1];
     const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
     const Index sliceStop = min(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
-    // if (threadIdx.x == 0) {
-    //   if (sizeof(Index) == 4) {
-    //     printf("row %d rank %d: dsts from colInd[%d, %d)\n", row, rank, sliceStart, sliceStop);
-    //   } else {
-    //     printf("row %lu rank %lu: dsts from colInd[%lu, %lu)\n", row, rank, sliceStart, sliceStop);
-    //   }
-    // }
+    // const Index srcLen = rowStop - rowStart;
 
-    // one thread per non-zero in the slice
-    for (size_t j = sliceStart + threadIdx.x; j < sliceStop; j += BLOCK_DIM_X) {
-      // retrieve the nbrs of the edge dst
-      Index dst = adj.colInd_[j];
+    // each thread handles a non-zero
+    // the beginning and end of the dst neighbor list
+    // the neighbor list will be size 0 if there is not a non-zero for this thread
+    const Index *dstNbrBegin = nullptr;
+    const Index *dstNbrEnd = nullptr;
+    Index dstIdx = sliceStart + threadIdx.x;
+    if (dstIdx < sliceStop) {
+      Index dst = adj.colInd_[dstIdx];
       const Index dstStart = adj.rowPtr_[dst];
       const Index dstStop = adj.rowPtr_[dst + 1];
-      const Index *dstNbrBegin = &adj.colInd_[dstStart];
-      const Index *dstNbrEnd = &adj.colInd_[dstStop];
-      // printf("%d->%d  [%d %d) -> [%d %d)\n", row, dst, rowStart, rowStop, dstStart, dstStop);
-
-      // for each edge, need to search through the whole src row
-      for (const Index *dstNbr = dstNbrBegin; dstNbr < dstNbrEnd; ++dstNbr) {
-        threadCount += pangolin::serial_sorted_count_binary(adj.colInd_, rowStart, rowStop, *dstNbr);
-      }
-
-      // printf("bid %d tid %d row %d rank %d: %d->%d = %lu\n", blockIdx.x, threadIdx.x, row, rank, row, dst,
-      // threadCount);
+      dstNbrBegin = &adj.colInd_[dstStart];
+      dstNbrEnd = &adj.colInd_[dstStop];
     }
 
-    // if (threadCount != 0) {
-    //   printf("bid %d tid %d row %d rank %d: colInd[%d, %d): count %lu\n", blockIdx.x, threadIdx.x, row, rank,
-    //          sliceStart, sliceStop, threadCount);
-    // }
+    // binary search each BLOCK_DIM_X-sized slice of the src row
+    for (Index srcChunkStart = rowStart; srcChunkStart < rowStop; srcChunkStart += BLOCK_DIM_X) {
+      Index srcChunkStop = min(srcChunkStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
+      Index srcChunkSize = srcChunkStop - srcChunkStart;
+
+      // collaboratively load piece of src row into shared memory
+      if (srcChunkStart + threadIdx.x < rowStop) {
+        shared.src[threadIdx.x] = adj.colInd_[srcChunkStart + threadIdx.x];
+      }
+      __syncthreads();
+
+      // search for each element of each thread's dst row into the shared memory
+      for (const Index *dstNbr = dstNbrBegin; dstNbr < dstNbrEnd; ++dstNbr) {
+        Index nbr = *dstNbr;
+        // shared array should be sorted, so skip the search if we know it can't be in that chunk
+        if (nbr >= shared.src[0] && nbr <= shared.src[srcChunkSize - 1]) {
+          threadCount += pangolin::serial_sorted_count_binary(shared.src, 0, srcChunkSize, nbr);
+        }
+      }
+
+      __syncthreads();
+    }
   }
 
   // reduce counts within thread-block
-  typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  uint64_t aggregate = BlockReduce(temp_storage).Sum(threadCount);
+  uint64_t aggregate = BlockReduce(shared.reduce).Sum(threadCount);
   if (0 == threadIdx.x) {
     atomicAdd(count, aggregate);
   }
@@ -138,6 +148,7 @@ public:
                    const size_t numRows    //!< [in] the number of rows to count
   ) {
 
+    CUDA_RUNTIME(cudaSetDevice(dev_));
     const size_t dimBlock = 512;
     typedef typename CsrView::index_type Index;
 
@@ -171,10 +182,8 @@ public:
     nvtxRangePop();
 
     // indices says which row is associated with each work item, so offset all entries by rowOffset
-    // FIXME: on device
-    for (auto &e : indices) {
-      e += rowOffset;
-    }
+    // indices[i] += rowOffset
+    device_axpy_async(indices.data(), static_cast<Index>(1), static_cast<Index>(rowOffset), indices.size(), stream_);
 
     // each slice is handled by one thread block
     const int dimGrid = std::min(numWorkItems, static_cast<typeof(numWorkItems)>(maxGridSize_.x));
@@ -182,7 +191,8 @@ public:
     assert(rowOffset + numRows <= adj.num_rows());
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
+    // const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
+    const size_t shmemBytes = 0;
     LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
     row_block_kernel<dimBlock>
