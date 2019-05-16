@@ -9,6 +9,41 @@
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.hu"
 
+/*! Determine how many tileSize tiles are needed to cover each row of adj
+
+    The caller should zero the value pointed to by counts
+ */
+template <size_t BLOCK_DIM_X, typename CsrView>
+__global__ void __launch_bounds__(BLOCK_DIM_X) tile_rows_kernel(
+    typename CsrView::index_type *counts,         //<! [out] the number of tiles each row (size = numRows)
+    typename CsrView::index_type *numWorkItems,   //<! [out] the total number of tiles across all rows.  caller should 0
+    const size_t tileSize,                        //<! [in] the number of non-zeros in each tile
+    const CsrView adj,                            //<! [in] the adjancency matrix whos rows we will tile
+    const typename CsrView::index_type rowOffset, //<! [in] the row to start tiling at
+    const typename CsrView::index_type numRows    //<! [in] the number of rows to tile
+) {
+
+  typedef typename CsrView::index_type Index;
+  typedef cub::BlockReduce<Index, BLOCK_DIM_X> BlockReduce;
+  typename BlockReduce::TempStorage reduce;
+  Index threadWorkItems = 0;
+
+  // one thread per row
+  for (size_t i = BLOCK_DIM_X * blockIdx.x + threadIdx.x; i < numRows; i += gridDim.x * BLOCK_DIM_X) {
+    const Index row = i + rowOffset;
+    const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
+    const Index rowWorkItems = (rowSize + tileSize - 1) / tileSize;
+    counts[i] = rowWorkItems;
+    threadWorkItems += rowWorkItems;
+  }
+
+  // reduction for numWorkItems
+  Index aggregate = BlockReduce(reduce).Sum(threadWorkItems);
+  if (0 == threadIdx.x) {
+    atomicAdd(numWorkItems, aggregate);
+  }
+}
+
 /*!
 Each row of the adjacency matrix is covered by multiple thread blocks
 Each thread in the block handles an edge
@@ -160,25 +195,33 @@ public:
     // FIXME: on device
     nvtxRangePush("enumerate work items");
     Vector<Index> counts(numRows);
-    Index numWorkItems = 0;
-    for (Index i = 0; i < numRows; ++i) {
-      Index row = i + rowOffset;
-      const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
-      const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
-      counts[i] = rowWorkItems;
-      numWorkItems += rowWorkItems;
-    }
+    Vector<Index> numWorkItems(1, 0);
+
+    LOG(debug, "device = {} tile_rows_kernel<<<{}, {}, {}, {}>>>", dev_, 512, 512, 0, uintptr_t(stream_));
+    tile_rows_kernel<512>
+        <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
+    CUDA_RUNTIME(cudaDeviceSynchronize());
+
+    // for (Index i = 0; i < numRows; ++i) {
+    //   Index row = i + rowOffset;
+    //   const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
+    //   const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
+    //   counts[i] = rowWorkItems;
+    //   numWorkItems[0] += rowWorkItems;
+    // }
+
+    LOG(debug, "{} work items", numWorkItems[0]);
     nvtxRangePop();
 
     // do the initial load-balancing search across rows
     nvtxRangePush("device_load_balance");
-    Vector<Index> indices(numWorkItems);
+    Vector<Index> indices(numWorkItems[0]);
     Index *ranks = nullptr;
-    size_t ranksBytes = sizeof(Index) * numWorkItems;
+    size_t ranksBytes = sizeof(Index) * numWorkItems[0];
     LOG(debug, "allocate {}B for ranks", ranksBytes);
-    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems));
+    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems[0]));
     // FIXME: static_cast
-    device_load_balance(indices.data(), ranks, numWorkItems, counts.data(), static_cast<Index>(numRows), stream_);
+    device_load_balance(indices.data(), ranks, numWorkItems[0], counts.data(), static_cast<Index>(numRows), stream_);
     nvtxRangePop();
 
     // indices says which row is associated with each work item, so offset all entries by rowOffset
@@ -186,7 +229,7 @@ public:
     device_axpy_async(indices.data(), static_cast<Index>(1), static_cast<Index>(rowOffset), indices.size(), stream_);
 
     // each slice is handled by one thread block
-    const int dimGrid = std::min(numWorkItems, static_cast<typeof(numWorkItems)>(maxGridSize_.x));
+    const int dimGrid = std::min(numWorkItems[0], static_cast<typeof(numWorkItems[0])>(maxGridSize_.x));
     LOG(debug, "counting rows [{}, {}), adj has {} rows", rowOffset, rowOffset + numRows, adj.num_rows());
     assert(rowOffset + numRows <= adj.num_rows());
     assert(count_);
@@ -196,7 +239,7 @@ public:
     LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
     row_block_kernel<dimBlock>
-        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, numWorkItems);
+        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, numWorkItems[0]);
     CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaFree(ranks));
