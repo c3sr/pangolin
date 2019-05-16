@@ -211,17 +211,18 @@ public:
     // }
 
     LOG(debug, "{} work items", numWorkItems[0]);
+    const Index hostNumWorkItems = numWorkItems[0];
     nvtxRangePop();
 
     // do the initial load-balancing search across rows
     nvtxRangePush("device_load_balance");
-    Vector<Index> indices(numWorkItems[0]);
+    Vector<Index> indices(hostNumWorkItems);
     Index *ranks = nullptr;
-    size_t ranksBytes = sizeof(Index) * numWorkItems[0];
+    size_t ranksBytes = sizeof(Index) * hostNumWorkItems;
     LOG(debug, "allocate {}B for ranks", ranksBytes);
-    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * numWorkItems[0]));
+    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * hostNumWorkItems));
     // FIXME: static_cast
-    device_load_balance(indices.data(), ranks, numWorkItems[0], counts.data(), static_cast<Index>(numRows), stream_);
+    device_load_balance(indices.data(), ranks, hostNumWorkItems, counts.data(), static_cast<Index>(numRows), stream_);
     nvtxRangePop();
 
     // indices says which row is associated with each work item, so offset all entries by rowOffset
@@ -229,7 +230,7 @@ public:
     device_axpy_async(indices.data(), static_cast<Index>(1), static_cast<Index>(rowOffset), indices.size(), stream_);
 
     // each slice is handled by one thread block
-    const int dimGrid = std::min(numWorkItems[0], static_cast<typeof(numWorkItems[0])>(maxGridSize_.x));
+    const int dimGrid = std::min(hostNumWorkItems, static_cast<typeof(hostNumWorkItems)>(maxGridSize_.x));
     LOG(debug, "counting rows [{}, {}), adj has {} rows", rowOffset, rowOffset + numRows, adj.num_rows());
     assert(rowOffset + numRows <= adj.num_rows());
     assert(count_);
@@ -239,7 +240,7 @@ public:
     LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
     row_block_kernel<dimBlock>
-        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, numWorkItems[0]);
+        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, hostNumWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaFree(ranks));
