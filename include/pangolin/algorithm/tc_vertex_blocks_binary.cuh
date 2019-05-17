@@ -208,20 +208,16 @@ public:
     tile_rows_kernel<512>
         <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
     CUDA_RUNTIME(cudaDeviceSynchronize());
-
-    LOG(debug, "{} work items (CPU)", numWorkItems[0]);
     const Index hostNumWorkItems = numWorkItems[0];
     nvtxRangePop();
 
     // do the initial load-balancing search across rows
     nvtxRangePush("device_load_balance");
     Vector<Index> indices(hostNumWorkItems);
-    Index *ranks = nullptr;
-    size_t ranksBytes = sizeof(Index) * hostNumWorkItems;
-    LOG(debug, "allocate {}B for ranks", ranksBytes);
-    CUDA_RUNTIME(cudaMalloc(&ranks, sizeof(Index) * hostNumWorkItems));
+    Vector<Index> ranks(hostNumWorkItems);
     // FIXME: static_cast
-    device_load_balance(indices.data(), ranks, hostNumWorkItems, counts.data(), static_cast<Index>(numRows), stream_);
+    device_load_balance(indices.data(), ranks.data(), hostNumWorkItems, counts.data(), static_cast<Index>(numRows),
+                        stream_);
     nvtxRangePop();
 
     // indices says which row is associated with each work item, so offset all entries by rowOffset
@@ -239,10 +235,8 @@ public:
     LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
     row_block_kernel<dimBlock>
-        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks, hostNumWorkItems);
+        <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks.data(), hostNumWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
-
-    CUDA_RUNTIME(cudaFree(ranks));
   }
 
   /*! Synchronous triangle count
