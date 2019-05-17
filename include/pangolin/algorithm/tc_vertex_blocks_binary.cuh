@@ -25,7 +25,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tile_rows_kernel(
 
   typedef typename CsrView::index_type Index;
   typedef cub::BlockReduce<Index, BLOCK_DIM_X> BlockReduce;
-  typename BlockReduce::TempStorage reduce;
+  __shared__ typename BlockReduce::TempStorage reduce;
   Index threadWorkItems = 0;
 
   // one thread per row
@@ -43,6 +43,14 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tile_rows_kernel(
     atomicAdd(numWorkItems, aggregate);
   }
 }
+
+// for (Index i = 0; i < static_cast<Index>(numRows); ++i) {
+//   Index row = i + rowOffset;
+//   const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
+//   const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
+//   counts[i] = rowWorkItems;
+//   numWorkItems[0] += rowWorkItems;
+// }
 
 /*!
 Each row of the adjacency matrix is covered by multiple thread blocks
@@ -192,25 +200,16 @@ public:
 
     // compute the number (counts) of dimBlock-sized chunks that make up each row [rowOffset, rowOffset + numRows)
     // each workItem is dimBlock elements from a row
-    // FIXME: on device
     nvtxRangePush("enumerate work items");
     Vector<Index> counts(numRows);
     Vector<Index> numWorkItems(1, 0);
 
-    LOG(debug, "device = {} tile_rows_kernel<<<{}, {}, {}, {}>>>", dev_, 512, 512, 0, uintptr_t(stream_));
+    LOG(debug, "tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", 512, 512, 0, uintptr_t(stream_), dev_);
     tile_rows_kernel<512>
         <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
     CUDA_RUNTIME(cudaDeviceSynchronize());
 
-    // for (Index i = 0; i < numRows; ++i) {
-    //   Index row = i + rowOffset;
-    //   const Index rowSize = adj.rowPtr_[row + 1] - adj.rowPtr_[row];
-    //   const Index rowWorkItems = (rowSize + dimBlock - 1) / dimBlock;
-    //   counts[i] = rowWorkItems;
-    //   numWorkItems[0] += rowWorkItems;
-    // }
-
-    LOG(debug, "{} work items", numWorkItems[0]);
+    LOG(debug, "{} work items (CPU)", numWorkItems[0]);
     const Index hostNumWorkItems = numWorkItems[0];
     nvtxRangePop();
 
