@@ -78,6 +78,7 @@ stages:
 
     - script: |
         set -x
+        env | grep PANGOLIN_GRAPH_DIR
         cd build
         ctest --output-on-failure --timeout 300 -T Test
       displayName: 'test'
