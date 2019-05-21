@@ -3,6 +3,8 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/tc_vertex_blocks_binary.cuh"
+#include "pangolin/file/edge_list_file.hpp"
+#include "pangolin/filesystem/filesystem.hpp"
 #include "pangolin/generator/complete.hpp"
 #include "pangolin/generator/hubspoke.hpp"
 #include "pangolin/init.hpp"
@@ -10,6 +12,26 @@
 #include "pangolin/sparse/csr.hpp"
 
 using namespace pangolin;
+
+template <typename NodeTy> void count(uint64_t expected, const std::string &graphFile, VertexBlocksBinaryTC &c) {
+  char *graphDir = std::getenv("PANGOLIN_GRAPH_DIR");
+  if (nullptr != graphDir) {
+    std::string graphDirPath(graphDir);
+    graphDirPath += "/" + graphFile;
+    if (filesystem::is_file(graphDirPath)) {
+      EdgeListFile file(graphDirPath);
+      std::vector<EdgeTy<uint64_t>> edges;
+      std::vector<EdgeTy<uint64_t>> fileEdges;
+      while (file.get_edges(fileEdges, 10)) {
+        edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
+      }
+      auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+      auto csr = CSR<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
+
+      REQUIRE(expected == c.count_sync(csr.view()));
+    }
+  }
+}
 
 TEST_CASE("ctor", "[gpu]") {
   pangolin::init();
@@ -123,5 +145,15 @@ TEST_CASE("ctor", "[gpu]") {
     uint64_t a = cs[0].count_sync(csr.view(), 0, 270);   // first 270 rows
     uint64_t b = cs[1].count_sync(csr.view(), 270, 269); // next 269 rows
     REQUIRE(g.num_triangles() == a + b);
+  }
+
+  SECTION("amazon0302_adj.bel", "[gpu]") {
+    using NodeTy = int;
+    count<NodeTy>(717719, "amazon0302_adj.bel", c);
+  }
+
+  SECTION("as20000102_adj.bel", "[gpu]") {
+    using NodeTy = int;
+    count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
