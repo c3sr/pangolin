@@ -117,6 +117,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_tc_vertex_blocks_cache_block_binary
+  SRCS test_tc_vertex_blocks_cache_block_binary.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_topology
   SRCS test_topology.cu
 )

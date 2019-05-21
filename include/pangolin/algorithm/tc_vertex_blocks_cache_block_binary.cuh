@@ -87,20 +87,21 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     OI rank = workItemRank[i];
 
     // each block is responsible for counting triangles for a contiguous slice of non-zeros in the row
-    // [srcStart ... srcStop)
+    // [sliceStart ... sliceStop)
     const Index rowStart = adj.rowPtr_[row];
     const Index rowStop = adj.rowPtr_[row + 1];
     const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
     const Index sliceStop = min(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
+    const Index sliceSize = sliceStop - sliceStart;
 
-    // each thread loads a non-zero from the slice
-    // the beginning and end of the dst neighbor list
-    // the neighbor list will be size 0 if there is not a non-zero for this thread
+    // each thread loads a non-zero (dst) from the slice
+    // each dst is repeatedly accessed if the src row is longer than shared memory
     Index dstIdx = sliceStart + threadIdx.x;
-    Index dst;
     if (dstIdx < sliceStop) {
       Index dst = adj.colInd_[dstIdx];
+      sharedDst[threadIdx.x] = dst;
     }
+    __syncthreads();
 
     // search into each BLOCK_DIM_X-sized slice of the src row
     for (Index srcChunkStart = rowStart; srcChunkStart < rowStop; srcChunkStart += BLOCK_DIM_X) {
@@ -109,26 +110,26 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
 
       // collaboratively load piece of src row into shared memory
       if (srcChunkStart + threadIdx.x < rowStop) {
-        shared.src[threadIdx.x] = adj.colInd_[srcChunkStart + threadIdx.x];
+        sharedSrc[threadIdx.x] = adj.colInd_[srcChunkStart + threadIdx.x];
       }
       __syncthreads();
 
       // collaboratively work on each dst this block is responsible for
       // broadcast each thread's dst to the whole block
-      for (int root = 0; root < sliceStop - sliceStart; ++root) {
-        Index collabDst = block_broadcast(dst, root);
+      for (Index dstIdx = 0; dstIdx < sliceSize; ++dstIdx) {
+        Index collabDst = sharedDst[dstIdx];
 
         const Index dstStart = adj.rowPtr_[collabDst];
         const Index dstStop = adj.rowPtr_[collabDst + 1];
-        dstNbrBegin = &adj.colInd_[dstStart];
-        dstNbrEnd = &adj.colInd_[dstStop];
+        const Index *dstNbrBegin = &adj.colInd_[dstStart];
+        const Index *dstNbrEnd = &adj.colInd_[dstStop];
 
         if (dstStop - dstStart > srcChunkSize) { // dst longer, we still get to reuse shmem for srcs for each dst
-          threadCounts +=
-              pangolin::block_sorted_count_binary(sharedSrc, srcChunkSize, dstNbrBegin, dstNbrEnd - dstNbrBegin);
+          threadCount += pangolin::block_sorted_count_binary<1, BLOCK_DIM_X>(sharedSrc, srcChunkSize, dstNbrBegin,
+                                                                             dstNbrEnd - dstNbrBegin);
         } else { // src longer, we are searching into shmem
-          threadCounts +=
-              pangolin::block_sorted_count_binary(dstNbrBegin, dstNbrEnd - dstNbrBegin, sharedSrc, srcChunkSize);
+          threadCount += pangolin::block_sorted_count_binary<1, BLOCK_DIM_X>(dstNbrBegin, dstNbrEnd - dstNbrBegin,
+                                                                             sharedSrc, srcChunkSize);
         }
       }
 
@@ -147,13 +148,20 @@ namespace pangolin {
 
 /*! A triangle counter
 
-   One block per vertex (row in the CSR)
-   Short rows cached in shared memory
-   One thread per non-zero in the row. Each thread loads another row and compares all non-zeros to the source row with
-   binary search.
+  [Vertex] Vertex-oriented
+  [Blocks] tile each vertex with multiple blocks
+  [Cache] cache the src neighbor list in shared memory
+  [Block] each block collaboratively works on an edge
+  [Binary] using parallel binary search
+
+  The search is done from the shorter neighbor list into the longer one
+
+  The src row may be longer than shared memory can hold.
+  if so, the src row is divided up into chunks, loaded into shared, and each dst row is compared against each chunk.
+  The search goes from the shorter row into the longer row
 
  */
-class VertexBlocksBinaryTC {
+class VertexBlocksCacheBlockBinary {
 private:
   int dev_;             //<! the CUDA device used by this counter
   cudaStream_t stream_; //<! a stream used by this counter
@@ -162,7 +170,7 @@ private:
   size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
 
 public:
-  VertexBlocksBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
+  VertexBlocksCacheBlockBinary(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
@@ -178,7 +186,7 @@ public:
 
   /*! default constructor on GPU0 with a row cache size of 512 elements.
    */
-  VertexBlocksBinaryTC() : VertexBlocksBinaryTC(0, 512) {}
+  VertexBlocksCacheBlockBinary() : VertexBlocksCacheBlockBinary(0, 512) {}
 
   /*! count triangles in adj for rows [rowOffset, rowOffset + numRows).
       May return before count is complete.
