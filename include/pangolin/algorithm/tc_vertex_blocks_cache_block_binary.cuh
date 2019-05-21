@@ -14,7 +14,7 @@
     The caller should zero the value pointed to by counts
  */
 template <size_t BLOCK_DIM_X, typename CsrView>
-__global__ void __launch_bounds__(BLOCK_DIM_X) tile_rows_kernel(
+__global__ void __launch_bounds__(BLOCK_DIM_X) vbcbb_tile_rows_kernel(
     typename CsrView::index_type *counts,         //<! [out] the number of tiles each row (size = numRows)
     typename CsrView::index_type *numWorkItems,   //<! [out] the total number of tiles across all rows.  caller should 0
     const size_t tileSize,                        //<! [in] the number of non-zeros in each tile
@@ -61,11 +61,11 @@ Each thread block can look up which row and rank (slice within the row) it is.
 */
 template <size_t BLOCK_DIM_X, typename OI, typename WI, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
-    row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                     const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                     const OI *workItemRow,  //<! [in] the row associated with this work item
-                     const OI *workItemRank, //<! [in] the rank within the row for this work item
-                     const WI numWorkItems   //<! [in] the total number of work items
+    vbcbb_row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
+                           const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
+                           const OI *workItemRow,  //<! [in] the row associated with this work item
+                           const OI *workItemRank, //<! [in] the rank within the row for this work item
+                           const WI numWorkItems   //<! [in] the total number of work items
     ) {
   typedef typename CsrView::index_type Index;
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
@@ -210,8 +210,8 @@ public:
     Vector<Index> counts(numRows);
     Vector<Index> numWorkItems(1, 0);
 
-    LOG(debug, "tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", 512, 512, 0, uintptr_t(stream_), dev_);
-    tile_rows_kernel<512>
+    LOG(debug, "vbcbb_tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", 512, 512, 0, uintptr_t(stream_), dev_);
+    vbcbb_tile_rows_kernel<512>
         <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
     CUDA_RUNTIME(cudaDeviceSynchronize());
     const Index hostNumWorkItems = numWorkItems[0];
@@ -238,9 +238,9 @@ public:
     CUDA_RUNTIME(cudaSetDevice(dev_));
     // const size_t shmemBytes = rowCacheSize_ * sizeof(Index);
     const size_t shmemBytes = 0;
-    LOG(debug, "device = {} row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
+    LOG(debug, "device = {} vbcbb_row_block_kernel<<<{}, {}, {}, {}>>>", dev_, dimGrid, dimBlock, shmemBytes,
         uintptr_t(stream_));
-    row_block_kernel<dimBlock>
+    vbcbb_row_block_kernel<dimBlock>
         <<<dimGrid, dimBlock, shmemBytes, stream_>>>(count_, adj, indices.data(), ranks.data(), hostNumWorkItems);
     CUDA_RUNTIME(cudaGetLastError());
   }
