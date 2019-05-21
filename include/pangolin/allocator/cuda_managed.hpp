@@ -5,6 +5,8 @@
 
 #include <cuda_runtime.h>
 
+namespace pangolin {
+
 template <class T> struct CUDAManagedAllocator {
   typedef T value_type;
   CUDAManagedAllocator() = default;
@@ -32,3 +34,5 @@ bool operator!=(const CUDAManagedAllocator<T> &,
                 const CUDAManagedAllocator<U> &) {
   return false;
 }
+
+} // namespace pangolin

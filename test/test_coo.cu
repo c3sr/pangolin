@@ -52,3 +52,15 @@ TEST_CASE("COO<int>::from_edges lower triangular") {
 
   REQUIRE(coo.nnz() == 8);
 }
+
+TEST_CASE("COO<int>::num_nodes") {
+  pangolin::init();
+  std::vector<EdgeTy<uint64_t>> el = {{1, 2}, {1, 3}, {2, 1}, {2, 3}, {2, 4}, {2, 5}, {3, 1}, {3, 2},
+                                      {3, 4}, {3, 5}, {4, 2}, {4, 3}, {4, 5}, {5, 2}, {5, 3}, {5, 4}};
+
+  INFO("from_edgelist");
+  auto ut = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+  auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), ut);
+  
+  REQUIRE(coo.num_nodes() == 6);
+}

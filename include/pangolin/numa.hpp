@@ -117,10 +117,10 @@ inline void bind(const int node //<! NUMA node to bind to
 }
 
 /*! Bind future allocation to a numa node
-*/
+ */
 inline void membind(const int node //<! NUMA node to bind to
 ) {
-  #if USE_NUMA == 1
+#if USE_NUMA == 1
   if (available()) {
     if (-1 == node) {
       numa_set_membind(numa_all_nodes_ptr);
@@ -133,9 +133,9 @@ inline void membind(const int node //<! NUMA node to bind to
       LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
     }
   }
-  #else // USE_NUMA == 1
+#else  // USE_NUMA == 1
   LOG(debug, "USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
-  #endif // USE_NUMA == 1
+#endif // USE_NUMA == 1
 }
 
 /*! \brief bind execution and allocation to all nodes
@@ -154,6 +154,28 @@ inline void unbind() {
   LOG(debug, "USE_NUMA not defined");
 #endif // USE_NUMA == 1
 }
+
+/*! all nodes on which the calling task may allocate memory.
+ */
+inline std::set<int> all_nodes() {
+  std::set<int> numas;
+#if USE_NUMA == 1
+  if (available()) {
+    for (int i = 0; i < ::numa_num_possible_nodes(); ++i) {
+      if (::numa_bitmask_isbitset(numa_all_nodes_ptr, i)) {
+        numas.insert(i);
+      }
+    }
+  } else {
+    numas.insert(0);
+  }
+#else
+  numas.insert(0);
+#endif
+  return numas;
+}
+
+namespace detail {} // namespace detail
 
 } // namespace numa
 

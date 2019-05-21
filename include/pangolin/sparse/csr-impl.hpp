@@ -81,19 +81,19 @@ template <typename Index> CSRView<Index> CSR<Index>::view() const {
   return view;
 }
 
-template <typename Index> void CSR<Index>::read_mostly(const int dev) {
-  rowPtr_.read_mostly(dev);
-  colInd_.read_mostly(dev);
+template <typename Index> PANGOLIN_HOST void CSR<Index>::read_mostly() {
+  rowPtr_.read_mostly();
+  colInd_.read_mostly();
 }
 
-template <typename Index> void CSR<Index>::accessed_by(const int dev) {
+template <typename Index> PANGOLIN_HOST void CSR<Index>::accessed_by(const int dev) {
   rowPtr_.accessed_by(dev);
   colInd_.accessed_by(dev);
 }
 
-template <typename Index> void CSR<Index>::prefetch_async(const int dev) {
-  rowPtr_.prefetch_async(dev);
-  colInd_.prefetch_async(dev);
+template <typename Index> PANGOLIN_HOST void CSR<Index>::prefetch_async(const int dev, cudaStream_t stream) {
+  rowPtr_.prefetch_async(dev, stream);
+  colInd_.prefetch_async(dev, stream);
 }
 
 } // namespace pangolin

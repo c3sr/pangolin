@@ -35,8 +35,9 @@ public:
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *colInd_; //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const noexcept { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_nodes() const noexcept { return num_rows(); }
 
   const Index *row_ptr() const { return rowPtr_; }                                      //!< row offset array
   const Index *col_ind() const { return colInd_; }                                      //!< column index array
@@ -63,26 +64,28 @@ public:
   uint64_t num_nodes() const;                                                   //!< number of unique row/col indices
   PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const;                      //!< number of matrix rows
 
-  /*! Build a CSR from a sequence of edges
+  /*! Build a CSR from a range of edges [first, last)
 
     Only include edges where f is true (default = all edges)
-
   */
   template <typename EdgeIter>
   static CSR<Index> from_edges(EdgeIter begin, EdgeIter end,
-                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
+                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) {
+                                 (void)e;
+                                 return true;
+                               });
 
   CSRView<Index> view() const; //!< create a CSRView for this CSR
 
-  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, dev) on all data
+  /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
-  PANGOLIN_HOST void read_mostly(const int dev);
+  PANGOLIN_HOST void read_mostly();
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
    */
   PANGOLIN_HOST void accessed_by(const int dev);
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
-  PANGOLIN_HOST void prefetch_async(const int dev);
+  PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
