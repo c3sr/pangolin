@@ -21,5 +21,6 @@ set(PANGOLIN_CU_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_merge.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_cache_block_binary.cuh
   PARENT_SCOPE
 )
