@@ -167,8 +167,19 @@ We automatically build and test the following configurations.
 
 ### GPUs with CC <= 7.2
 
-nvprof -o timeline.nvvp -f ./gc ...
-nvprof -o analysis.nvvp -f --analysis-metrics ./gc
+Non-interactive profiling is done by creating two different profiling files: a timeline file, and a metrics file.
+These are created with two separate invocations of nvprof:
+
+```
+nvprof -o timeline.nvvp -f ./<exe> ...
+nvprof -o metrics.nvvp -f --analysis-metrics ./<exe>
+```
+These files can be opened in nvvp.
+
+File >> import >> nvprof >> single process
+
+timeline data file: timeline.nvvp
+Event/Metric data files: metrics.nvvp
 
 ### GPUs with CC > 7.2
 
