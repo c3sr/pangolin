@@ -36,6 +36,11 @@ pangolin_add_test(
   SRCS test_binary_search.cpp
 )
 
+pangolin_add_gpu_test(
+  NAME test_buffer
+  SRCS test_buffer.cu
+)
+
 pangolin_add_test(
   NAME test_complete
   SRCS test_complete.cu
