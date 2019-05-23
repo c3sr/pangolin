@@ -3,11 +3,12 @@
 #include <cub/cub.cuh>
 #include <nvToolsExt.h>
 
+#include "axpy.cuh"
 #include "count.cuh"
-#include "pangolin/algorithm/axpy.cuh"
-#include "pangolin/algorithm/load_balance.cuh"
-#include "pangolin/algorithm/zero.cuh"
+#include "load_balance.cuh"
+#include "pangolin/dense/buffer.cuh"
 #include "pangolin/dense/vector.hu"
+#include "zero.cuh"
 
 /*! Determine how many tileSize tiles are needed to cover each row of adj
 
@@ -124,7 +125,8 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         const Index *dstNbrBegin = &adj.colInd_[dstStart];
         const Index *dstNbrEnd = &adj.colInd_[dstStop];
 
-        if (dstStop - dstStart > srcChunkSize) { // dst longer, we still get to reuse shmem for srcs for each dst
+        // dstStop - dstStart > srcChunkSize
+        if (false) { // dst longer, we still get to reuse shmem for srcs for each dst
           threadCount += pangolin::block_sorted_count_binary<1, BLOCK_DIM_X>(sharedSrc, srcChunkSize, dstNbrBegin,
                                                                              dstNbrEnd - dstNbrBegin);
         } else { // src longer, we are searching into shmem
@@ -198,7 +200,7 @@ public:
   ) {
 
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    const size_t dimBlock = 512;
+    const size_t dimBlock = 64;
     typedef typename CsrView::index_type Index;
 
     LOG(debug, "zero_async final count");
@@ -218,9 +220,10 @@ public:
     nvtxRangePop();
 
     // do the initial load-balancing search across rows
+
     nvtxRangePush("device_load_balance");
-    Vector<Index> indices(hostNumWorkItems);
-    Vector<Index> ranks(hostNumWorkItems);
+    Buffer<Index> indices(hostNumWorkItems);
+    Buffer<Index> ranks(hostNumWorkItems);
     // FIXME: static_cast
     device_load_balance(indices.data(), ranks.data(), hostNumWorkItems, counts.data(), static_cast<Index>(numRows),
                         stream_);
