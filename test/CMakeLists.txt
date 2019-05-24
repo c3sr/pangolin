@@ -97,6 +97,12 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_tc_anjur_iyer
+  SRCS test_tc_anjur_iyer.cu
+)
+
+
+pangolin_add_gpu_test(
   NAME test_tc_edge_binary
   SRCS test_tc_edge_binary.cu
 )

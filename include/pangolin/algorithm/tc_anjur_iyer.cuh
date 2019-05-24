@@ -80,9 +80,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     typename BlockReduce::TempStorage reduce;
   } shared;
 
-  Index *sharedSrc = shared.srcdst;
-  Index *sharedDst = &shared.srcdst[BLOCK_DIM_X];
-
   uint64_t threadCount = 0;
 
   // one thread-block per work-item
@@ -99,12 +96,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     const Index rowStop = adj.rowPtr_[row + 1];
     const Index sliceStart = rowStart + static_cast<Index>(BLOCK_DIM_X) * rank;
     const Index sliceStop = min(sliceStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
-    const Index sliceSize = sliceStop - sliceStart;
 
     // each thread has its own destination node and neighbor list
     const Index *dstNbrBegin = nullptr;
     const Index *dstNbrEnd = nullptr;
-    Index dstIdx = sliceStart + threadIdx.x if (dstIdx < sliceStop) {
+    Index dstIdx = sliceStart + threadIdx.x;
+    if (dstIdx < sliceStop) {
       Index dst = adj.colInd_[dstIdx];
       const Index dstStart = adj.rowPtr_[dst];
       const Index dstStop = adj.rowPtr_[dst + 1];
@@ -116,32 +113,41 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     // each thread is responsible for searching a different dst nbr list for common elements with the src list
     const Index *dstNbrPtr = dstNbrBegin;
     for (Index srcChunkStart = rowStart; srcChunkStart < rowStop; srcChunkStart += BLOCK_DIM_X) {
+
       Index srcChunkStop = min(srcChunkStart + static_cast<Index>(BLOCK_DIM_X), rowStop);
       Index srcChunkSize = srcChunkStop - srcChunkStart;
+
+      if (row == 1 && rank == 0 && threadIdx.x == 1) {
+        printf("working on src chunk colInd[%d-%d)\n", srcChunkStart, srcChunkStop);
+      }
 
       if (threadIdx.x < srcChunkSize) {
         // collaboratively load piece of src row into shared memory
         shared.rowBuffer[threadIdx.x] = adj.colInd_[srcChunkStart + threadIdx.x];
-        __syncthreads();
+      }
+      __syncthreads();
 
-        for (const Index srcIdx = 0; srcIdx < srcChunkSize; ++srcIdx) {
-          const Index src = shared.rowBuffer[srcIdx];
+      for (Index srcIdx = 0; srcIdx < srcChunkSize; ++srcIdx) {
+        const Index src = shared.rowBuffer[srcIdx];
 
-          // look through the remaining part of the dst nbr list for the src element
-          // FIXME: can this be replaced with pangolin::serial_sorted_search_linear? need to check that the return value
-          // is in registers not mem
-          for (; dstNbrPtr < dstNbrEnd; ++dstNbrPtr) {
-            if (*dstNbrPtr == src) {
-              threadCount += 1;
-              break;
-            }
+        // continue looking through dst nbr list for the src element
+        // FIXME: can this be replaced with pangolin::serial_sorted_search_linear? need to check that the return value
+        // is in registers not mem
+        for (; dstNbrPtr < dstNbrEnd;) {
+          if (*dstNbrPtr < src) {
+            ++dstNbrPtr;
+          } else if (*dstNbrPtr == src) {
+            threadCount += 1;
+            ++dstNbrPtr;
+            break;
+          } else { // >
+            break; // went past where search value should be in dst nbr list
           }
         }
-        __syncthreads();
       }
+      __syncthreads();
     }
   }
-
   // reduce counts within thread-block
   uint64_t aggregate = BlockReduce(shared.reduce).Sum(threadCount);
   if (0 == threadIdx.x) {
