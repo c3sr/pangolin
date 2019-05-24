@@ -16,8 +16,9 @@
  */
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X) vbcbb_tile_rows_kernel(
-    typename CsrView::index_type *counts,         //<! [out] the number of tiles each row (size = numRows)
-    typename CsrView::index_type *numWorkItems,   //<! [out] the total number of tiles across all rows.  caller should 0
+    typename CsrView::index_type *__restrict__ counts, //<! [out] the number of tiles each row (size = numRows)
+    typename CsrView::index_type
+        *__restrict__ numWorkItems,               //<! [out] the total number of tiles across all rows.  caller should 0
     const size_t tileSize,                        //<! [in] the number of non-zeros in each tile
     const CsrView adj,                            //<! [in] the adjancency matrix whos rows we will tile
     const typename CsrView::index_type rowOffset, //<! [in] the row to start tiling at
@@ -209,12 +210,15 @@ public:
     // compute the number (counts) of dimBlock-sized chunks that make up each row [rowOffset, rowOffset + numRows)
     // each workItem is dimBlock elements from a row
     nvtxRangePush("enumerate work items");
-    Vector<Index> counts(numRows);
-    Vector<Index> numWorkItems(1, 0);
+    Buffer<Index> counts(numRows);    // scratch
+    Vector<Index> numWorkItems(1, 0); // scratch
 
-    LOG(debug, "vbcbb_tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", 512, 512, 0, uintptr_t(stream_), dev_);
-    vbcbb_tile_rows_kernel<512>
-        <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
+    constexpr size_t trkBlockDim = 512;
+    size_t trkGridDim = (numRows + trkBlockDim - 1) / trkBlockDim;
+    LOG(debug, "vbcbb_tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", trkGridDim, trkBlockDim, 0,
+        uintptr_t(stream_), dev_);
+    vbcbb_tile_rows_kernel<trkBlockDim><<<trkGridDim, trkBlockDim, 0, stream_>>>(counts.data(), numWorkItems.data(),
+                                                                                 dimBlock, adj, rowOffset, numRows);
     CUDA_RUNTIME(cudaDeviceSynchronize());
     const Index hostNumWorkItems = numWorkItems[0];
     nvtxRangePop();
@@ -222,8 +226,8 @@ public:
     // do the initial load-balancing search across rows
 
     nvtxRangePush("device_load_balance");
-    Buffer<Index> indices(hostNumWorkItems);
-    Buffer<Index> ranks(hostNumWorkItems);
+    Buffer<Index> indices(hostNumWorkItems); // scratch
+    Buffer<Index> ranks(hostNumWorkItems);   // scratch
     // FIXME: static_cast
     device_load_balance(indices.data(), ranks.data(), hostNumWorkItems, counts.data(), static_cast<Index>(numRows),
                         stream_);
