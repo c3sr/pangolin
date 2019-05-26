@@ -69,7 +69,8 @@ __device__ UT getEdgeId_b(const CsrCooView mat, UT sn, const UT dn)
 		 \tparam keep			Array to check if an edge is kept or not (deleted)
 		 
 		 \return TriResulst	has 5 values: whether a # triangles >= k, first and last intersection indices.
-  */ 
+	*/ 
+	///UNUSED
 template <typename CsrCooView>
 __device__ TriResultE CountTriangleOneEdge_b(const UT i, const int k, const CsrCooView mat, bool *keep)
 {
@@ -167,6 +168,8 @@ __global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView
 }
 
 
+
+
 template <size_t BLOCK_DIM_X>
 __global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, bool *keep_s, bool *keep_d, bool *prevKept)
 {
@@ -196,34 +199,209 @@ __global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, 
 
 
 template <size_t BLOCK_DIM_X>
-__global__ void Store(const size_t edgeStart, const size_t numEdges, bool *keep_s, bool *prevKept)
+__global__ void Store(const size_t edgeStart, const size_t numEdges, bool *keep, bool *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
 		int ptx = tx + bx*BLOCK_DIM_X;
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			prevKept[i] = keep_s[i];
+			prevKept[i] = keep[i];
 		}
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ void Rewind(const size_t edgeStart, const size_t numEdges, bool *keep_l, bool *prevKept)
+__global__ void Rewind(const size_t edgeStart, const size_t numEdges, bool *keep, bool *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
 		int ptx = tx + bx*BLOCK_DIM_X;
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			keep_l[i]=prevKept[i];
+			keep[i]=prevKept[i];
 		}
+}
+
+
+template <size_t BLOCK_DIM_X, typename CsrCooView>
+__global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected, 
+	const UT k, const size_t edgeStart, const size_t numEdges,
+  const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+{
+	  // kernel call
+	typedef typename CsrCooView::index_type Index;
+	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
+	UT numberDeleted = 0;
+	UT numberAffected = 0;
+	__shared__ bool didAffectAnybody[1];
+	bool ft = firstTry; //1
+	if(0 == threadIdx.x)
+		didAffectAnybody[0] = false;
+
+	__syncthreads();
+	int startS=0, startD=0,endS=0,endD=0;
+	for(int u=0; u<uMax;u++)
+	{
+		numberDeleted = 0;
+	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
+	  {
+		  if (keep[i] && (affected[i] || ft))
+		  {
+			  affected[i] = false;
+				int edgeCount = 0;
+			
+				UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
+				UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
+
+				UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
+				UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
+			
+				bool firstHit = true;
+				while (edgeCount<k-2 && sp < send && dp < dend)
+				{
+					UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+					UT dv =  mat.colInd_[dp];
+
+					if (sv == dv)
+					{
+						if (keep[sp] && keep[dp])
+						{
+							edgeCount++;
+							if (firstHit)
+							{
+								startS = sp;
+								startD = dp;
+								firstHit = false;
+							}
+		
+							bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
+							if(!cond)
+							{
+								endS = sp+1;
+								endD = dp+1;
+							}
+							else
+							{
+								//start early
+								int y1 = reversed[sp]; 
+								int y2 = reversed[dp];
+	
+								if (!affected[sp] && keep[sp])
+								{
+									affected[sp] = true;
+									numberAffected++;
+								}
+								if (!affected[dp] && keep[dp])
+								{
+									affected[dp] = true;
+									numberAffected++;
+								}
+								if (!affected[y1] && keep[y1])
+								{
+									affected[y1] = true;
+									numberAffected++;
+								}
+								if (!affected[y2] && keep[y2])
+								{
+									affected[y2] = true;
+									numberAffected++;
+								}
+							}
+
+						}
+					}
+					int yy = sp + ((sv <= dv) ? 1:0);
+					dp = dp + ((sv >= dv) ? 1:0);
+					sp = yy;
+				}
+				
+				//////////////////////////////////////////////////////////////
+			  if (edgeCount < (k-2))
+			  {
+					UT ir = reversed[i];
+				  keep[i] = false;
+					keep[ir] = false;
+					
+				  UT sp = startS;
+				  UT dp = startD;
+
+					while (edgeCount>0 && sp < endS && dp < endD)
+					{
+						UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+						UT dv = mat.colInd_[dp];
+
+						if ((sv == dv))
+						{
+							int y1 = reversed[sp]; 
+							int y2 = reversed[dp];
+
+							if (!affected[sp] && keep[sp])
+							{
+								affected[sp] = true;
+								numberAffected++;
+							}
+							if (!affected[dp] && keep[dp])
+							{
+								affected[dp] = true;
+								numberAffected++;
+							}
+							if (!affected[y1] && keep[y1])
+							{
+								affected[y1] = true;
+								numberAffected++;
+							}
+							if (!affected[y2] && keep[y2])
+							{
+								affected[y2] = true;
+								numberAffected++;
+							}
+						}
+						int yy = sp + ((sv <= dv) ? 1:0);
+						dp = dp + ((sv >= dv) ? 1:0);
+						sp = yy;
+					}
+			  }
+		  }
+
+		  if(!keep[i])
+			  numberDeleted++;
+		}
+		ft=false;
+	}
+
+	//Instead of reduction: hope it works
+	if(numberAffected>0)
+			didAffectAnybody[0] = true;
+
+		__syncthreads();
+ 		
+	if (0 == threadIdx.x) 
+	{
+		if(didAffectAnybody[0])
+			*gnumaffected = 1;
+	}
+
+
+ 	// Block-wide reduction of threadCount
+ 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
+ 	__shared__ typename BlockReduce::TempStorage tempStorage;
+	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
+	 
+	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
+
+ 	if (0 == threadIdx.x) 
+	  {
+				atomicAdd(gnumdeleted, deletedByBlock);
+				//atomicAdd(gnumaffected, affectedByBlock);
+		}
+
 }
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
 	const UT k_l, const UT k_h, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *keep_l, bool *keep_h, bool *affected_l, UT *reversed, bool *firstTry, const int uMax)
+  const CsrCooView mat, bool *keep_l, bool *keep_h, bool *affected_l, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
 	typedef typename CsrCooView::index_type Index;
@@ -235,7 +413,7 @@ __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gn
 	UT numberDeleted_h = 0;
 	__shared__ bool didAffectAnybody[1];
 
-	bool ft = *firstTry; //1
+	bool ft = firstTry; //1
 	if(0 == threadIdx.x)
 	{
 			didAffectAnybody[0] = false;
@@ -416,7 +594,7 @@ __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gn
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
 	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool *firstTry, const int uMax)
+  const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
 	typedef typename CsrCooView::index_type Index;
@@ -424,7 +602,7 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 	UT numberDeleted = 0;
 	UT numberAffected = 0;
 	__shared__ bool didAffectAnybody[1];
-	bool ft = *firstTry; //1
+	bool ft = firstTry; //1
 	if(0 == threadIdx.x)
 		didAffectAnybody[0] = false;
 
@@ -596,35 +774,45 @@ private:
   int dev_;
   cudaStream_t stream_;
 	UT *selectedOut;
-
-
+	
 	UT *gnumdeleted;
 	UT *gnumaffected;
-	
-	//globals
-	//these two values to be combined
 	bool *assumpAffected;
-	bool *firstTry;
+
+	//Outputs:
+	//Max k of a complete ktruss kernel
 	int k;
 
+	//Percentage of deleted edges for a specific k
+	float percentage_deleted_k;
+
 public:
-  SingleGPU_Ktruss_Binary(int dev) : dev_(dev) {
+	bool *gKeep, *gPrevKeep;
+	bool *gAffected;
+	UT *gReveresed;
+
+
+  SingleGPU_Ktruss_Binary(int numEdges, int dev) : dev_(dev) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
 		CUDA_RUNTIME(cudaMallocManaged(&assumpAffected, 2*sizeof(*assumpAffected)));
-		CUDA_RUNTIME(cudaMallocManaged(&firstTry, sizeof(*firstTry)));
 
 		CUDA_RUNTIME(cudaMallocManaged(&gnumdeleted, 2*sizeof(*gnumdeleted)));
 		CUDA_RUNTIME(cudaMallocManaged(&gnumaffected, sizeof(*gnumaffected)));
 		CUDA_RUNTIME(cudaMallocManaged(&selectedOut, sizeof(*selectedOut)));
 
+		CUDA_RUNTIME(cudaMalloc(&gKeep, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMalloc(&gPrevKeep, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMalloc(&gAffected,numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMalloc(&gReveresed,numEdges*sizeof(UT)));
+
 		zero_async<2>(gnumdeleted, dev_, stream_); // zero on the device that will do the counting
 		zero_async<1>(gnumaffected, dev_, stream_); // zero on the device that will do the counting
 
-			CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+		CUDA_RUNTIME(cudaStreamSynchronize(stream_));
   }
 
-  SingleGPU_Ktruss_Binary() : SingleGPU_Ktruss_Binary(0) {}
+  SingleGPU_Ktruss_Binary() : SingleGPU_Ktruss_Binary(0,0) {}
   
 	/*! Find K-Truss of undirected graph, K traversing is done in binary-fashion
   
@@ -649,6 +837,8 @@ public:
 		int maxThPSM = deviceProp.maxThreadsPerMultiProcessor;
 		const int maxGridDim = numSM * maxThPSM/dimBlock;*/
 
+
+		bool firstTry = true;
 		bool *keep_l, *keep_h, *prevKept;
 		bool *affected_l;
 		UT *reversed, *srcKP, *destKP;
@@ -687,69 +877,68 @@ public:
 		float percDeleted_h = 0.0;
 		bool cond = kmax - kmin > 1;
 
-//////////////////////////////////////////////////////////////////////////////////////
-bool findNewBounds = false;
+		bool findNewBounds = false;
 
-if(findNewBounds)
-{
-		int k_l = kmin*0.8 + kmax*0.2;
-		int k_h = kmin*0.4 + kmax*0.6;
-
-		numDeleted_l = 0;
-		numDeleted_h = 0;
-		*firstTry = true;
-		gnumaffected[0] = 0;
-		*assumpAffected = true;
-		cudaDeviceSynchronize();
-
-		dimGridEdges =  (*selectedOut + dimBlock - 1) / dimBlock;
-		//Single Run to set new bounds
-		while(*assumpAffected)
+		if(findNewBounds)
 		{
-			*assumpAffected = false;
+				int k_l = kmin*0.8 + kmax*0.2;
+				int k_h = kmin*0.4 + kmax*0.6;
 
-			core_binary_indirect_3d<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(destKP,gnumdeleted, 
-				gnumaffected, k_l, k_h, edgeOffset, *selectedOut,
-				mat, keep_l, keep_h, affected_l, reversed, firstTry, 1); //<Tunable: 4>
-			cudaDeviceSynchronize();
-			*firstTry = false;
+				numDeleted_l = 0;
+				numDeleted_h = 0;
+				firstTry = true;
+				gnumaffected[0] = 0;
+				*assumpAffected = true;
+				cudaDeviceSynchronize();
 
-			if(gnumaffected[0] > 0)
-					*assumpAffected = true;
+				dimGridEdges =  (*selectedOut + dimBlock - 1) / dimBlock;
+				//Single Run to set new bounds
+				while(*assumpAffected)
+				{
+					*assumpAffected = false;
 
-			/*if(numDeleted_l == gnumaffected[0] && numDeleted_h==gnumdeleted[1])
-				*assumpAffected = false;
-			else *assumpAffected = true;*/
+					core_binary_indirect_3d<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(destKP,gnumdeleted, 
+						gnumaffected, k_l, k_h, edgeOffset, *selectedOut,
+						mat, keep_l, keep_h, affected_l, reversed, firstTry, 1); //<Tunable: 4>
+					cudaDeviceSynchronize();
+					firstTry = false;
 
-			numDeleted_l = gnumdeleted[0];
-			numDeleted_h = gnumdeleted[1];
-			gnumdeleted[0]=0;
-			gnumdeleted[1]=0;
-			gnumaffected[0] = 0;
-			cudaDeviceSynchronize();
+					if(gnumaffected[0] > 0)
+							*assumpAffected = true;
+
+					/*if(numDeleted_l == gnumaffected[0] && numDeleted_h==gnumdeleted[1])
+						*assumpAffected = false;
+					else *assumpAffected = true;*/
+
+					numDeleted_l = gnumdeleted[0];
+					numDeleted_h = gnumdeleted[1];
+					gnumdeleted[0]=0;
+					gnumdeleted[1]=0;
+					gnumaffected[0] = 0;
+					cudaDeviceSynchronize();
+				}
+				percDeleted_l= (numDeleted_l + numEdges - *selectedOut)*1.0/numEdges;
+				percDeleted_h= (numDeleted_h + numEdges - *selectedOut)*1.0/numEdges;
+				if(percDeleted_l==1.0f && percDeleted_h==1.0f)
+				{
+					Rewind_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, keep_h, prevKept);
+					kmax = k_l;
+
+				}
+				else if(percDeleted_h == 1.0f)
+				{
+						Store_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, keep_h, prevKept);
+						kmin=k_l;
+						kmax=k_h;
+				}
+				else
+				{
+					Store_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_h, keep_l, prevKept);
+					kmin=k_h;
+				}
 		}
-		percDeleted_l= (numDeleted_l + numEdges - *selectedOut)*1.0/numEdges;
-		percDeleted_h= (numDeleted_h + numEdges - *selectedOut)*1.0/numEdges;
-		if(percDeleted_l==1.0f && percDeleted_h==1.0f)
-		{
-			Rewind_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, keep_h, prevKept);
-			kmax = k_l;
-
-		}
-		else if(percDeleted_h == 1.0f)
-		{
-				Store_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, keep_h, prevKept);
-				kmin=k_l;
-				kmax=k_h;
-		}
-		else
-		{
-			Store_newbounds<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_h, keep_l, prevKept);
-			kmin=k_h;
-		}
-	}
-//////////////////////////////////////////////////////////////////////////////////////
-	//KTRUSS Computation
+		//////////////////////////////////////////////////////////////////////////////////////
+		//KTRUSS Computation
 		while (cond)
 		{
 			k =  kmin*minPercentage + kmax*(1-minPercentage);
@@ -762,7 +951,7 @@ if(findNewBounds)
 				minPercentage=0.5;*/
 
 			numDeleted_l = 0;
-			*firstTry = true;
+			firstTry = true;
 			gnumaffected[0] = 0;
 			*assumpAffected = true;
 			cudaDeviceSynchronize();
@@ -779,7 +968,7 @@ if(findNewBounds)
 					mat, keep_l, affected_l, reversed, firstTry, 2); //<Tunable: 4>
 
 				cudaDeviceSynchronize();
-				*firstTry = false;
+				firstTry = false;
 
 				if(gnumaffected[0] > 0)
 						*assumpAffected = true;
@@ -812,7 +1001,7 @@ if(findNewBounds)
 			/*printf("Blocks = %d, k=%d, numAffectedLoops=%d, NumDeleted=%d, Edges=%d, prog_deleted=%d, prog_deleted_h=%d prog_total=%d, percentage=%f,\n", 
 					dimGridEdges, k,
 						numAffectedLoops, (numDeleted_l + numEdges - *selectedOut),
-						 numEdges, numDeleted_l, *selectedOut, percDeleted_l);*/
+						numEdges, numDeleted_l, *selectedOut, percDeleted_l);*/
 
 			cudaDeviceSynchronize();
 			totalEdges = *selectedOut;
@@ -850,11 +1039,13 @@ if(findNewBounds)
     return count();
 	}
 
+	void sync() 
+	{	
+		CUDA_RUNTIME(cudaSetDevice(dev_));
+		CUDA_RUNTIME(cudaStreamSynchronize(stream_)); 
+	}
 
-
-  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
-
-  UT count() const { return k; }
+	UT count() const { return k; }
   int device() const { return dev_; }
 };
 

@@ -7,5 +7,6 @@ set(PANGOLIN_CU_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh  
   ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_binary.cuh
   PARENT_SCOPE
 )
