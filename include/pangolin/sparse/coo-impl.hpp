@@ -84,29 +84,27 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   // there may be edges to nodes that have 0 out-degree.
   // if so, at the end, we need to add empty rows up until that node id
   Index largestNode = 0;
+  size_t acceptedEdges = 0;
 
   for (auto ei = begin; ei != end; ++ei) {
     EdgeTy<Index> edge = *ei;
     const Index src = edge.first;
     const Index dst = edge.second;
 
-    // FIXME: should we only do this for included edges?
-    largestNode = max(largestNode, src);
-    largestNode = max(largestNode, dst);
     SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
-    // FIXME: should we only do this if the edge is included?
-    // edge has a new src and should be in a new row
-    // even if the edge is filtered out, we need to add empty rows
-    while (coo.rowPtr_.size() != size_t(src + 1)) {
-      // expecting inputs to be sorted by src, so it should be at least
-      // as big as the current largest row we have recored
-      assert(src >= coo.rowPtr_.size() && "are edges not sorted by source?");
-      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, coo.rowPtr_.size());
-      coo.rowPtr_.push_back(coo.colInd_.size());
-    }
-
     if (f(edge)) {
+      ++acceptedEdges;
+      largestNode = max(largestNode, src);
+      largestNode = max(largestNode, dst);
+      while (coo.rowPtr_.size() != size_t(src + 1)) {
+        // expecting inputs to be sorted by src, so it should be at least
+        // as big as the current largest row we have recored
+        assert(src >= coo.rowPtr_.size() && "are edges not sorted by source?");
+        SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, coo.rowPtr_.size());
+        coo.rowPtr_.push_back(coo.colInd_.size());
+      }
+
       coo.rowInd_.push_back(src);
       coo.colInd_.push_back(dst);
     } else {
@@ -114,19 +112,21 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     }
   }
 
-  // add empty nodes until we reach largestNode
-  SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", coo.rowPtr_.size(), largestNode);
-  while (coo.rowPtr_.size() <= largestNode) {
+  if (acceptedEdges > 0) {
+    // add empty nodes until we reach largestNode
+    SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", coo.rowPtr_.size(), largestNode);
+    while (coo.rowPtr_.size() <= size_t(largestNode)) {
+      coo.rowPtr_.push_back(coo.colInd_.size());
+    }
+    // the nbr list starts at coo.rowPtr_[largestNode]
+    if (coo.rowPtr_.size() != size_t(largestNode) + 1) {
+      LOG(error, "the largest observed node {} does not have a rowPtr", largestNode);
+      exit(1);
+    }
+
+    // add the final length of the non-zeros to the offset array
     coo.rowPtr_.push_back(coo.colInd_.size());
   }
-  // the nbr list starts at coo.rowPtr_[largestNode]
-  if (coo.rowPtr_.size() != size_t(largestNode) + 1) {
-    LOG(error, "the largest observed node {} does not have a rowPtr", largestNode);
-    exit(1);
-  }
-
-  // add the final length of the non-zeros to the offset array
-  coo.rowPtr_.push_back(coo.colInd_.size());
 
   if (coo.rowInd_.size() != coo.colInd_.size()) {
     LOG(error, "rowInd and colInd sizes do not match");

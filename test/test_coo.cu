@@ -68,7 +68,7 @@ TEST_CASE("COO<int>::num_nodes") {
   REQUIRE(coo.num_rows() == 6);
 }
 
-TEST_CASE("COO<int>::num_rows") {
+TEST_CASE("COO<int> 2->100 ut") {
   pangolin::init();
   std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
 
@@ -77,4 +77,17 @@ TEST_CASE("COO<int>::num_rows") {
   auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), ut);
 
   REQUIRE(coo.num_rows() == 101);
+}
+
+// this should be an empty matrix
+TEST_CASE("COO<int> 2->100 lt") {
+  pangolin::init();
+  std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
+
+  INFO("from_edgelist");
+  auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
+  auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), lt);
+
+  REQUIRE(coo.nnz() == 0);
+  REQUIRE(coo.num_rows() == 0);
 }
