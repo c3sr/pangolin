@@ -70,3 +70,21 @@ TEST_CASE("CSR<uint64_t>::view lower triangular") {
 
   SECTION("num_rows") { REQUIRE(csr.num_rows() == csr.view().num_rows()); }
 }
+
+TEST_CASE("edge 2->100") {
+  pangolin::init();
+  std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
+
+  auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
+  auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
+
+  SECTION("nnz") {
+    REQUIRE(csr.nnz() == 1);
+    REQUIRE(csr.nnz() == csr.view().nnz());
+  }
+
+  SECTION("num_rows") {
+    REQUIRE(csr.num_rows() == 101); // 0 - 100
+    REQUIRE(csr.num_rows() == csr.view().num_rows());
+  }
+}
