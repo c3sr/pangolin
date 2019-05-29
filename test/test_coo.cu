@@ -39,6 +39,7 @@ TEST_CASE("COO<int>::from_edges upper triangular") {
   auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), ut);
 
   REQUIRE(coo.nnz() == 8);
+  REQUIRE(coo.num_rows() == 5);
 }
 
 TEST_CASE("COO<int>::from_edges lower triangular") {
@@ -51,6 +52,7 @@ TEST_CASE("COO<int>::from_edges lower triangular") {
   auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
   REQUIRE(coo.nnz() == 8);
+  REQUIRE(coo.num_rows() == 5);
 }
 
 TEST_CASE("COO<int>::num_nodes") {
@@ -61,6 +63,18 @@ TEST_CASE("COO<int>::num_nodes") {
   INFO("from_edgelist");
   auto ut = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
   auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), ut);
-  
+
   REQUIRE(coo.num_nodes() == 6);
+  REQUIRE(coo.num_rows() == 6);
+}
+
+TEST_CASE("COO<int>::num_rows") {
+  pangolin::init();
+  std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
+
+  INFO("from_edgelist");
+  auto ut = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+  auto coo = COO<uint64_t>::from_edges(el.begin(), el.end(), ut);
+
+  REQUIRE(coo.num_rows() == 101);
 }
