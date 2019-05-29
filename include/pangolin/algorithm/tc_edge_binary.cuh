@@ -35,6 +35,8 @@ __global__ void kernel(uint64_t *count,                             //!< [inout]
 
     // only thread 0 will return the full count
     // search in parallel through the smaller array into the larger array
+
+    // FIXME: remove warp reduction from this function call
     if (dstLen > srcLen) {
       warpCount += pangolin::warp_sorted_count_binary<C, warpsPerBlock>(&mat.colInd_[srcStart], srcLen,
                                                                         &mat.colInd_[dstStart], dstLen);
