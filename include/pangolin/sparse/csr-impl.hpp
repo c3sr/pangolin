@@ -44,31 +44,49 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     return csr;
   }
 
+  // track the largest node seen so far.
+  // there may be edges to nodes that have 0 out-degree.
+  // if so, at the end, we need to add empty rows up until that node id
+  Index largestNode = 0;
+  size_t acceptedEdges = 0;
+
   for (auto ei = begin; ei != end; ++ei) {
     EdgeTy<Index> edge = *ei;
     const Index src = edge.first;
     const Index dst = edge.second;
     SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
-    // edge has a new src and should be in a new row
-    // even if the edge is filtered out, we need to add empty rows
-    while (csr.rowPtr_.size() != size_t(src + 1)) {
-      // expecting inputs to be sorted by src, so it should be at least
-      // as big as the current largest row we have recored
-      assert(src >= csr.rowPtr_.size() && "are edges not ordered by source?");
-      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, csr.rowPtr_.size());
-      csr.rowPtr_.push_back(csr.colInd_.size());
-    }
-
     if (f(edge)) {
+      ++acceptedEdges;
+      largestNode = max(largestNode, src);
+      largestNode = max(largestNode, dst);
+
+      // edge has a new src and should be in a new row
+      while (csr.rowPtr_.size() != size_t(src + 1)) {
+        // expecting inputs to be sorted by src, so it should be at least
+        // as big as the current largest row we have recored
+        assert(src >= csr.rowPtr_.size() && "are edges not ordered by source?");
+        SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, csr.rowPtr_.size());
+        csr.rowPtr_.push_back(csr.colInd_.size());
+      }
+
       csr.colInd_.push_back(dst);
     } else {
       continue;
     }
   }
 
-  // add the final length of the non-zeros to the offset array
-  csr.rowPtr_.push_back(csr.colInd_.size());
+  if (acceptedEdges > 0) {
+    // add empty nodes until we reach largestNode
+    SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", csr.rowPtr_.size(), largestNode);
+    while (csr.rowPtr_.size() <= size_t(largestNode)) {
+      csr.rowPtr_.push_back(csr.colInd_.size());
+    }
+
+    // add the final length of the non-zeros to the offset array
+    csr.rowPtr_.push_back(csr.colInd_.size());
+  }
+
   return csr;
 }
 
