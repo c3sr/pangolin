@@ -195,6 +195,68 @@ or
 `File` > `Open File` > `profile.nsight-cuprof-report`
 
 
+#### Interactive Timeline
+The Nvidia Nsight Eclipse Edition can generate a timeline
+
+* Open Nsight Eclise Edition
+
+On Ubuntu 18.04, there may be a conflict with the installed Java runtime (usually openjdk-11).
+
+```
+sudo apt install openjdk-8-jre
+```
+
+Then add the path to the java8 runtime to the top of `/usr/local/cuda/libnsight/nsight.ini` like so
+
+```
+-vm
+/usr/lib/jvm/java-8-openjdk-amd64/jre/bin
+```
+
+* Run >> Profile Configurations
+* Select "C/C++ Application" in the left panel
+* Press the 'New' button near the top-left to create a new profiling configuration
+* Give it a name near the top middle if you want
+* Main tab >> Put the path to the CUDA binary in "C/C++ Application"
+* Arguments tab >> put the command line arguments to the binary here
+
+#### Non-interactive Timeline
+
+Generate a timeline with nvprof
+
+`nvprof -o timeline.nvvp -f ./mybin`
+
+* Open Nsight Eclipse Edition
+* File >> Import
+  * CUDA `v` Nvprof
+  * Put the timeline file in the timeline file box
+  * Uncheck `Use fixed width segments for unified memory timeline`
+
+#### Interactive Detailed Profile
+
+* Open "NVIDIA Nsight Compute"
+* "Create New Project" >> cancel
+* "Connect" in top-left
+  * Put the path to the application in "Application Excecutable"
+  * Put the arguments in "Command Line Arguments"
+  * Enable NVTX Support = Yes
+* Launch
+* Profile >> auto-profile
+
+[profiler report source page](https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#profiler-report-source-page)
+
+Measuring Divergence:
+"predicated-on thread instructions executed" should be 32x "instructions executed" for no divergence.
+
+"predicated-on thread instructions executed": instructions executed: number of times an instruction was executed by a warp
+Number of times the source (instruction) was executed by any active, predicated-on thread. For instructions that are executed unconditionally (i.e. without predicate), this is the number of active threads in the warp, multiplied with the respective Instructions Executed value. 
+
+#### Non-interactive Detailed Profile
+
+Generate a profile using something like `/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu-cli -o ./my-binary`
+
+* Open "NVIDIA Nsight Compute"
+* File >> Open >> `<the profile file you generated>`
 
 ## Other
 
