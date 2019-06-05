@@ -1,0 +1,16 @@
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
+
+#if PANGOLIN_USE_MPI == 1
+#include <mpi.h>
+#endif
+
+#include "pangolin/init.hpp"
+
+using namespace pangolin;
+
+TEST_CASE("available") {
+  pangolin::init();
+  MPI_Init(NULL, NULL);
+  MPI_Finalize();
+}

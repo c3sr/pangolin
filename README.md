@@ -18,7 +18,7 @@ Include the pangolin headers in your code
 #include "pangolin.cuh"
 ```
 
-### Installing MPI
+### Installing MPI (optional)
 
 `sudo apt install libopenmpi-dev openmpi-bin`
 
@@ -142,11 +142,12 @@ make
 make test
 ```
 
-Most tests require a GPU.
+Most tests require a GPU (those tests have the `gpu` label).
+Some tests require MPI (those tests have the `mpi` label)
 
 ```
 ctest -LE "gpu" # run tests that do not require a GPU
-ctest -L "gpu" # run tests that require a GPU
+ctest -L "mpi" # run tests that require MPI
 ```
 
 To run individual tests, you can do something like
@@ -160,10 +161,12 @@ test/test_csr
 
 We automatically build and test the following configurations.
 
-| CI Platform | CUDA | NUMA | Build | Test |
+| CI Platform | CUDA | NUMA | MPI |  Build | Test |
 |-|-|-|-|-|
-| Azure Pipelines | 10.1 | Yes |  Yes | non-gpu |
-| Azure Pipelines | 10.1 | No | planned | planned |
+| Azure Pipelines | 10.1 | Yes | Yes | Yes | Yes |
+| Azure Pipelines | 10.1 | No  | Yes | Yes | Yes |
+| Azure Pipelines | 10.1 | Yes | No  | Yes | non-mpi |
+| Azure Pipelines | 10.1 | No  | No  | Yes | non-mpi |
 
 ## Profiling
 

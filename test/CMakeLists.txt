@@ -31,6 +31,18 @@ function(pangolin_add_gpu_test)
   set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu")
 endfunction()
 
+function(pangolin_add_mpi_gpu_test)
+  cmake_parse_arguments(
+    PARSED_ARGS # prefix of output variables
+    "" # list of names of boolean arguments
+    "NAME" # list of names of mono-valued arguments
+    "SRCS" # list of names of nuluti-valued arguments
+    ${ARGN} # arguments of the function to parse
+  )
+  pangolin_add_test(${ARGN})
+  set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu;mpi")
+endfunction()
+
 pangolin_add_test(
   NAME test_binary_search
   SRCS test_binary_search.cpp
@@ -89,6 +101,11 @@ pangolin_add_gpu_test(
 pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cpp
+)
+
+pangolin_add_mpi_gpu_test(
+  NAME test-mpi
+  SRCS test_mpi.cu
 )
 
 pangolin_add_gpu_test(
