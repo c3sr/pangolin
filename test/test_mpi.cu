@@ -11,6 +11,11 @@ using namespace pangolin;
 
 TEST_CASE("available") {
   pangolin::init();
+#if PANGOLIN_USE_MPI == 1
   MPI_Init(NULL, NULL);
   MPI_Finalize();
+#else
+  INFO("mpi not installed");
+  REQUIRE(false);
+#endif
 }
