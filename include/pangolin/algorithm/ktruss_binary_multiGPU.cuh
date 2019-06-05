@@ -40,21 +40,16 @@ __global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView
 }
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, bool *keep, bool *prevKeep, bool *affected, UT *reversed, UT *destKP)
+__global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, bool *keep, bool *prevKeep, bool *affected, UT *destKP)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
 		int ptx = tx + bx*BLOCK_DIM_X;
 		for(int i = ptx; i< numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			//node
-			UT sn = mat.rowInd_[i];
-			UT dn = mat.colInd_[i];
-
 			keep[i] = true;
 			prevKeep[i] = true;
 			affected[i] = false;
-			reversed[i] = getEdgeId_b(mat, dn, sn);
 			destKP[i] = i;
 		}
 }
@@ -81,8 +76,8 @@ __global__ void InitializeArrays_k(int edgeStart, int numEdges, const CsrCooView
 }
 
 
-template <size_t BLOCK_DIM_X>
-__global__ void InitializeArrays_SrcKP(int edgeStart, int numEdges, UT *srcKp)
+template <size_t BLOCK_DIM_X, typename CsrCooView>
+__global__ void InitializeArrays_Unified(int edgeStart, int numEdges, const CsrCooView mat, UT *srcKp, UT *reversed)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -90,7 +85,12 @@ __global__ void InitializeArrays_SrcKP(int edgeStart, int numEdges, UT *srcKp)
 		int ptx = tx + bx*BLOCK_DIM_X;
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
+
+			//node
+			UT sn = mat.rowInd_[i];
+			UT dn = mat.colInd_[i];
 			srcKp[i] = i;
+			reversed[i] = getEdgeId_b(mat, dn, sn);
 		}
 }
 
@@ -123,7 +123,7 @@ public:
 	bool *gAffected;
 	bool assumpAffected;
 
-	UT *gReveresed, *gDstKP;
+	UT *gDstKP;
 	UT *gnumdeleted;
 	UT *gnumaffected;
 	UT *hnumdeleted;
@@ -161,7 +161,6 @@ public:
 		CUDA_RUNTIME(cudaMallocManaged(&gKeep, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMallocManaged(&gPrevKeep, numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc(&gAffected,numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMalloc(&gReveresed,numEdges*sizeof(UT)));
 		CUDA_RUNTIME(cudaMalloc(&gDstKP,numEdges*sizeof(UT)));
 	}
 
@@ -176,18 +175,19 @@ public:
 		constexpr int dimBlock = 1024; //For edges and nodes
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 
-		InitializeWorkSpace<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(mat, numEdges, gKeep, gPrevKeep, gAffected, gReveresed, gDstKP);
+		InitializeWorkSpace<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(mat, numEdges, gKeep, gPrevKeep, gAffected, gDstKP);
 	}
 
 	//All GPUs collaborate to initialize this
-	void Inialize_SrcKp_async(int edgeStart, int numEdges, UT *uSrcKp)
+	template <typename CsrCoo>
+	void Inialize_Unified_async(int edgeStart, int numEdges, const CsrCoo &mat, UT *uSrcKp, UT *reversed)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
 		constexpr int dimBlock = 1024; //For edges and nodes
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 
-		InitializeArrays_SrcKP<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, uSrcKp);
+		InitializeArrays_Unified<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, mat, uSrcKp, reversed);
 	}
 
 	void rewind_async(int numEdges)
@@ -237,7 +237,7 @@ public:
 		cudaFree(gKeep);
 		cudaFree(gPrevKeep);
 		cudaFree(gAffected);
-		cudaFree(gReveresed);
+		//cudaFree(gReveresed);
 		cudaFreeHost(hnumaffected);
 		cudaFreeHost(hnumdeleted);
 	}
