@@ -44,6 +44,10 @@ option(USE_NUMA "compile with NUMA support" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
+find_package(MPI)
+
+
+
 if(USE_HUNTER)
   hunter_add_package(fmt)
 endif()
@@ -120,7 +124,7 @@ add_library(pangolin::pangolin ALIAS pangolin)
 # need to add the arch flags to the device link step as well
 # there is no way to do this through targets, so we do it
 # the old fashioned way
-# include PTX for at least dynamic paralellism, plus binaries for Pascal, Volta, and Turing as supported
+# include PTX for at least dynamic parallelism, plus binaries for Pascal, Volta, and Turing as supported
 # -arch specifies the class of virtual architecture the source must be compiled for 
 # -compute specifies the PTX (compute) and SASS (sm) embedded in the binary
 if (${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 10)
@@ -215,13 +219,29 @@ if(OPENMP_FOUND)
 endif()
 
 if (NUMA_FOUND)
-  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=1)
   target_link_libraries(pangolin INTERFACE NUMA::NUMA)
+  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=1)
+  message(STATUS "NUMA found, compiling with USE_NUMA=1")
 else()
   target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=0)
+  message(STATUS "NUMA not found, compiling with USE_NUMA=0")
 endif()
 
-
+## just using target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
+## causes device linking with -pthread, even as of 3.15.0-rc1
+## https://gitlab.kitware.com/cmake/cmake/issues/18897
+## Add MPI flags
+if(MPI_FOUND)
+  target_include_directories(pangolin SYSTEM INTERFACE ${MPI_CXX_INCLUDE_DIRS})
+  message(STATUS ${MPI_CXX_LIBRARIES})
+  target_link_libraries(pangolin INTERFACE ${MPI_CXX_LIBRARIES})
+  # target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=1)
+  message(STATUS "compiling with PANGOLIN_USE_MPI=1")
+else()
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=0)
+  message(STATUS "compiling with PANGOLIN_USE_MPI=0")
+endif()
 
 
 #include(GenerateExportHeader)

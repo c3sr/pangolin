@@ -18,6 +18,10 @@ Include the pangolin headers in your code
 #include "pangolin.cuh"
 ```
 
+### Installing MPI
+
+`sudo apt install libopenmpi-dev openmpi-bin`
+
 ### Controlling Logging
 
 ```c++

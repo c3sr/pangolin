@@ -9,6 +9,10 @@ stages:
   - job:
     strategy:
       matrix:
+        Debug_NUMA_OPENMPI:
+          CMAKE_BUILD_TYPE: 'Debug'
+          INSTALL_NUMA: True    
+          INSTALL_OPENMPI: True      
         DebugNUMA:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: True
@@ -34,9 +38,18 @@ stages:
         set -x
         apt-get update;
         apt-get install -y --no-install-suggests --no-install-recommends -y \
-        libnuma-dev; \
+        libnuma-dev;
       displayName: 'Install numa'
       condition: eq(variables['INSTALL_NUMA'], 'True')
+
+    - script: |
+        set -x
+        apt-get update;
+        apt-get install -y --no-install-suggests --no-install-recommends -y \
+        libopenmpi-dev \
+        openmpi-bin;
+      displayName: 'Install OpenMPI'
+      condition: eq(variables['INSTALL_OPENMPI'], 'True')
 
     - script: |
         set -x
