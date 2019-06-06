@@ -56,9 +56,19 @@ pangolin_add_gpu_test(
   SRCS test_csr.cu
 )
 
+pangolin_add_test(
+  NAME test_generator_hubspoke
+  SRCS test_generator_hubspoke.cu
+)
+
 pangolin_add_gpu_test(
   NAME test_load_balance
   SRCS test_load_balance.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_load_balance_gpu
+  SRCS test_load_balance_gpu.cu
 )
 
 pangolin_add_gpu_test(
@@ -99,6 +109,16 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_tc_vertex_block_binary
   SRCS test_tc_vertex_block_binary.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_vertex_blocks_binary
+  SRCS test_tc_vertex_blocks_binary.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_vertex_blocks_cache_block_binary
+  SRCS test_tc_vertex_blocks_cache_block_binary.cu
 )
 
 pangolin_add_gpu_test(

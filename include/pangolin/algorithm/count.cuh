@@ -69,8 +69,11 @@ __device__ static size_t serial_sorted_count_linear(const T *const A, //!< begin
 /*! \brief return 1 if search_val is in array between [left, right). return 0 otherwise
  */
 template <typename T>
-__device__ static uint8_t serial_sorted_count_binary(const T *const array, size_t left, size_t right,
-                                                     const T search_val) {
+__device__ static uint8_t serial_sorted_count_binary(const T *const array, //<! [in] array to search through
+                                                     size_t left,          //<! [in] lower bound of search
+                                                     size_t right,         //<! [in] upper bound of search
+                                                     const T search_val    //<! [in] value to search for
+) {
   while (left < right) {
     size_t mid = (left + right) / 2;
     T val = array[mid];
@@ -247,18 +250,24 @@ __device__ uint64_t block_sorted_count_binary(const T *const A, //!< [in] array 
   // cover entirety of A with block
   for (size_t i = threadIdx.x * C; i < aSz; i += BLOCK_DIM_X * C) {
 
-    const T *aChunkBegin = &A[i];
-    const T *aChunkEnd = &A[i + C];
-    if (aChunkEnd > &A[aSz]) {
-      aChunkEnd = &A[aSz];
+    if (1 == C) {
+      // one element of A per thread, just search for A into B
+      const T searchVal = A[i];
+      threadCount += serial_sorted_count_binary(B, 0, bSz, searchVal);
+    } else {
+      const T *aChunkBegin = &A[i];
+      const T *aChunkEnd = &A[i + C];
+      if (aChunkEnd > &A[aSz]) {
+        aChunkEnd = &A[aSz];
+      }
+
+      // find the lower bound of the beginning of the A-chunk in B
+      ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *aChunkBegin);
+      T lowerBound = uu.y;
+
+      // Search for the A chunk in B, starting at the lower bound
+      threadCount += pangolin::serial_sorted_count_linear(aChunkBegin, aChunkEnd, &B[lowerBound], &B[bSz]);
     }
-
-    // find the lower bound of the beginning of the A-chunk in B
-    ulonglong2 uu = pangolin::serial_sorted_search_binary(B, 0, bSz, *aChunkBegin);
-    T lowerBound = uu.y;
-
-    // Search for the A chunk in B, starting at the lower bound
-    threadCount += pangolin::serial_sorted_count_linear(aChunkBegin, aChunkEnd, &B[lowerBound], &B[bSz]);
   }
 
   return threadCount;

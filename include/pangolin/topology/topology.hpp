@@ -166,7 +166,25 @@ struct Topology {
   std::map<int, CPU_t> cpus_;              //<! CPUs by OS id
   std::map<int, GPU_t> cudaGpus_;          //<! GPUs by CUDA device ID
   std::map<unsigned int, GPU_t> nvmlGpus_; //<! gpus by nvml index
-};
+
+  size_t pageSize_; //<! the page size on the system
+
+  /*! return the numa node that the page of ptr is allocated in.
+  If NUMA is not supported or otherwise it cannot be determined, return nullptr
+  */
+  NUMA_t page_numa(void *ptr) {
+
+    assert(pageSize_);
+
+    if (numa::available()) {
+      return numas_[numa::node_of_addr(ptr, pageSize_)];
+    } else {
+      return NUMA_t(nullptr);
+    }
+  }
+
+  Topology() : pageSize_(0) {}
+}; // namespace topology
 
 /*! Lazily build and return the system Topology
  */
@@ -178,19 +196,18 @@ Topology &topology() {
   static Topology topology;
 
   if (!init) {
+
+    topology.pageSize_ = sysconf(_SC_PAGESIZE);
+
     // if NUMA is available and installed, add NUMA nodes
-#if USE_NUMA == 1
-    if (-1 != numa_available()) {
-      for (int numaId = 0; numaId < numa_num_possible_nodes(); ++numaId) {
-        if (numa_bitmask_isbitset(numa_all_nodes_ptr, numaId)) {
-          auto numa = std::make_shared<NUMA>(numaId);
-          topology.numas_.insert(std::make_pair(numaId, numa));
-        }
+    if (numa::available()) {
+      for (auto numaId : numa::all_nodes()) {
+        auto numa = std::make_shared<NUMA>(numaId);
+        topology.numas_.insert(std::make_pair(numaId, numa));
       }
     } else {
       LOG(debug, "NUMA is not available, not adding NUMA nodes to topology");
     }
-#endif
 
     const int numCPUs = std::thread::hardware_concurrency();
     // add cpus to topology
@@ -200,15 +217,14 @@ Topology &topology() {
       topology.cpus_.insert(std::make_pair(cpuId, cpu));
 
       // if NUMA is available, associate each cpu with its numa region
-#if USE_NUMA == 1
-      if (-1 != numa_available()) {
-        int numaId = numa_node_of_cpu(cpuId);
+
+      if (numa::available()) {
+        int numaId = numa::node_of_cpu(cpuId);
         SPDLOG_TRACE(logger::console(), "discover numa {} for cpu {}", numaId, cpuId);
         auto numa = topology.numas_[numaId];
         cpu->numa_ = numa;
         numa->cpus_.insert(cpu);
       }
-#endif
     }
 
     // add gpus to topology
@@ -235,11 +251,14 @@ Topology &topology() {
         auto gpu = topology.nvmlGpus_[nvmlIdx];
 
         SPDLOG_TRACE(logger::console(), "discover gpu {} has affinity with cpu {}", gpu->cudaId_, cpuId);
-        // the gpu is associated with all numa regions of the cpus it is associated with
-        gpu->numas_.insert(cpu->numa_);
 
-        // add the gpu to the NUMA region
-        cpu->numa_->gpus_.insert(gpu);
+        if (cpu->numa_) {
+          // the gpu is associated with all numa regions of the cpus it is associated with
+          gpu->numas_.insert(cpu->numa_);
+
+          // add the gpu to the NUMA region
+          cpu->numa_->gpus_.insert(gpu);
+        }
 
         // add the cpu to the gpu
         cpu->gpus_.insert(gpu);
@@ -248,10 +267,11 @@ Topology &topology() {
         gpu->cpus_.insert(cpu);
       }
     }
-  } // if (!init)
+  }
 
   return topology;
 }
 
 } // namespace topology
+
 } // namespace pangolin

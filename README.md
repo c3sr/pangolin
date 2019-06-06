@@ -4,8 +4,8 @@
 
 | Branch | Status |
 |-|-|
-| master | [![Build Status](https://dev.azure.com/trekinator/trekinator/_apis/build/status/c3sr.pangolin?branchName=master)](https://dev.azure.com/trekinator/trekinator/_build/latest?definitionId=1&branchName=master)|
-| develop | [![Build Status](https://dev.azure.com/trekinator/trekinator/_apis/build/status/c3sr.pangolin?branchName=develop)](https://dev.azure.com/trekinator/trekinator/_build/latest?definitionId=1&branchName=develop) |
+| master  | [![Build Status](https://dev.azure.com/c3srdev/github/_apis/build/status/c3sr.pangolin?branchName=master)](https://dev.azure.com/c3srdev/github/_build/latest?definitionId=1&branchName=master)|
+| develop | [![Build Status](https://dev.azure.com/c3srdev/github/_apis/build/status/c3sr.pangolin?branchName=develop)](https://dev.azure.com/c3srdev/github/_build/latest?definitionId=1&branchName=develop) |
 
 A header-only C++/CUDA library for GPU graph operations
 
@@ -167,8 +167,19 @@ We automatically build and test the following configurations.
 
 ### GPUs with CC <= 7.2
 
-nvprof -o timeline.nvvp -f ./gc ...
-nvprof -o analysis.nvvp -f --analysis-metrics ./gc
+Non-interactive profiling is done by creating two different profiling files: a timeline file, and a metrics file.
+These are created with two separate invocations of nvprof:
+
+```
+nvprof -o timeline.nvvp -f ./<exe> ...
+nvprof -o metrics.nvvp -f --analysis-metrics ./<exe>
+```
+These files can be opened in nvvp.
+
+File >> import >> nvprof >> single process
+
+timeline data file: timeline.nvvp
+Event/Metric data files: metrics.nvvp
 
 ### GPUs with CC > 7.2
 

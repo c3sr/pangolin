@@ -1,12 +1,30 @@
 set(PANGOLIN_CU_HEADERS
   ${PANGOLIN_CU_HEADERS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/binary_search.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/count.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/cross_decomp.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/elementwise.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/fill.cuh
-  ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
-  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh  
-  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.cuh
-  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial._inc_loop.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_serial.Incremental.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/load_balance.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/merge_path.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh  
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_linear.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_merge.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
+<<<<<<< HEAD
+  ${CMAKE_CURRENT_SOURCE_DIR}/ktruss_binary.cuh
+=======
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_cache_block_binary.cuh
+>>>>>>> origin/master
   PARENT_SCOPE
 )

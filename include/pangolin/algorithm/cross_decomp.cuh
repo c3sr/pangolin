@@ -2,6 +2,8 @@
 #include <map>
 #include <random>
 
+#include "pangolin/dense/vector.hu"
+
 namespace pangolin {
 
 template <uint8_t PARTITION>
