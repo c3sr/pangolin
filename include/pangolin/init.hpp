@@ -11,7 +11,7 @@ void init() {
     return;
 
   // create a logger and implicitly register it
-  spdlog::stdout_color_mt("console");
+  spdlog::stderr_color_st("console");
 
   // don't init again if init() called twice
   init_ = true;
