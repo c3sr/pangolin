@@ -8,7 +8,7 @@
 #include "search.cuh"
 
 template <size_t BLOCK_DIM_X, size_t C, typename CsrCooView>
-__launch_bounds__(BLOCK_DIM_X) __global__ void __launch_bounds__(BLOCK_DIM_X)
+__global__ void __launch_bounds__(BLOCK_DIM_X)
     kernel(uint64_t *__restrict__ count,                //!< [inout] the count, caller should zero
            const CsrCooView mat, const size_t numEdges, //!< the number of edges this kernel will count
            const size_t edgeStart                       //!< the edge this kernel will start counting at

@@ -8,7 +8,7 @@
 #include "search.cuh"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void kernel(uint64_t *count, //!< [inout] the count, caller should zero
+__global__ void __launch_bounds__(BLOCK_DIM_X) kernel(uint64_t *count, //!< [inout] the count, caller should zero
                        const CsrCooView mat, const size_t numEdges, const size_t edgeStart) {
 
   typedef typename CsrCooView::index_type Index;
@@ -88,7 +88,7 @@ public:
     CUDA_RUNTIME(cudaFree(count_));
   }
 
-  template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges) {
+  template <typename CsrCoo> void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges, const size_t dimBlock = 256) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
@@ -100,11 +100,27 @@ public:
     // LOG(debug, "zero {}", uintptr_t(count_));
     // *count_ = 0;
     // LOG(debug, "did zero");
-    constexpr int dimBlock = 256;
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
-    LOG(debug, "device = {}, blocks = {}, threads = {}, stream = {}", dev_, dimGrid, dimBlock, uintptr_t(stream_));
-    kernel<dimBlock><<<dimGrid, dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);
+    LOG(debug, "device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, uintptr_t(stream_));
+
+#define CASE(const_dimBlock)    \
+  case const_dimBlock:                                                                           \
+  kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset); \
+  break;
+
+    switch(dimBlock) {
+          CASE(32)
+    CASE(64)
+    CASE(128)
+    CASE(256)
+    CASE(512)
+      default:
+        LOG(critical, "unsupported block dimension {}", dimBlock);
+        exit(1);
+    }
+
+    #undef CASE
     CUDA_RUNTIME(cudaGetLastError());
   }
 

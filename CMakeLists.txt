@@ -70,12 +70,15 @@ find_package(NUMA)
 endif(USE_NUMA)
 
 set(PANGOLIN_CPP_HEADERS
+    include/pangolin/bounded_buffer.hpp
     include/pangolin/config.hpp
     include/pangolin/cusparse.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
     include/pangolin/edge.hpp
     include/pangolin/edge_list.hpp
+    include/pangolin/init.hpp
     include/pangolin/logger.hpp
+    include/pangolin/numa.hpp
     include/pangolin/pangolin.hpp
     include/pangolin/par_graph.hpp
     include/pangolin/types.hpp
@@ -95,21 +98,10 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/reader/bel_reader.hpp
     include/pangolin/reader/edge_list_reader.hpp
     include/pangolin/reader/gc_tsv_reader.hpp
-    include/pangolin/triangle_counter/cudamemcpy_tc.hpp
-    include/pangolin/triangle_counter/cpu_triangle_counter.hpp
-    include/pangolin/triangle_counter/cuda_triangle_counter.hpp
-    include/pangolin/triangle_counter/cusparse_tc.hpp
-    include/pangolin/triangle_counter/edge_tc.hpp
-    include/pangolin/triangle_counter/hu_tc.hpp
-    include/pangolin/triangle_counter/impact_2018_tc.hpp
-    include/pangolin/triangle_counter/impact_2019_tc.hpp
-    include/pangolin/triangle_counter/nvgraph_triangle_counter.hpp
-    include/pangolin/triangle_counter/spmm_tc.hpp
-    include/pangolin/triangle_counter/triangle_counter.hpp
-    include/pangolin/triangle_counter/vertex_tc.hpp
 )
 
 set(PANGOLIN_CU_HEADERS
+  include/pangolin/atomic_add.cuh
   include/pangolin/sparse/cusparse_csr.hu
   include/pangolin/dense/vector.hu
   include/pangolin/dense/vector-impl.hu
