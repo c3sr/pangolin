@@ -176,11 +176,9 @@ __global__ void NodalUpdateKernel(UT *k, int nodeStart, int numNodes, const CsrC
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core(uint64_t *globalCounter, UT *gnumdeleted, UT *gnumaffected, bool *globalMtd,bool *assumpAffected,
-	UT *kk, const size_t edgeStart, const size_t numEdges,
+	UT k, const size_t edgeStart, const size_t numEdges,
   const CsrCooView mat, bool *deleted, bool *affected, UT *reversed, bool *firstTry)
 {
-
-	const UT k = *kk;
 	  // kernel call
 	  typedef typename CsrCooView::index_type Index;
 	  size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
@@ -366,9 +364,7 @@ private:
 	bool *globalMtd;
 	bool *assumpAffected;
 	bool *firstTry;
-
-	UT *k;
-
+	UT k;
 
 public:
   SingleGPU_Ktruss(int dev) : dev_(dev), count_(nullptr) {
@@ -383,8 +379,6 @@ public:
 	CUDA_RUNTIME(cudaMallocManaged(&gnumaffected, sizeof(*gnumaffected)));
 	CUDA_RUNTIME(cudaMallocManaged(&globalCounter, sizeof(*globalCounter)));
 
-	CUDA_RUNTIME(cudaMallocManaged(&k, sizeof(*k)));
-
 	//zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 	zero_async<1>(gnumdeleted, dev_, stream_); // zero on the device that will do the counting
 	zero_async<1>(gnumaffected, dev_, stream_); // zero on the device that will do the counting
@@ -393,31 +387,6 @@ public:
   }
 
   SingleGPU_Ktruss() : SingleGPU_Ktruss(0) {}
-  
- 
-  
-  template <typename CsrCoo> void GetMaxK_Incremental(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  
-  template <typename CsrCoo> void Store(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  template <typename CsrCoo> void Rewind(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  template <typename CsrCoo> void GetMaxK_Binary(const CsrCoo &mat, bool *nodeEliminated)
-  {
-  	
-  }
-  
-  
   
 
 	template <typename CsrCoo> 
@@ -442,21 +411,20 @@ public:
 		//Initialize Private Data
 		InitializeArrays<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, mat, deleted, affected, reversed);
 		cudaDeviceSynchronize();
-		*k=3;
+	
+		k=3;
 		while(true)
 		{
 			UT numDeleted = 0;
 			*firstTry = true;
 			*globalCounter=0;
-			//NodalUpdateKernel
-			//NodalUpdateKernel<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(k, nodeOffset, numNodes, mat, nodeEliminated);
 			cudaDeviceSynchronize();
 
 			while(*assumpAffected)
 			{
 				*assumpAffected = false;
 
-				core<dimBlock><<<dimGridNodes,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
+				core<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(globalCounter,gnumdeleted, gnumaffected,globalMtd,assumpAffected,k, edgeOffset, numEdges,
 					mat, deleted, affected, reversed, firstTry);
 				cudaDeviceSynchronize();
 
@@ -469,7 +437,8 @@ public:
 
 				//printf("At k = %d, Inside Affected, num deleted=%d, num affected = %d\n", *k, numDeleted, *gnumaffected);
 
-				zero_async<1>(gnumdeleted, dev_, stream_);
+				*gnumdeleted=0;
+				//zero_async<1>(gnumdeleted, dev_, stream_);
 				//zero_async<1>(gnumaffected, dev_, stream_);
 				cudaDeviceSynchronize();
 			}
@@ -480,7 +449,7 @@ public:
 			}
 			else
 			{
-				(*k)++;
+				k++;
 				//zero_async<1>(gnumdeleted, dev_, stream_);
 				*assumpAffected = true;
 			}
@@ -503,7 +472,7 @@ public:
 
   void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
-  UT count() const { return *k-1; }
+  UT count() const { return k-1; }
   int device() const { return dev_; }
 };
 
