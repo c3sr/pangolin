@@ -12,6 +12,7 @@ It should otherwise be consistent with libnuma.
 */
 
 #include <cassert>
+#include <set>
 
 #if USE_NUMA == 1
 #include <numa.h>
