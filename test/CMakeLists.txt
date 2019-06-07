@@ -49,6 +49,11 @@ pangolin_add_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_broadcast
+  SRCS test_broadcast.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_buffer
   SRCS test_buffer.cu
 )
@@ -147,6 +152,11 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_tc_vertex_blocks_cache_block_binary
   SRCS test_tc_vertex_blocks_cache_block_binary.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_edge_warp_dyn
+  SRCS test_tc_edge_warp_dyn.cu
 )
 
 pangolin_add_gpu_test(
