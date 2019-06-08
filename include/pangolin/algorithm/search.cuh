@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 #include "bounds.hpp"
 #include "pangolin/macro.h"
 #include "pangolin/namespace.hpp"

@@ -51,7 +51,7 @@ template <typename T> void zero_async(T *ptr, const size_t N, const int dev, cud
   CUDA_RUNTIME(cudaSetDevice(dev));
   constexpr size_t dimGrid = 150;
   constexpr size_t dimBlock = 512;
-  LOG(debug, "launch zero: device = {}, blocks = {}, threads = {}", dev, dimGrid, dimBlock);
+  LOG(debug, "device = {}, zero<<<{}, {}, 0, {}>>>", dev, dimGrid, dimBlock, uintptr_t(stream));
   zero<dimGrid, dimBlock><<<dimGrid, dimBlock, 0, stream>>>(ptr, N);
   CUDA_RUNTIME(cudaGetLastError());
 }

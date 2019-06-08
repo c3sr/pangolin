@@ -61,16 +61,74 @@ private:
   cudaStream_t stream_;
   uint64_t *count_;
 
+  // events for measuring time
+  float kernelMillis_;
+  cudaEvent_t kernelStart_;
+  cudaEvent_t kernelStop_;
+  float countMillis_;
+  cudaEvent_t countStart_;
+  cudaEvent_t countStop_;
+
 public:
-  BinaryTC(int dev) : dev_(dev), count_(nullptr) {
+  /*! Device constructor
+
+      Create a counter on device dev
+  */
+  BinaryTC(int dev) : dev_(dev), count_(nullptr), kernelMillis_(0), countMillis_(0) {
+    SPDLOG_TRACE(logger::console(), "device ctor");
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
+
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
+    CUDA_RUNTIME(cudaEventCreate(&countStart_));
+    CUDA_RUNTIME(cudaEventCreate(&countStop_));
+
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
   }
 
-  BinaryTC() : BinaryTC(0) {}
+  /*! default ctor - counter on device 0
+   */
+  BinaryTC() : BinaryTC(0) { SPDLOG_TRACE(logger::console(), "default ctor"); }
+
+  /*! copy ctor - create a new counter on the same device
+
+  All fields are reset
+   */
+  BinaryTC(const BinaryTC &other) : BinaryTC(other.dev_) { SPDLOG_TRACE(logger::console(), "copy ctor"); }
+
+  ~BinaryTC() {
+    SPDLOG_TRACE(logger::console(), "dtor");
+    CUDA_RUNTIME(cudaEventDestroy(kernelStart_));
+    CUDA_RUNTIME(cudaEventDestroy(kernelStop_));
+    CUDA_RUNTIME(cudaEventDestroy(countStart_));
+    CUDA_RUNTIME(cudaEventDestroy(countStop_));
+    CUDA_RUNTIME(cudaStreamDestroy(stream_));
+  }
+
+  BinaryTC &operator=(BinaryTC &&other) noexcept {
+    SPDLOG_TRACE(logger::console(), "move assignment");
+
+    /* We just swap other and this, which has the following benefits:
+       Don't call delete on other (maybe faster)
+       Opportunity for data to be reused since it was not deleted
+       No exceptions thrown.
+    */
+
+    other.swap(*this);
+    return *this;
+  }
+
+  void swap(BinaryTC &other) noexcept {
+    std::swap(other.dev_, dev_);
+    std::swap(other.kernelStart_, kernelStart_);
+    std::swap(other.kernelStop_, kernelStop_);
+    std::swap(other.countStart_, countStart_);
+    std::swap(other.countStop_, countStop_);
+    std::swap(other.stream_, stream_);
+  }
 
   /* Async count triangle on device. May return before count is complete.
 
@@ -82,6 +140,7 @@ public:
   void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0, const size_t dimBlock = 256,
                    const size_t c = 1) {
 
+    CUDA_RUNTIME(cudaEventRecord(countStart_));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // create one warp per edge
@@ -93,12 +152,16 @@ public:
 
 #define IF_CASE(const_dimBlock, const_c)                                                                               \
   if (dimBlock == const_dimBlock && c == const_c) {                                                                    \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_));                                                                       \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_));                                                                        \
   }
 
 #define ELSE_IF_CASE(const_dimBlock, const_c)                                                                          \
   else if (dimBlock == const_dimBlock && c == const_c) {                                                               \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_));                                                                       \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_));                                                                        \
   }
 
     IF_CASE(32, 1)
@@ -122,6 +185,7 @@ public:
 #undef ELSE_IF_CASE
 
     CUDA_RUNTIME(cudaGetLastError());
+    CUDA_RUNTIME(cudaEventRecord(countStop_));
   }
 
   template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
@@ -130,10 +194,23 @@ public:
     return count();
   }
 
-  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
+  void sync() {
+    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+    kernelMillis_ = 0;
+    CUDA_RUNTIME(cudaEventElapsedTime(&kernelMillis_, kernelStart_, kernelStop_));
+    countMillis_ = 0;
+    CUDA_RUNTIME(cudaEventElapsedTime(&countMillis_, countStart_, countStop_));
+  }
 
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }
+
+  /*! return the number of ms the GPU spent counting
+   */
+  float get_count_ms() { return countMillis_; }
+  /*! return the number of ms the GPU spent in the triangle counting kernel
+   */
+  float get_kernel_ms() { return kernelMillis_; }
 };
 
 } // namespace pangolin
