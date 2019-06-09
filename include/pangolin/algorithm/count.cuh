@@ -172,18 +172,20 @@ __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, cons
 
     \tparam       C               coarsening factor: elements of A per thread
     \tparam       WARPS_PER_BLOCK the number of warps in the calling threadblock
+    \tparam       reduce          Reduce the result into lane 0
     \return                       The count found by the warp (in lane 0 only)
 
     The calling threadblock should be made up of a number of complete warps.
     Each thread searches for C elements of A in B.
     First, a binary search is used to find the lower bound of the chunk in B.
     Then, a sequential count of matching elements is used.
+    Lane 0 in the warp returns the complete value
 */
-template <size_t C, size_t WARPS_PER_BLOCK, typename T>
-__device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
-                                             const size_t aSz, //!< [in] the number of elements in A
-                                             const T *const B, //!< [in] array B
-                                             const size_t bSz  //!< [in] the number of elements in B
+template <size_t C, size_t WARPS_PER_BLOCK, typename T, bool reduce = true>
+__device__ __forceinline__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
+                                                             const size_t aSz, //!< [in] the number of elements in A
+                                                             const T *const B, //!< [in] array B
+                                                             const size_t bSz  //!< [in] the number of elements in B
 ) {
 
   static_assert(C != 0, "expect at least 1 element per thread");
@@ -219,11 +221,15 @@ __device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
     }
   }
 
-  // give lane 0 the total count discovered by the warp
-  typedef cub::WarpReduce<uint64_t> WarpReduce;
-  __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
-  uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
-  return aggregate;
+  if (reduce) {
+    // give lane 0 the total count discovered by the warp
+    typedef cub::WarpReduce<uint64_t> WarpReduce;
+    __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
+    uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
+    return aggregate;
+  } else {
+    return threadCount;
+  }
 }
 
 /*! \brief threadblock cooperative count of elements in A that appear in B
