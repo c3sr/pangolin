@@ -61,3 +61,4 @@ build
 data/tsv/*.tsv
 data/tsv/*.gz
 .vscode
+include/pangolin/configure.hpp

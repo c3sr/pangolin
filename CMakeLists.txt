@@ -252,19 +252,28 @@ set(targets_export_name "${PROJECT_NAME}Targets")
 set(namespace "${PROJECT_NAME}::")
 
 ##  Handle the header file with pangolin version info
+# message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/pangolin/configure.hpp")
+# configure_file (
+#     "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
+#     "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+# )
 message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/pangolin/configure.hpp")
 configure_file (
-    "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+    "${PROJECT_SOURCE_DIR}/include/pangolin/configure.hpp.in"
+    "${PROJECT_SOURCE_DIR}/include/pangolin/configure.hpp"
 )
-# install the pangolin version file
-install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
-  DESTINATION include/pangolin
-)
+# # install the pangolin version file
+# install(
+#   FILES "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+#   DESTINATION include/pangolin
+# )
 # include the binary dir during build or the install dir during install
+# target_include_directories(pangolin INTERFACE
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pangolin> # fake that "configure.hpp" is in same dir as pangolin.hpp
+#   $<INSTALL_INTERFACE:include>
+# )
 target_include_directories(pangolin INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pangolin> # fake that "configure.hpp" is in same dir as pangolin.hpp
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> 
   $<INSTALL_INTERFACE:include>
 )
 
