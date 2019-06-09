@@ -38,7 +38,6 @@ template <typename T> PANGOLIN_HOST Buffer<T>::Buffer(const Buffer &other) : cap
   SPDLOG_TRACE(logger::console(), "copy ctor");
   resize(other.capacity_);
   std::memcpy(data_, other.data_, other.capacity_ * sizeof(value_type));
-  capacity_ = other.capacity_;
 }
 
 /*! move constructor
