@@ -16,4 +16,8 @@ template <typename T> void device_fill(T *d_a, const size_t n, const T val) {
   kernel_fill<<<dimGridX, dimBlockX>>>(d_a, n, val);
 }
 
+template <typename T> void device_fill(T *begin,  T *end, const T val) {
+  device_fill(begin, end - begin, val);
+}
+
 } // namespace pangolin
