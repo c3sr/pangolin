@@ -154,10 +154,10 @@ pangolin_add_gpu_test(
   SRCS test_tc_vertex_blocks_cache_block_binary.cu
 )
 
-# pangolin_add_gpu_test(
-#   NAME test_tc_edge_warp_dyn
-#   SRCS test_tc_edge_warp_dyn.cu
-# )
+pangolin_add_gpu_test(
+  NAME test_tc_edge_warp_dyn
+  SRCS test_tc_edge_warp_dyn.cu
+)
 
 pangolin_add_gpu_test(
   NAME test_topology
