@@ -78,6 +78,11 @@ pangolin_add_gpu_test(
   SRCS test_csr.cu
 )
 
+pangolin_add_gpu_test(
+  NAME test_device_buffer
+  SRCS test_device_buffer.cu
+)
+
 pangolin_add_test(
   NAME test_generator_hubspoke
   SRCS test_generator_hubspoke.cu
