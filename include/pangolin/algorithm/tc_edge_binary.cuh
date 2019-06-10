@@ -140,7 +140,7 @@ public:
   void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0, const size_t dimBlock = 256,
                    const size_t c = 1) {
 
-    CUDA_RUNTIME(cudaEventRecord(countStart_));
+    CUDA_RUNTIME(cudaEventRecord(countStart_, stream_));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // create one warp per edge
@@ -152,16 +152,16 @@ public:
 
 #define IF_CASE(const_dimBlock, const_c)                                                                               \
   if (dimBlock == const_dimBlock && c == const_c) {                                                                    \
-    CUDA_RUNTIME(cudaEventRecord(kernelStart_));                                                                       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                                       \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
-    CUDA_RUNTIME(cudaEventRecord(kernelStop_));                                                                        \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                                        \
   }
 
 #define ELSE_IF_CASE(const_dimBlock, const_c)                                                                          \
   else if (dimBlock == const_dimBlock && c == const_c) {                                                               \
-    CUDA_RUNTIME(cudaEventRecord(kernelStart_));                                                                       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                                       \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
-    CUDA_RUNTIME(cudaEventRecord(kernelStop_));                                                                        \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                                        \
   }
 
     IF_CASE(32, 1)
@@ -183,9 +183,8 @@ public:
 
 #undef IF_CASE
 #undef ELSE_IF_CASE
-
-    CUDA_RUNTIME(cudaGetLastError());
-    CUDA_RUNTIME(cudaEventRecord(countStop_));
+    CUDA_RUNTIME(cudaEventRecord(countStop_, stream_));
+    
   }
 
   template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
