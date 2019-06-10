@@ -20,7 +20,8 @@
 
 namespace pangolin {
 
-template <typename T> PANGOLIN_HOST void DeviceBuffer<T>::set_device(void) { CUDA_RUNTIME(cudaSetDevice(device_)); }
+template <typename T> PANGOLIN_HOST void DeviceBuffer<T>::set_device(void) { 
+  CUDA_RUNTIME(cudaSetDevice(device_)); }
 
 /*! empty container constructor (default constructor)
 
@@ -57,7 +58,7 @@ PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(const DeviceBuffer &other)
     x is left in an unspecified by valid state
 */
 template <typename T>
-PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(DeviceBuffer &&other) : capacity_(other.capacity_), data_(other.data_) {
+PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(DeviceBuffer &&other) : capacity_(other.capacity_), data_(other.data_), device_(other.device_) {
   SPDLOG_TRACE(logger::console(), "move ctor");
   other.capacity_ = 0;
   other.data_ = nullptr;

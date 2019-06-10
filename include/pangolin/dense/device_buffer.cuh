@@ -29,7 +29,6 @@ private:
 
 public:
   PANGOLIN_HOST DeviceBuffer();
-  PANGOLIN_HOST explicit DeviceBuffer(int device);
   PANGOLIN_HOST explicit DeviceBuffer(size_t n, int device);
   PANGOLIN_HOST DeviceBuffer(DeviceBuffer &&other);
   PANGOLIN_HOST DeviceBuffer(const DeviceBuffer &other);
