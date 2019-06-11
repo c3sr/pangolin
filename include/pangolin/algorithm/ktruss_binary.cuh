@@ -8,16 +8,7 @@
 #include "search.cuh"
 
 
-struct TriResultE
-{
-	UT startS = 0;
-	UT startD = 0;
-	UT endS = 0;
-	UT endD = 0;
-	bool largerThanK = false;
-	bool largerThan0 = false;
-};
-
+#define  BCTYPE char
 
 	/*! Binary search
   
@@ -60,86 +51,9 @@ __device__ UT getEdgeId_b(const CsrCooView mat, UT sn, const UT dn)
 	return index;
 }
 
-
-	/*! Counts Triangles per edge
-  
-     \tparam i  			Edge index
-     \tparam k	 			Number of triangles to search for
-		 \tparam mat  		Graph view represented in COO+CSR format
-		 \tparam keep			Array to check if an edge is kept or not (deleted)
-		 
-		 \return TriResulst	has 5 values: whether a # triangles >= k, first and last intersection indices.
-	*/ 
-	///UNUSED
-template <typename CsrCooView>
-__device__ TriResultE CountTriangleOneEdge_b(const UT i, const int k, const CsrCooView mat, bool *keep)
-{
-	TriResultE t; //whether we found k triangles?
-
-	//node
-	UT sn = mat.rowInd_[i];
-	UT dn = mat.colInd_[i];
-	UT edgeCount = 0;
-
-	//Search for intersection
-	//pointer
-	UT sp = mat.rowPtr_[sn];
-	UT dp = mat.rowPtr_[dn];
-
-	UT send = mat.rowPtr_[sn + 1];
-	UT dend = mat.rowPtr_[dn + 1];
-	//length
-	//UT sl = send - sp; /*source: end node   - start node*/
-	//UT dl = dend - dp; /*dest: end node   - start node*/
-
-	bool firstHit = true;
-	//if(sl>k && dl>k)
-	{
-		while (sp < send && dp < dend && edgeCount<k)
-		{
-			if (mat.colInd_[sp] == mat.colInd_[dp])
-			{
-				if (keep[sp] && keep[dp])
-				{
-					edgeCount++;
-					if (firstHit)
-					{
-						t.startS = sp;
-						t.startD = dp;
-						firstHit = false;
-					}
-
-					t.endS = sp+1;
-					t.endD = dp+1;
-				}
-				//++sp;
-				//++dp;
-			}
-			/*else if (mat.colInd_[sp] < mat.colInd_[dp]) {
-				++sp;
-			}
-			else {
-				++dp;
-			}*/
-
-
-			int k = sp + ((mat.colInd_[sp] <= mat.colInd_[dp]) ? 1:0);
-			dp = dp + ((mat.colInd_[sp] >= mat.colInd_[dp]) ? 1:0);
-			sp = k;
-
-
-		}
-	}
-
-	t.largerThan0 = edgeCount > 0;
-	t.largerThanK = edgeCount >= k ;
-
-	return t;
-}
-
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView mat, bool *keep_l, bool *keep_h, 
-	bool *affected_l, UT *reversed, bool *prevKept, UT *srcKP, UT *destKP)
+__global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView mat, BCTYPE *keep_l, BCTYPE *keep_h, 
+	bool *affected_l, UT *reversed, BCTYPE *prevKept, UT *srcKP, UT *destKP)
 {
 	int tx = threadIdx.x;
 	int bx = blockIdx.x;
@@ -168,7 +82,7 @@ __global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, bool *keep_s, bool *keep_d, bool *prevKept)
+__global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_s, BCTYPE *keep_d, BCTYPE *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -182,7 +96,7 @@ __global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, b
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, bool *keep_l, bool *keep_h, bool *prevKept)
+__global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_l, BCTYPE *keep_h, BCTYPE *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -196,7 +110,7 @@ __global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, 
 
 
 template <size_t BLOCK_DIM_X>
-__global__ void Store(const size_t edgeStart, const size_t numEdges, bool *keep, bool *prevKept)
+__global__ void Store(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -208,7 +122,7 @@ __global__ void Store(const size_t edgeStart, const size_t numEdges, bool *keep,
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ void Rewind(const size_t edgeStart, const size_t numEdges, bool *keep, bool *prevKept)
+__global__ void Rewind(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -220,7 +134,7 @@ __global__ void Rewind(const size_t edgeStart, const size_t numEdges, bool *keep
 }
 
 
-__device__ int AffectOthers(UT sp, UT dp, bool* keep, bool *affected, UT *reversed)
+__device__ int AffectOthers(UT sp, UT dp, BCTYPE* keep, bool *affected, UT *reversed)
 {
 	int numberAffected = 0;
 	int y1 = reversed[sp]; 
@@ -254,7 +168,7 @@ __device__ int AffectOthers(UT sp, UT dp, bool* keep, bool *affected, UT *revers
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
 	const UT k_l, const UT k_h, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *keep_l, bool *keep_h, bool *affected_l, UT *reversed, bool firstTry, const int uMax)
+  const CsrCooView mat, BCTYPE *keep_l, BCTYPE *keep_h, bool *affected_l, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
 	typedef typename CsrCooView::index_type Index;
@@ -446,7 +360,7 @@ __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gn
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
 	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
 	typedef typename CsrCooView::index_type Index;
@@ -502,31 +416,6 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 						}
 						else
 						{
-							//start early
-							/*int y1 = reversed[sp]; 
-							int y2 = reversed[dp];
-
-							if (!affected[sp] && keep[sp])
-							{
-								affected[sp] = true;
-								numberAffected++;
-							}
-							if (!affected[dp] && keep[dp])
-							{
-								affected[dp] = true;
-								numberAffected++;
-							}
-							if (!affected[y1] && keep[y1])
-							{
-								affected[y1] = true;
-								numberAffected++;
-							}
-							if (!affected[y2] && keep[y2])
-							{
-								affected[y2] = true;
-								numberAffected++;
-							}*/
-
 							numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
 						}
 
@@ -554,30 +443,6 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 
 					if ((sv == dv))
 					{
-						/*int y1 = reversed[sp]; 
-						int y2 = reversed[dp];
-
-						if (!affected[sp] && keep[sp])
-						{
-							affected[sp] = true;
-							numberAffected++;
-						}
-						if (!affected[dp] && keep[dp])
-						{
-							affected[dp] = true;
-							numberAffected++;
-						}
-						if (!affected[y1] && keep[y1])
-						{
-							affected[y1] = true;
-							numberAffected++;
-						}
-						if (!affected[y2] && keep[y2])
-						{
-							affected[y2] = true;
-							numberAffected++;
-						}*/
-
 						numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
 					}
 					int yy = sp + ((sv <= dv) ? 1:0);
@@ -623,7 +488,7 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected, 
 	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, bool *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
 	typedef typename CsrCooView::index_type Index;
@@ -767,7 +632,7 @@ private:
 	float percentage_deleted_k;
 
 public:
-	bool *gKeep, *gPrevKeep;
+	BCTYPE *gKeep, *gPrevKeep;
 	bool *gAffected;
 	UT *gReveresed;
 
@@ -822,19 +687,19 @@ public:
 
 
 		bool firstTry = true;
-		bool *keep_l, *keep_h, *prevKept;
+		BCTYPE *keep_l, *keep_h, *prevKept;
 		bool *affected_l;
 		UT *reversed, *srcKP, *destKP;
 
-		CUDA_RUNTIME(cudaMalloc((void **) &keep_l, numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMalloc((void **) &keep_h, numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMalloc((void **) &prevKept, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &keep_l, numEdges*sizeof(BCTYPE)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &keep_h, numEdges*sizeof(BCTYPE)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &prevKept, numEdges*sizeof(BCTYPE)));
 
-		CUDA_RUNTIME(cudaMalloc((void **) &affected_l, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &affected_l, numEdges*sizeof(bool)));
 
-		CUDA_RUNTIME(cudaMalloc((void **) &reversed, numEdges*sizeof(UT)));
-		CUDA_RUNTIME(cudaMalloc((void **) &srcKP, numEdges*sizeof(UT)));
-		CUDA_RUNTIME(cudaMalloc((void **) &destKP, numEdges*sizeof(UT)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &reversed, numEdges*sizeof(UT)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &srcKP, numEdges*sizeof(UT)));
+		CUDA_RUNTIME(cudaMallocManaged((void **) &destKP, numEdges*sizeof(UT)));
 		
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 			

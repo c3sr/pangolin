@@ -9,8 +9,8 @@
 
 //Normal Initialization
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView mat, bool *keep,
-	bool *affected, UT *reversed, bool *prevKept, UT *srcKP, UT *destKP)
+__global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView mat, BCTYPE *keep,
+	bool *affected, UT *reversed, BCTYPE *prevKept, UT *srcKP, UT *destKP)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -40,7 +40,7 @@ __global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView
 }
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, bool *keep, bool *prevKeep, bool *affected, UT *destKP)
+__global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, BCTYPE *keep, BCTYPE *prevKeep, bool *affected, UT *destKP)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -55,7 +55,7 @@ __global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, bool *ke
 }
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays_k(int edgeStart, int numEdges, const CsrCooView mat, bool *keep, bool *affected, UT *reversed)
+__global__ void InitializeArrays_k(int edgeStart, int numEdges, const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -95,7 +95,7 @@ __global__ void InitializeArrays_Unified(int edgeStart, int numEdges, const CsrC
 }
 
 template <size_t BLOCK_DIM_X>
-__global__ void Store_base(const size_t edgeStart, const size_t numEdges, bool *keep, bool *prevKept, bool *baseKeep)
+__global__ void Store_base(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept, BCTYPE *baseKeep)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -119,7 +119,7 @@ private:
 	
 
 public:
-	bool *gKeep, *gPrevKeep;
+	BCTYPE *gKeep, *gPrevKeep;
 	bool *gAffected;
 	bool assumpAffected;
 
@@ -156,12 +156,28 @@ public:
 
 	void CreateWorkspace(int numEdges)
 	{
+		CUDA_RUNTIME(cudaSetDevice(dev_));
 		CUDA_RUNTIME(cudaMallocManaged(&selectedOut, sizeof(*selectedOut)));
-
-		CUDA_RUNTIME(cudaMallocManaged(&gKeep, numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMallocManaged(&gPrevKeep, numEdges*sizeof(bool)));
+		CUDA_RUNTIME(cudaMallocManaged(&gKeep, numEdges*sizeof(BCTYPE)));
+		CUDA_RUNTIME(cudaMallocManaged(&gPrevKeep, numEdges*sizeof(BCTYPE)));
 		CUDA_RUNTIME(cudaMalloc(&gAffected,numEdges*sizeof(bool)));
 		CUDA_RUNTIME(cudaMalloc(&gDstKP,numEdges*sizeof(UT)));
+	}
+	void free()
+	{
+		cudaFreeHost(hnumaffected);
+		cudaFreeHost(hnumdeleted);
+
+		CUDA_RUNTIME(cudaSetDevice(dev_));
+		cudaFree(gnumdeleted);
+		cudaFree(gnumaffected);
+		cudaFree(selectedOut);
+		cudaFree(gKeep);
+		cudaFree(gPrevKeep);
+		cudaFree(gAffected);
+		cudaFree(gDstKP);
+		//cudaFree(gReveresed);
+	
 	}
 
 	
@@ -209,7 +225,7 @@ public:
 		Store<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, gPrevKeep);
 	}
 
-	void store_async(int numEdges, bool *baseKeep)
+	void store_async(int numEdges, BCTYPE *baseKeep)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
@@ -229,18 +245,7 @@ public:
 		cudaFree(d_temp_storage);
 	}
 
-	void free()
-	{
-		cudaFree(gnumdeleted);
-		cudaFree(gnumaffected);
-		cudaFree(selectedOut);
-		cudaFree(gKeep);
-		cudaFree(gPrevKeep);
-		cudaFree(gAffected);
-		//cudaFree(gReveresed);
-		cudaFreeHost(hnumaffected);
-		cudaFreeHost(hnumdeleted);
-	}
+
 
 	//For unified memeory
 	template <typename CsrCoo>
