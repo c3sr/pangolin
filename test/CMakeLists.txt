@@ -84,6 +84,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_test(
+  NAME test_double_buffer
+  SRCS test_double_buffer.cpp
+)
+
+pangolin_add_test(
   NAME test_generator_hubspoke
   SRCS test_generator_hubspoke.cu
 )
