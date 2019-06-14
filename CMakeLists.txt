@@ -103,7 +103,7 @@ set(PANGOLIN_CPP_HEADERS
 set(PANGOLIN_CU_HEADERS
   include/pangolin/atomic_add.cuh
   include/pangolin/sparse/cusparse_csr.hu
-  include/pangolin/dense/vector.hu
+  include/pangolin/dense/vector.cuh
   include/pangolin/dense/vector-impl.hu
 )
 add_subdirectory(include)

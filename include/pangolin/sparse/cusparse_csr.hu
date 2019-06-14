@@ -6,7 +6,7 @@ Routines for interacting with CUSparse
 
 #include <cusparse.h>
 
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/edge_list.hpp"
 #include "pangolin/namespace.hpp"
 

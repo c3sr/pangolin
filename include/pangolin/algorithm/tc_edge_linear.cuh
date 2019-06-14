@@ -4,7 +4,7 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "search.cuh"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>

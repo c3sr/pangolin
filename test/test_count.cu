@@ -2,7 +2,7 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/count.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"

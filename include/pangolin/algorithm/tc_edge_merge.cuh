@@ -5,7 +5,7 @@
 #include "count.cuh"
 #include "merge_path.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 
 /*! \brief Count using merge path, one threadblock per edge
 

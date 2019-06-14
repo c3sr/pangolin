@@ -7,7 +7,7 @@
 #include "count.cuh"
 #include "load_balance.cuh"
 #include "pangolin/dense/buffer.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "zero.cuh"
 
 /*! Determine how many tileSize tiles are needed to cover each row of adj

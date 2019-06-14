@@ -4,7 +4,7 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 
 /*!
 Each threadblock handles a row of the adjacency matrix

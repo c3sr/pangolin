@@ -2,8 +2,9 @@
 #include <catch2/catch.hpp>
 
 #include "pangolin/algorithm/broadcast.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/init.hpp"
+#include "pangolin/utilities.hpp"
 
 using namespace pangolin;
 

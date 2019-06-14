@@ -2,7 +2,7 @@
 
 #include "bounded_buffer.hpp"
 #include "configure.hpp"
-#include "dense/vector.hu"
+#include "dense/vector.cuh"
 #include "edge_list.hpp"
 #include "file/edge_list_file.hpp"
 #include "generator/complete.hpp"

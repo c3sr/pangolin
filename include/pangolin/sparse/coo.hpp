@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/edge_list.hpp"
 #include "pangolin/types.hpp"
 

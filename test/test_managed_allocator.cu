@@ -13,7 +13,7 @@ using namespace pangolin;
 TEST_CASE("vectors can be resized", "[gpu]") {
   pangolin::init();
 
-  std::vector<int, pangolin::CUDAManagedAllocator<int> > v;
+  std::vector<int, pangolin::allocator::CUDAManaged<int> > v;
 
   SECTION("vectors can be resized") {
     v.resize(100);
