@@ -32,6 +32,7 @@ private:
 
 public:
   typedef Index index_type;
+  typedef EdgeTy<Index> edge_type;
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *rowInd_; //!< non-zero row indices
   const Index *colInd_; //!< non-zero column indices
@@ -57,6 +58,7 @@ template <typename Index> class COO {
 
 public:
   typedef Index index_type;
+  typedef EdgeTy<Index> edge_type;
   COO();                 //!< empty CSR
   Vector<Index> rowPtr_; //!< offset in col_ that each row starts at
   Vector<Index> colInd_; //!< non-zero column indices
@@ -93,9 +95,13 @@ public:
   void add_next_edge(const EdgeTy<Index> &e);
 
   /*!
-    Should be called after add_next_edge
+    Should be called after all calls to add_next_edge
+
+    Must be provided a maxNode count to pad rows out to.
+    While edges were being added, the final rows may be empty, so they never get added.
   */
-  void finish_edges();
+  void finish_edges(const Index &maxNode //<! [in] add empty rows out to maxNode
+  );
 
   COOView<Index> view() const; //!< create a COOView for this COO
 

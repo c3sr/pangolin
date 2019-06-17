@@ -154,7 +154,14 @@ template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e)
   colInd_.push_back(dst);
 }
 
-template <typename Index> void COO<Index>::finish_edges() {
+template <typename Index> void COO<Index>::finish_edges(const Index &maxNode) {
+
+  // add empty nodes until we reach maxNode
+  SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", rowPtr_.size(), maxNode);
+  while (rowPtr_.size() <= size_t(maxNode)) {
+    rowPtr_.push_back(colInd_.size());
+  }
+
   // add the final length of the non-zeros to the offset array
   rowPtr_.push_back(colInd_.size());
 }

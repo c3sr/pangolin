@@ -91,3 +91,24 @@ TEST_CASE("COO<int> 2->100 lt") {
   REQUIRE(coo.nnz() == 0);
   REQUIRE(coo.num_rows() == 0);
 }
+
+// make sure that the incremental build works with empty final rows
+TEMPLATE_TEST_CASE("COO 2->100 ut incremental", "[gpu", uint64_t, uint32_t) {
+  pangolin::init();
+  std::vector<EdgeTy<TestType>> el = {{2, 100}};
+
+  INFO("from_edgelist");
+  auto ut = [](EdgeTy<TestType> e) { return e.first < e.second; };
+  COO<TestType> coo;
+  TestType maxNode = 0;
+  for (const auto e : el) {
+    if (ut(e)) {
+      coo.add_next_edge(e);
+    }
+    maxNode = max(e.first, maxNode);
+    maxNode = max(e.second, maxNode);
+  }
+  coo.finish_edges(maxNode);
+
+  REQUIRE(coo.num_rows() == 101);
+}
