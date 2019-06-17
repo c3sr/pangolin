@@ -105,7 +105,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
 
       // contribute the linear cost of my edge to the total
       if (srcSz > 0 && dstSz > 0) {
-      edgeLinearCost = srcSz + dstSz;
+        edgeLinearCost = srcSz + dstSz;
       }
 
       // contribute the binary cost of my edge to the total
@@ -206,14 +206,24 @@ private:
   DeviceBuffer<size_t> edgeIdx_; //<! index of the next available edge for counting
   bool destroyStream_;
 
+  // events for measuring time
+  float kernelMillis_;
+  cudaEvent_t kernelStart_;
+  cudaEvent_t kernelStop_;
+
 public:
-  EdgeWarpDynTC(int dev) : dev_(dev), stream_(nullptr), count_(nullptr), edgeIdx_(1, dev), destroyStream_(true) {
+  EdgeWarpDynTC(int dev)
+      : dev_(dev), stream_(nullptr), count_(nullptr), edgeIdx_(1, dev), destroyStream_(true), kernelMillis_(0) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_TRACE(logger::console(), "create stream");
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
+
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
+
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
@@ -222,7 +232,7 @@ public:
   }
 
   EdgeWarpDynTC(int dev, cudaStream_t stream)
-      : dev_(dev), stream_(stream), count_(nullptr), edgeIdx_(1, dev), destroyStream_(false) {
+      : dev_(dev), stream_(stream), count_(nullptr), edgeIdx_(1, dev), destroyStream_(false), kernelMillis_(0) {
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
@@ -230,14 +240,19 @@ public:
     // error may be deferred to a cudaHostGetDevicePointer
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
+
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
   }
 
   EdgeWarpDynTC(EdgeWarpDynTC &&other)
       : dev_(other.dev_), stream_(other.stream_), count_(other.count_), edgeIdx_(std::move(other.edgeIdx_)),
-        destroyStream_(other.destroyStream_) {
+        destroyStream_(other.destroyStream_), kernelStart_(other.kernelStart_), kernelStop_(other.kernelStop_) {
     other.count_ = nullptr;
     other.destroyStream_ = false;
     other.stream_ = nullptr;
+    other.kernelStart_ = nullptr;
+    other.kernelStop_ = nullptr;
   }
 
   EdgeWarpDynTC() : EdgeWarpDynTC(0) {}
@@ -247,6 +262,13 @@ public:
       CUDA_RUNTIME(cudaStreamDestroy(stream_));
     }
     CUDA_RUNTIME(cudaFree(count_));
+
+    if (kernelStart_) {
+      CUDA_RUNTIME(cudaEventDestroy(kernelStart_));
+    }
+    if (kernelStop_) {
+      CUDA_RUNTIME(cudaEventDestroy(kernelStop_));
+    }
   }
 
   template <typename CsrCoo>
@@ -271,8 +293,10 @@ public:
     const int dimGrid = maxActiveBlocks * props.multiProcessorCount;                                                   \
     LOG(debug, "device = {}, tc_edge_dyn_kernel<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock,                    \
         uintptr_t(stream_));                                                                                           \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                              \
     tc_edge_dyn_kernel<const_dimBlock>                                                                                 \
         <<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj, numEdges, edgeOffset, edgeIdx_.data());                 \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                               \
     break;                                                                                                             \
   }
 
@@ -307,6 +331,12 @@ public:
 
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }
+
+  double kernel_time() const {
+    float millis;
+    CUDA_RUNTIME(cudaEventElapsedTime(&millis, kernelStart_, kernelStop_));
+    return millis / 1e3;
+  }
 };
 
 } // namespace pangolin
