@@ -2,18 +2,6 @@
 
 namespace pangolin {
 
-/*! Broadcast value from threadIdx.x root to all threads in the block
- */
-template <typename T> __device__ T block_broadcast(const T val, const int root) {
-  __shared__ T sharedVal;
-
-  if (threadIdx.x == root) {
-    sharedVal = val;
-  }
-  __syncthreads();
-  return sharedVal;
-}
-
 /*! Broadcast value from threadIdx.x root to all threads in the warp
  */
 template <size_t WARPS_PER_BLOCK, typename T> __device__ __forceinline__ T warp_broadcast(const T val, const int root) {
@@ -46,6 +34,43 @@ template <size_t WARPS_PER_BLOCK, typename T> __device__ __forceinline__ T warp_
 #endif
 
   return ints.t;
+}
+
+/*! Broadcast value from threadIdx.x root to all threads in the warp
+ */
+template <typename T> __device__ __forceinline__ T warp_broadcast2(T val, const int root) {
+
+#if __CUDACC_VER_MAJOR__ >= 9
+  val = __shfl_sync(0xffffffff /* all threads */, val, root);
+#else
+  val = __shfl(val, root);
+#endif
+
+  return val;
+}
+
+/*! Broadcast value from threadIdx.x root to all threads in the block
+ */
+template <typename T> __device__ __forceinline__ T block_broadcast(const T val, const int root) {
+  __shared__ T sharedVal;
+
+  if (threadIdx.x == root) {
+    sharedVal = val;
+  }
+  __syncthreads();
+  return sharedVal;
+}
+
+/*! Broadcast value from threadIdx.x root to all threads in the block
+ */
+template <typename T> __device__ T block_broadcast2(const T val, const int root) {
+  __shared__ T sharedVal;
+
+  if (threadIdx.x == root) {
+    sharedVal = val;
+  }
+  __syncthreads();
+  return warp_broadcast2(sharedVal, 0);
 }
 
 } // namespace pangolin

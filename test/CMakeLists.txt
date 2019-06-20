@@ -155,6 +155,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_tc_vertex_bitvector
+  SRCS test_tc_vertex_bitvector.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_tc_vertex_block_binary
   SRCS test_tc_vertex_block_binary.cu
 )

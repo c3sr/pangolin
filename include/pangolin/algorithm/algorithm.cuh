@@ -19,6 +19,7 @@
 #include "tc_edge_dyn.cuh"
 #include "tc_edge_dynpar.cuh"
 #include "tc_edge_linear.cuh"
+#include "tc_vertex_bitvector.cuh"
 // #include "tc_edge_merge.cuh"
 #include "tc_vertex_block_binary.cuh"
 #include "tc_vertex_blocks_binary.cuh"

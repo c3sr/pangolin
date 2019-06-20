@@ -20,15 +20,19 @@ stages:
         Debug_NUMA:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: True
+          INSTALL_OPENMPI: False
         Debug:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: False
+          INSTALL_OPENMPI: False
         Release_NUMA:
           CMAKE_BUILD_TYPE: 'Release'
           INSTALL_NUMA: True
+          INSTALL_OPENMPI: False
         Release:
           CMAKE_BUILD_TYPE: 'Release'
           INSTALL_NUMA: False
+          INSTALL_OPENMPI: False
     pool: 'amd64-ubuntu1604-cuda100'
     steps:
     - script: |
