@@ -10,7 +10,7 @@
 //Normal Initialization
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView mat, BCTYPE *keep,
-	bool *affected, UT *reversed, BCTYPE *prevKept, UT *srcKP, UT *destKP)
+	BCTYPE *affected, UT *reversed, BCTYPE *prevKept, UT *srcKP, UT *destKP)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -39,8 +39,8 @@ __global__ void InitializeArrays_n(int edgeStart, int numEdges, const CsrCooView
 		}
 }
 
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeWorkSpace(const CsrCooView mat, int numEdges, BCTYPE *keep, BCTYPE *prevKeep, bool *affected, UT *destKP)
+template <size_t BLOCK_DIM_X>
+__global__ void InitializeWorkSpace(int numEdges, BCTYPE *keep, BCTYPE *prevKeep, bool *affected, UT *destKP)
 {
 		int tx = threadIdx.x;
 		int bx = blockIdx.x;
@@ -76,6 +76,24 @@ __global__ void InitializeArrays_k(int edgeStart, int numEdges, const CsrCooView
 }
 
 
+template <size_t BLOCK_DIM_X>
+__global__ void InitializeArrays_Unified(int edgeStart, int numEdges, UT *rowPtr, UT *rowInd, UT *colInd, UT *srcKp, UT *reversed)
+{
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
+
+			//node
+			UT sn = rowInd[i];
+			UT dn = colInd[i];
+			srcKp[i] = i;
+			reversed[i] = getEdgeId(rowPtr, rowInd, colInd, dn, sn);
+		}
+}
+
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void InitializeArrays_Unified(int edgeStart, int numEdges, const CsrCooView mat, UT *srcKp, UT *reversed)
 {
@@ -103,6 +121,20 @@ __global__ void Store_base(const size_t edgeStart, const size_t numEdges, BCTYPE
 		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
 			prevKept[i] = baseKeep[i];
+			keep[i] = baseKeep[i];
+		}
+}
+
+
+
+template <size_t BLOCK_DIM_X>
+__global__ void Store_base(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *baseKeep)
+{
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
 			keep[i] = baseKeep[i];
 		}
 }
@@ -181,8 +213,7 @@ public:
 	}
 
 	
-	template <typename CsrCoo>
-	void InitializeWorkSpace_async(const CsrCoo &mat, int numEdges)
+	void InitializeWorkSpace_async(int numEdges)
 	{
 
 		hnumaffected[0] = 1;
@@ -191,7 +222,7 @@ public:
 		constexpr int dimBlock = 1024; //For edges and nodes
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 
-		InitializeWorkSpace<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(mat, numEdges, gKeep, gPrevKeep, gAffected, gDstKP);
+		InitializeWorkSpace<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(numEdges, gKeep, gPrevKeep, gAffected, gDstKP);
 	}
 
 	//All GPUs collaborate to initialize this
@@ -205,6 +236,18 @@ public:
 
 		InitializeArrays_Unified<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, mat, uSrcKp, reversed);
 	}
+
+		//All GPUs collaborate to initialize this
+		template <typename CsrCoo>
+		void Inialize_Unified_view_async(int edgeStart, int numEdges, const CsrCoo &mat, UT *uSrcKp, UT *reversed)
+		{
+			CUDA_RUNTIME(cudaSetDevice(dev_));
+			
+			constexpr int dimBlock = 1024; //For edges and nodes
+			int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
+	
+			InitializeArrays_Unified<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, mat, uSrcKp, reversed);
+		}
 
 	void rewind_async(int numEdges)
 	{
@@ -225,13 +268,16 @@ public:
 		Store<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, gPrevKeep);
 	}
 
-	void store_async(int numEdges, BCTYPE *baseKeep)
+	void store_async(int numEdges, BCTYPE *baseKeep, bool withPrevKeep)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
 		constexpr int dimBlock = 1024; //For edges and nodes
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
-		Store_base<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, gPrevKeep, baseKeep);
+		if(withPrevKeep)
+			Store_base<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, gPrevKeep, baseKeep);
+		else
+		Store_base<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, baseKeep);
 	}
 
 	void compact(int numEdges, UT *srcKP)
@@ -249,8 +295,8 @@ public:
 
 	//For unified memeory
 	template <typename CsrCoo>
-	void InitializeArrays_u_async(int edgeStart, int numEdges, const CsrCoo &mat, bool *keep, 
-		bool *affected, UT *reversed, bool *prevKept, UT *srcKP, UT *destKP)
+	void InitializeArrays_u_async(int edgeStart, int numEdges, const CsrCoo &mat, BCTYPE *keep, 
+		BCTYPE *affected, UT *reversed, BCTYPE *prevKept, UT *srcKP, UT *destKP)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		constexpr int dimBlock = 1024; //For edges and nodes

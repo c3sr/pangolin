@@ -8,48 +8,22 @@
 #include "search.cuh"
 
 
-#define  BCTYPE char
-
-	/*! Binary search
-  
-     \tparam arr  			Pointer to the array
-     \tparam l 					Left boundary of arr
-     \tparam r   				Right boundary of arr
-		 \tparam x				 	Value to search for 
-  */ 
-__device__ UT binarySearch_b(const UT *arr, UT l, UT r, UT x)
-{
-	size_t left = l;
-  size_t right = r;
-  while (left < right) {
-    const size_t mid = (left + right) / 2;
-    UT val = arr[mid];
-    bool pred =  val < x;
-    if (pred) {
-      left = mid + 1;
-    } else {
-      right = mid;
-    }
-  }
-  return left;
-}
-
 	/*! Obtain the index of an edge using its two nodes
   
      \tparam mat  			Graph view represented in COO+CSR format
      \tparam sn 				Source node
      \tparam dn   			Destination node
   */ 
-template <typename CsrCooView>
-__device__ UT getEdgeId_b(const CsrCooView mat, UT sn, const UT dn)
-{
-	UT index = 0;
-
-	UT start = mat.rowPtr_[sn];
-	UT end2 = mat.rowPtr_[sn+1];
-	index = binarySearch_b(mat.colInd_, start, end2, dn); // pangolin::binary_search(p, length, dn);
-	return index;
-}
+  template <typename CsrCooView>
+  __device__ UT getEdgeId_b(const CsrCooView mat, UT sn, const UT dn)
+  {
+	  UT index = 0;
+  
+	  UT start = mat.rowPtr_[sn];
+	  UT end2 = mat.rowPtr_[sn+1];
+	  index = binarySearch_b(mat.colInd_, start, end2, dn); // pangolin::binary_search(p, length, dn);
+	  return index;
+  }
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView mat, BCTYPE *keep_l, BCTYPE *keep_h, 
@@ -81,87 +55,289 @@ __global__ void InitializeArrays_b(int edgeStart, int numEdges, const CsrCooView
 	}
 }
 
-template <size_t BLOCK_DIM_X>
-__global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_s, BCTYPE *keep_d, BCTYPE *prevKept)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			prevKept[i] = keep_s[i];
-			keep_d[i] = keep_s[i];
-			
-		}
-}
 
-template <size_t BLOCK_DIM_X>
-__global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_l, BCTYPE *keep_h, BCTYPE *prevKept)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			keep_l[i]=prevKept[i];
-			keep_h[i]=prevKept[i]; 
-		}
-}
-
-
-template <size_t BLOCK_DIM_X>
-__global__ void Store(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			prevKept[i] = keep[i];
-		}
-}
-
-template <size_t BLOCK_DIM_X>
-__global__ void Rewind(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
-{
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
-		{
-			keep[i]=prevKept[i];
-		}
-}
-
-
-__device__ int AffectOthers(UT sp, UT dp, BCTYPE* keep, bool *affected, UT *reversed)
+__device__ int AffectOthers_b(UT sp, UT dp, BCTYPE* keep, bool *affected, UT *reversed)
 {
 	int numberAffected = 0;
 	int y1 = reversed[sp]; 
 	int y2 = reversed[dp];
 
-	if (!affected[sp] && keep[sp])
+	if (!affected[sp] /*&& keep[sp]*/)
 	{
 		affected[sp] = true;
 		numberAffected++;
 	}
-	if (!affected[dp] && keep[dp])
+	if (!affected[dp] /*&& keep[dp]*/)
 	{
 		affected[dp] = true;
 		numberAffected++;
 	}
-	if (!affected[y1] && keep[y1])
+	if (!affected[y1] /*&& keep[y1]*/)
 	{
 		affected[y1] = true;
 		numberAffected++;
 	}
-	if (!affected[y2] && keep[y2])
+	if (!affected[y2] /*&& keep[y2]*/)
 	{
 		affected[y2] = true;
 		numberAffected++;
 	}
 
 	return numberAffected;
+}
+
+template <size_t BLOCK_DIM_X, typename CsrCooView>
+__global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
+	const UT k, const size_t edgeStart, const size_t numEdges,
+  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+{
+	  // kernel call
+	typedef typename CsrCooView::index_type Index;
+	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
+	UT numberDeleted = 0;
+	UT numberAffected = 0;
+	__shared__ bool didAffectAnybody[1];
+	bool ft = firstTry; //1
+	if(0 == threadIdx.x)
+		didAffectAnybody[0] = false;
+
+	__syncthreads();
+	int startS=0, startD=0,endS=0,endD=0;
+	numberDeleted = 0;
+	for (size_t ii = gx + edgeStart; ii < edgeStart + numEdges; ii += BLOCK_DIM_X * gridDim.x) 
+	{
+		size_t i = keepPointer[ii];
+
+		if (keep[i] && (affected[i] || ft))
+		{
+			affected[i] = false;
+			int edgeCount = 0;
+		
+			UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
+			UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
+
+			UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
+			UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
+		
+			bool firstHit = true;
+			while (edgeCount<k-2 && sp < send && dp < dend)
+			{
+				UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+				UT dv =  mat.colInd_[dp];
+
+				if (sv == dv)
+				{
+					if (keep[sp] && keep[dp])
+					{
+						edgeCount++;
+						if (firstHit)
+						{
+							startS = sp;
+							startD = dp;
+							firstHit = false;
+						}
+	
+						bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
+						if(!cond)
+						{
+							endS = sp+1;
+							endD = dp+1;
+						}
+						else
+						{
+							numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+						}
+
+					}
+				}
+				int yy = sp + ((sv <= dv) ? 1:0);
+				dp = dp + ((sv >= dv) ? 1:0);
+				sp = yy;
+			}
+			
+			//////////////////////////////////////////////////////////////
+			if (edgeCount < (k-2))
+			{
+				UT ir = reversed[i];
+				keep[i] = false;
+				keep[ir] = false;
+				
+				UT sp = startS;
+				UT dp = startD;
+
+				while (edgeCount>0 && sp < endS && dp < endD)
+				{
+					UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+					UT dv = mat.colInd_[dp];
+
+					if ((sv == dv))
+					{
+						numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+					}
+					int yy = sp + ((sv <= dv) ? 1:0);
+					dp = dp + ((sv >= dv) ? 1:0);
+					sp = yy;
+				}
+			}
+		}
+
+		if(!keep[i])
+			numberDeleted++;
+	}
+	ft=false;
+	//Instead of reduction: hope it works
+	if(numberAffected>0)
+			didAffectAnybody[0] = true;
+
+	__syncthreads();
+ 		
+	if (0 == threadIdx.x) 
+	{
+		if(didAffectAnybody[0])
+			*gnumaffected = 1;
+	}
+
+
+ 	// Block-wide reduction of threadCount
+ 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
+ 	__shared__ typename BlockReduce::TempStorage tempStorage;
+	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
+	 
+	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
+
+ 	if (0 == threadIdx.x) 
+	  {
+				atomicAdd(gnumdeleted, deletedByBlock);
+				//atomicAdd(gnumaffected, affectedByBlock);
+		}
+
+}
+
+
+template <size_t BLOCK_DIM_X, typename CsrCooView>
+__global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected, 
+	const UT k, const size_t edgeStart, const size_t numEdges,
+  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+{
+	  // kernel call
+	typedef typename CsrCooView::index_type Index;
+	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
+	UT numberDeleted = 0;
+	UT numberAffected = 0;
+	__shared__ bool didAffectAnybody[1];
+	bool ft = firstTry; //1
+	if(0 == threadIdx.x)
+		didAffectAnybody[0] = false;
+
+	__syncthreads();
+	int startS=0, startD=0,endS=0,endD=0;
+
+		numberDeleted = 0;
+	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
+	  {
+		  if (keep[i] && (affected[i] || ft))
+		  {
+			  affected[i] = false;
+				int edgeCount = 0;
+			
+				UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
+				UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
+
+				UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
+				UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
+			
+				bool firstHit = true;
+				while (edgeCount<k-2 && sp < send && dp < dend)
+				{
+					UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+					UT dv =  mat.colInd_[dp];
+
+					if (sv == dv)
+					{
+						if (keep[sp] && keep[dp])
+						{
+							edgeCount++;
+							if (firstHit)
+							{
+								startS = sp;
+								startD = dp;
+								firstHit = false;
+							}
+		
+							bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
+							if(!cond)
+							{
+								endS = sp+1;
+								endD = dp+1;
+							}
+							else
+							{
+								numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+							}
+
+						}
+					}
+					int yy = sp + ((sv <= dv) ? 1:0);
+					dp = dp + ((sv >= dv) ? 1:0);
+					sp = yy;
+				}
+				
+				//////////////////////////////////////////////////////////////
+			  if (edgeCount < (k-2))
+			  {
+					UT ir = reversed[i];
+				  keep[i] = false;
+					keep[ir] = false;
+					
+				  UT sp = startS;
+				  UT dp = startD;
+
+					while (edgeCount>0 && sp < endS && dp < endD)
+					{
+						UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
+						UT dv = mat.colInd_[dp];
+
+						if ((sv == dv))
+						{
+							numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+						}
+						int yy = sp + ((sv <= dv) ? 1:0);
+						dp = dp + ((sv >= dv) ? 1:0);
+						sp = yy;
+					}
+			  }
+		  }
+
+		  if(!keep[i])
+			  numberDeleted++;
+		}
+		ft=false;
+	
+
+	//Instead of reduction: hope it works
+	if(numberAffected>0)
+			didAffectAnybody[0] = true;
+
+		__syncthreads();
+ 		
+	if (0 == threadIdx.x) 
+	{
+		if(didAffectAnybody[0])
+			*gnumaffected = 1;
+	}
+
+ 	// Block-wide reduction of threadCount
+ 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
+ 	__shared__ typename BlockReduce::TempStorage tempStorage;
+	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
+	 
+	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
+
+ 	if (0 == threadIdx.x) 
+	{
+		atomicAdd(gnumdeleted, deletedByBlock);
+	}
+
 }
 
 
@@ -357,259 +533,59 @@ __global__ void core_binary_indirect_3d(UT *keepPointer, UT *gnumdeleted, UT *gn
 		}
 }
 
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
-	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+template <size_t BLOCK_DIM_X>
+__global__ void Store_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_s, BCTYPE *keep_d, BCTYPE *prevKept)
 {
-	  // kernel call
-	typedef typename CsrCooView::index_type Index;
-	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-	UT numberDeleted = 0;
-	UT numberAffected = 0;
-	__shared__ bool didAffectAnybody[1];
-	bool ft = firstTry; //1
-	if(0 == threadIdx.x)
-		didAffectAnybody[0] = false;
-
-	__syncthreads();
-	int startS=0, startD=0,endS=0,endD=0;
-	numberDeleted = 0;
-	for (size_t ii = gx + edgeStart; ii < edgeStart + numEdges; ii += BLOCK_DIM_X * gridDim.x) 
-	{
-		size_t i = keepPointer[ii];
-
-		if (keep[i] && (affected[i] || ft))
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
-			affected[i] = false;
-			int edgeCount = 0;
-		
-			UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
-			UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
-
-			UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
-			UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
-		
-			bool firstHit = true;
-			while (edgeCount<k-2 && sp < send && dp < dend)
-			{
-				UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-				UT dv =  mat.colInd_[dp];
-
-				if (sv == dv)
-				{
-					if (keep[sp] && keep[dp])
-					{
-						edgeCount++;
-						if (firstHit)
-						{
-							startS = sp;
-							startD = dp;
-							firstHit = false;
-						}
-	
-						bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
-						if(!cond)
-						{
-							endS = sp+1;
-							endD = dp+1;
-						}
-						else
-						{
-							numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
-						}
-
-					}
-				}
-				int yy = sp + ((sv <= dv) ? 1:0);
-				dp = dp + ((sv >= dv) ? 1:0);
-				sp = yy;
-			}
+			prevKept[i] = keep_s[i];
+			keep_d[i] = keep_s[i];
 			
-			//////////////////////////////////////////////////////////////
-			if (edgeCount < (k-2))
-			{
-				UT ir = reversed[i];
-				keep[i] = false;
-				keep[ir] = false;
-				
-				UT sp = startS;
-				UT dp = startD;
-
-				while (edgeCount>0 && sp < endS && dp < endD)
-				{
-					UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-					UT dv = mat.colInd_[dp];
-
-					if ((sv == dv))
-					{
-						numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
-					}
-					int yy = sp + ((sv <= dv) ? 1:0);
-					dp = dp + ((sv >= dv) ? 1:0);
-					sp = yy;
-				}
-			}
 		}
-
-		if(!keep[i])
-			numberDeleted++;
-	}
-	ft=false;
-	//Instead of reduction: hope it works
-	if(numberAffected>0)
-			didAffectAnybody[0] = true;
-
-	__syncthreads();
- 		
-	if (0 == threadIdx.x) 
-	{
-		if(didAffectAnybody[0])
-			*gnumaffected = 1;
-	}
-
-
- 	// Block-wide reduction of threadCount
- 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
- 	__shared__ typename BlockReduce::TempStorage tempStorage;
-	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
-	 
-	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
-
- 	if (0 == threadIdx.x) 
-	  {
-				atomicAdd(gnumdeleted, deletedByBlock);
-				//atomicAdd(gnumaffected, affectedByBlock);
-		}
-
 }
 
-
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected, 
-	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+template <size_t BLOCK_DIM_X>
+__global__ void Rewind_newbounds(const size_t edgeStart, const size_t numEdges, BCTYPE *keep_l, BCTYPE *keep_h, BCTYPE *prevKept)
 {
-	  // kernel call
-	typedef typename CsrCooView::index_type Index;
-	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-	UT numberDeleted = 0;
-	UT numberAffected = 0;
-	__shared__ bool didAffectAnybody[1];
-	bool ft = firstTry; //1
-	if(0 == threadIdx.x)
-		didAffectAnybody[0] = false;
-
-	__syncthreads();
-	int startS=0, startD=0,endS=0,endD=0;
-
-		numberDeleted = 0;
-	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
-	  {
-		  if (keep[i] && (affected[i] || ft))
-		  {
-			  affected[i] = false;
-				int edgeCount = 0;
-			
-				UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
-				UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
-
-				UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
-				UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
-			
-				bool firstHit = true;
-				while (edgeCount<k-2 && sp < send && dp < dend)
-				{
-					UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-					UT dv =  mat.colInd_[dp];
-
-					if (sv == dv)
-					{
-						if (keep[sp] && keep[dp])
-						{
-							edgeCount++;
-							if (firstHit)
-							{
-								startS = sp;
-								startD = dp;
-								firstHit = false;
-							}
-		
-							bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
-							if(!cond)
-							{
-								endS = sp+1;
-								endD = dp+1;
-							}
-							else
-							{
-								numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
-							}
-
-						}
-					}
-					int yy = sp + ((sv <= dv) ? 1:0);
-					dp = dp + ((sv >= dv) ? 1:0);
-					sp = yy;
-				}
-				
-				//////////////////////////////////////////////////////////////
-			  if (edgeCount < (k-2))
-			  {
-					UT ir = reversed[i];
-				  keep[i] = false;
-					keep[ir] = false;
-					
-				  UT sp = startS;
-				  UT dp = startD;
-
-					while (edgeCount>0 && sp < endS && dp < endD)
-					{
-						UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-						UT dv = mat.colInd_[dp];
-
-						if ((sv == dv))
-						{
-							numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
-						}
-						int yy = sp + ((sv <= dv) ? 1:0);
-						dp = dp + ((sv >= dv) ? 1:0);
-						sp = yy;
-					}
-			  }
-		  }
-
-		  if(!keep[i])
-			  numberDeleted++;
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
+			keep_l[i]=prevKept[i];
+			keep_h[i]=prevKept[i]; 
 		}
-		ft=false;
-	
-
-	//Instead of reduction: hope it works
-	if(numberAffected>0)
-			didAffectAnybody[0] = true;
-
-		__syncthreads();
- 		
-	if (0 == threadIdx.x) 
-	{
-		if(didAffectAnybody[0])
-			*gnumaffected = 1;
-	}
-
- 	// Block-wide reduction of threadCount
- 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
- 	__shared__ typename BlockReduce::TempStorage tempStorage;
-	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
-	 
-	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
-
- 	if (0 == threadIdx.x) 
-	{
-		atomicAdd(gnumdeleted, deletedByBlock);
-	}
-
 }
+
+
+template <size_t BLOCK_DIM_X>
+__global__ void Store(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
+{
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
+			prevKept[i] = keep[i];
+		}
+}
+
+template <size_t BLOCK_DIM_X>
+__global__ void Rewind(const size_t edgeStart, const size_t numEdges, BCTYPE *keep, BCTYPE *prevKept)
+{
+		int tx = threadIdx.x;
+		int bx = blockIdx.x;
+		int ptx = tx + bx*BLOCK_DIM_X;
+		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
+			keep[i]=prevKept[i];
+		}
+}
+
+
 
 
 namespace pangolin {
@@ -799,6 +775,7 @@ public:
 			step++;*/
 
 			k =  kmin*minPercentage + kmax*(1-minPercentage);
+			printf("k=%d", k);
 
 			if(kmin==k || kmax==k)
 				minPercentage=0.5;
