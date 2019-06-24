@@ -9,7 +9,7 @@
 #include "pangolin/generator/hubspoke.hpp"
 #include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
-#include "pangolin/sparse/coo.hpp"
+#include "pangolin/sparse/csr_coo.hpp"
 
 using namespace pangolin;
 
@@ -26,7 +26,7 @@ template <typename NodeTy> void count(uint64_t expected, const std::string &grap
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
       auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
-      auto csrcoo = COO<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
+      auto csrcoo = CSRCOO<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csrcoo.view()));
     }
@@ -57,7 +57,7 @@ TEST_CASE("single counter", "[gpu]") {
 
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
-    auto csrcoo = COO<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
     REQUIRE(2 == c.count_sync(csrcoo.view()));
@@ -69,7 +69,7 @@ TEST_CASE("single counter", "[gpu]") {
 
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
-    auto csrcoo = COO<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csrcoo.view()));
@@ -99,7 +99,7 @@ TEST_CASE("two counters", "[gpu]") {
     generator::Complete<NodeTy> g(539);
 
     auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
-    auto csrcoo = COO<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csrcoo.view(), 0, csrcoo.nnz()/2);   // first half of edges
     uint64_t b = cs[1].count_sync(csrcoo.view(), csrcoo.nnz()/2, csrcoo.nnz() - csrcoo.nnz()/2); // last half of edges

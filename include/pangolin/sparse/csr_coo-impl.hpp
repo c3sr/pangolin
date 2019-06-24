@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "coo.hpp"
+#include "csr_coo.hpp"
 #include "pangolin/logger.hpp"
 
 #ifdef __CUDACC__
@@ -15,20 +15,11 @@
 
 namespace pangolin {
 
-template <typename Index> COO<Index>::COO() {}
+template <typename Index, typename Vector> uint64_t CSRCOO<Index, Vector>::num_nodes() const { return num_rows(); }
 
-template <typename Index> PANGOLIN_HOST DEVICE uint64_t COO<Index>::num_rows() const {
-  if (rowPtr_.size() == 0) {
-    return 0;
-  } else {
-    return rowPtr_.size() - 1;
-  }
-}
-
-template <typename Index> uint64_t COO<Index>::num_nodes() const { return num_rows(); }
-
-template <typename Index> COO<Index> COO<Index>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
-  COO<Index> csr;
+template <typename Index, typename Vector>
+CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
+  CSRCOO csr;
 
   if (es.size() == 0) {
     LOG(warn, "constructing from empty edge list");
@@ -67,13 +58,13 @@ template <typename Index> COO<Index> COO<Index>::from_edgelist(const EdgeList &e
   return csr;
 }
 
-/*! Build a COO from a sequence of edges
+/*! Build a CSRCOO from a sequence of edges
 
 */
-template <typename Index>
+template <typename Index, typename Vector>
 template <typename EdgeIter>
-COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(EdgeTy<Index>)> f) {
-  COO<Index> coo;
+CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(EdgeTy<Index>)> f) {
+  CSRCOO<Index, Vector> coo;
 
   if (begin == end) {
     LOG(warn, "constructing from empty edge sequence");
@@ -135,7 +126,7 @@ COO<Index> COO<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   return coo;
 }
 
-template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e) {
+template <typename Index, typename Vector> void CSRCOO<Index, Vector>::add_next_edge(const EdgeTy<Index> &e) {
   const Index src = e.first;
   const Index dst = e.second;
   SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
@@ -154,7 +145,7 @@ template <typename Index> void COO<Index>::add_next_edge(const EdgeTy<Index> &e)
   colInd_.push_back(dst);
 }
 
-template <typename Index> void COO<Index>::finish_edges(const Index &maxNode) {
+template <typename Index, typename Vector> void CSRCOO<Index, Vector>::finish_edges(const Index &maxNode) {
 
   // add empty nodes until we reach maxNode
   SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", rowPtr_.size(), maxNode);
@@ -166,33 +157,6 @@ template <typename Index> void COO<Index>::finish_edges(const Index &maxNode) {
   rowPtr_.push_back(colInd_.size());
 }
 
-template <typename Index> COOView<Index> COO<Index>::view() const {
-  COOView<Index> view;
-  view.nnz_ = nnz();
-  view.num_rows_ = num_rows();
-  view.rowPtr_ = rowPtr_.data();
-  view.colInd_ = colInd_.data();
-  view.rowInd_ = rowInd_.data();
-  return view;
-}
-
-template <typename Index> void COO<Index>::read_mostly() {
-  rowPtr_.read_mostly();
-  rowInd_.read_mostly();
-  colInd_.read_mostly();
-}
-
-template <typename Index> void COO<Index>::accessed_by(const int dev) {
-  rowPtr_.accessed_by(dev);
-  rowInd_.accessed_by(dev);
-  colInd_.accessed_by(dev);
-}
-
-template <typename Index> void COO<Index>::prefetch_async(const int dev, cudaStream_t stream) {
-  rowPtr_.prefetch_async(dev, stream);
-  rowInd_.prefetch_async(dev, stream);
-  colInd_.prefetch_async(dev, stream);
-}
 
 } // namespace pangolin
 

@@ -552,7 +552,7 @@ __global__ void numBlocks_kernel(const size_t numRows, const uint32_t *const row
   }
 }
 
-uint64_t count_triangles(const pangolin::COOView<uint32_t> view, const int mode) {
+uint64_t count_triangles(const pangolin::CSRCOOView<uint32_t> view, const int mode) {
   if (mode == 1) {
 
     // Create the pangolin vector to hold the per-edge triangle counts 

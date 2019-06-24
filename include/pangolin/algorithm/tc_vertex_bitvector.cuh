@@ -30,7 +30,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_bitvector_kernel(
   typedef typename CsrView::index_type Index;
   constexpr size_t GLOBAL_ALIGNMENT = 256;
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
-  constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
   constexpr size_t SHMEM_KB = 8;
 
   // shared memory for a fast bit vector

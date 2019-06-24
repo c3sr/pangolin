@@ -64,8 +64,8 @@ pangolin_add_test(
 )
 
 pangolin_add_gpu_test(
-  NAME test_coo
-  SRCS test_coo.cu
+  NAME test_csr_coo
+  SRCS test_csr_coo.cu
 )
 
 pangolin_add_gpu_test(
@@ -131,6 +131,11 @@ pangolin_add_mpi_gpu_test(
 pangolin_add_gpu_test(
   NAME test_numa
   SRCS test_numa.cu
+)
+
+pangolin_add_test(
+  NAME test_single_header
+  SRCS test_single_header.cu
 )
 
 pangolin_add_gpu_test(

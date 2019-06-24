@@ -92,7 +92,7 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
     include/pangolin/sparse/gpu_csr-impl.hpp
-    include/pangolin/sparse/coo.hpp
+    include/pangolin/sparse/csr_coo.hpp
     include/pangolin/sparse/coo-impl.hpp
     include/pangolin/sparse/unified_memory_csr.hpp
     include/pangolin/reader/bel_reader.hpp
