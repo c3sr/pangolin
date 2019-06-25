@@ -10,7 +10,7 @@
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
-    kernel(uint64_t *count, //!< [inout] the count, caller should zero
+    tc_edge_linear_kernel(uint64_t *count, //!< [inout] the count, caller should zero
            const CsrCooView mat, const size_t numEdges, const size_t edgeStart) {
 
   typedef typename CsrCooView::index_type Index;
@@ -72,6 +72,8 @@ public:
     // *count_ = 0;
   }
 
+  /*! move constructor
+   */
   LinearTC(LinearTC &&other)
       : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_) {
     other.count_ = nullptr;
@@ -86,7 +88,6 @@ public:
   void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges, const size_t dimBlock = 256) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    stream_.sync();
     zero_async<1>(count_, dev_, cudaStream_t(stream_));
     CUDA_RUNTIME(cudaGetLastError());
     // zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
@@ -97,11 +98,11 @@ public:
     // LOG(debug, "did zero");
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
-    LOG(debug, "device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, stream_);
+    LOG(debug, "tc_edge_linear_kernel device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, stream_);
 
 #define CASE(const_dimBlock)                                                                                           \
   case const_dimBlock:                                                                                                 \
-    kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_.stream()>>>(count_, mat, numEdges, edgeOffset);                \
+    tc_edge_linear_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_.stream()>>>(count_, mat, numEdges, edgeOffset);                \
     break;
 
     switch (dimBlock) {
@@ -119,8 +120,8 @@ public:
     CUDA_RUNTIME(cudaGetLastError());
   }
 
-  template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
-    count_async(mat, edgeOffset, n);
+  template <typename CsrCoo> uint64_t count_sync(const CsrCoo &adj, const size_t edgeOffset, const size_t n) {
+    count_async(adj, edgeOffset, n);
     sync();
     return count();
   }
@@ -133,7 +134,11 @@ public:
 
   void sync() { stream_.sync(); }
 
-  uint64_t count() const { return *count_; }
+  /*! return the most recent count
+   */
+  uint64_t count() { 
+    return *count_;
+  }
   int device() const { return dev_; }
 };
 
