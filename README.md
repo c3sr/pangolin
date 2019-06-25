@@ -11,16 +11,32 @@ A header-only C++/CUDA library for GPU graph operations
 
 ## Getting Started
 
-Include the pangolin headers in your code
+### Install CUDA
+
+Most of pangolin only works with `nvcc`.
+
+### Install MPI (optional)
+
+`sudo apt install libopenmpi-dev openmpi-bin`
+
+### Install NUMA (optional)
+
+`sudo apt install libnuma-dev`
+
+Include the pangolin headers in your code, and somewhere before using pangolin, call `pangolin::init()`
 
 ```c++
 #include "pangolin.hpp"
 #include "pangolin.cuh"
+
+int main(int argc, char **argv) {
+    pangolin::init();
+    // your code here.
+}
+
 ```
 
-### Installing MPI (optional)
 
-`sudo apt install libopenmpi-dev openmpi-bin`
 
 ## Library Features
 
