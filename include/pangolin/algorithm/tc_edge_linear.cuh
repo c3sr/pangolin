@@ -6,6 +6,7 @@
 #include "pangolin/algorithm/zero.cuh"
 #include "pangolin/dense/vector.cuh"
 #include "search.cuh"
+#include "pangolin/cuda_cxx/rc_stream.hpp"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
@@ -45,47 +46,39 @@ namespace pangolin {
 class LinearTC {
 private:
   int dev_;
-  cudaStream_t stream_;
+  RcStream stream_;
   uint64_t *count_;
-  bool destroyStream_;
 
 public:
-  LinearTC(int dev) : dev_(dev), stream_(nullptr), count_(nullptr), destroyStream_(true) {
+  LinearTC(int dev) : dev_(dev), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    SPDLOG_TRACE(logger::console(), "create stream");
-    CUDA_RUNTIME(cudaStreamCreate(&stream_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
-    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
   }
 
-  LinearTC(int dev, cudaStream_t stream) : dev_(dev), stream_(stream), count_(nullptr), destroyStream_(false) {
+  LinearTC(int dev, RcStream stream) : dev_(dev), stream_(stream), count_(nullptr) {
+    if (dev != stream.device()) {
+      LOG(critical, "stream device {} and counter device {} mismatch", stream.device(), dev);
+    }
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
-    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
     // error may be deferred to a cudaHostGetDevicePointer
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
   }
 
   LinearTC(LinearTC &&other)
-      : dev_(other.dev_), stream_(other.stream_), count_(other.count_), destroyStream_(other.destroyStream_) {
+      : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_) {
     other.count_ = nullptr;
-    other.destroyStream_ = false;
-    other.stream_ = nullptr;
   }
 
   LinearTC() : LinearTC(0) {}
   ~LinearTC() {
-    if (destroyStream_ && stream_) {
-      SPDLOG_TRACE(logger::console(), "destroy stream {}", uintptr_t(stream_));
-      CUDA_RUNTIME(cudaStreamDestroy(stream_));
-    }
     CUDA_RUNTIME(cudaFree(count_));
   }
 
@@ -93,8 +86,8 @@ public:
   void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges, const size_t dimBlock = 256) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
-    zero_async<1>(count_, dev_, stream_);
+    stream_.sync();
+    zero_async<1>(count_, dev_, cudaStream_t(stream_));
     CUDA_RUNTIME(cudaGetLastError());
     // zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     // uint64_t *devCount = nullptr;
@@ -104,11 +97,11 @@ public:
     // LOG(debug, "did zero");
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
-    LOG(debug, "device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, uintptr_t(stream_));
+    LOG(debug, "device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, stream_);
 
 #define CASE(const_dimBlock)                                                                                           \
   case const_dimBlock:                                                                                                 \
-    kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);                \
+    kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_.stream()>>>(count_, mat, numEdges, edgeOffset);                \
     break;
 
     switch (dimBlock) {
@@ -138,7 +131,7 @@ public:
     return count();
   }
 
-  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
+  void sync() { stream_.sync(); }
 
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }

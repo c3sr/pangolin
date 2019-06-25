@@ -133,6 +133,11 @@ pangolin_add_gpu_test(
   SRCS test_numa.cu
 )
 
+pangolin_add_gpu_test(
+  NAME test_rc_stream
+  SRCS test_rc_stream.cu
+)
+
 pangolin_add_test(
   NAME test_single_header
   SRCS test_single_header.cu
