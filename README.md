@@ -22,6 +22,43 @@ Include the pangolin headers in your code
 
 `sudo apt install libopenmpi-dev openmpi-bin`
 
+## Library Features
+
+### RcStream
+
+A reference-counted `cudaStream_t`.
+Automatically create, share, and destroy a single cudaStream_t, analogous to a `std::shared_ptr`.
+Get started at [include/pangolin/cuda_cxx/rc_stream.hpp].
+
+### Allocators
+C++ stdlib allocators for CUDA device memory, CUDA host memory, and CUDA managed memory.
+Get started at [include/pangolin/allocator].
+
+### Dense containers
+`Vector`s and `Buffer`s backed by any `pangolin::Allocator`
+Get started at [include/pangolin/dense].
+
+### Sparse containers
+CSR and CSR+COO sparse matrices backed by `pangolin::Vector`
+Get started at [include/pangolin/sparse].
+
+### Algorithms
+* Triangle Counting
+    * binary
+    * sequentia
+* K-truss
+* Fill
+* broadcast
+    * warp-collaborative
+    * block-collaborative
+
+Get started at [include/pangolin/algorithm].
+
+### System Topology Exploration
+
+Built on top of `numa` and `nvidia-ml`, query the system topology to discover which GPUs, CPUs, and NUMA regions are associated.
+Get started at [include/pangolin/topology].
+
 ### Controlling Logging
 
 ```c++
