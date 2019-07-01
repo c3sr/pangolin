@@ -18,20 +18,20 @@
 
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_warp_bitvector_kernel(
-    uint64_t *count,          //!< [inout] the count, caller should zero
-    const CsrView adj,        //!< [in] the matrix
-    const size_t numRows,     //!< [in] the number of rows this kernel will count
-    const size_t rowStart,    //!< [in] the starting row this kernel will count
-    char *globalBitVecs,      //!< [out] a scratch area for generating row bit vectors
-    size_t globalBitVecBytes, //!< [in] the number of bytes in the globalBitVecs
-    size_t *rowIdx            //!< [inout] a gpu memory area for work-stealing. caller should set to rowStart
+    uint64_t *__restrict__ count,     //!< [inout] the count, caller should zero
+    const CsrView adj,                //!< [in] the matrix
+    const size_t numRows,             //!< [in] the number of rows this kernel will count
+    const size_t rowStart,            //!< [in] the starting row this kernel will count
+    char *__restrict__ globalBitVecs, //!< [out] a scratch area for generating row bit vectors
+    size_t globalBitVecBytes,         //!< [in] the number of bytes in the globalBitVecs
+    size_t *__restrict__ rowIdx       //!< [inout] a gpu memory area for work-stealing. caller should set to rowStart
 ) {
 
   typedef typename CsrView::index_type Index;
   constexpr size_t GLOBAL_ALIGNMENT = 256;
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
   constexpr size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
-  constexpr size_t FAST_BITVEC_BYTES = 512;
+  constexpr size_t FAST_BITVEC_BYTES = 2048;
 
   // shared memory for a fast bit vector
   __shared__ char shMem[WARPS_PER_BLOCK][FAST_BITVEC_BYTES];
@@ -63,7 +63,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_warp_bitvector_kernel(
     // broadcast the starting row of the block to all threads
     warpRow = pangolin::warp_broadcast2(warpRow, 0 /*lane 0 is root*/);
 
-    // bail out of loop if wapr is about to operate on a non-existent row
+    // bail out of loop if warp is about to operate on a non-existent row
     if (warpRow >= rowStart + numRows) {
       break;
     }
@@ -97,7 +97,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_warp_bitvector_kernel(
         sz = slowBitvecSz;
       }
 
-      // clock_t start, stop;
       pangolin::DeviceBitVector bitvec(fields, sz, minCol);
       bitvec.warp_clear_inclusive(minCol, maxCol);
 
@@ -119,11 +118,14 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_warp_bitvector_kernel(
         const Index *nbrBegin = &adj.colInd_[nbrStart];
         const Index *nbrEnd = &adj.colInd_[nbrStop];
 
+// nvcc 10.1 was unrolling this loop
+#pragma unroll(1)
         for (const Index *p = nbrBegin + lx; p < nbrEnd; p += 32) {
           // the vector is offset by minCol and we only zeroed up to maxCol
           Index searchVal = *p;
-          bool match = (searchVal >= minCol) && (searchVal <= maxCol) && bitvec.get(searchVal);
-          threadCount += match;
+          if (searchVal >= minCol && searchVal <= maxCol) {
+            threadCount += bitvec.get(searchVal);
+          }
         }
       }
 
