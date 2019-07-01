@@ -4,14 +4,14 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
+#include "pangolin/cuda_cxx/rc_stream.hpp"
 #include "pangolin/dense/vector.cuh"
 #include "search.cuh"
-#include "pangolin/cuda_cxx/rc_stream.hpp"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     tc_edge_linear_kernel(uint64_t *count, //!< [inout] the count, caller should zero
-           const CsrCooView mat, const size_t numEdges, const size_t edgeStart) {
+                          const CsrCooView mat, const size_t numEdges, const size_t edgeStart) {
 
   typedef typename CsrCooView::index_type Index;
 
@@ -48,14 +48,19 @@ private:
   int dev_;
   RcStream stream_;
   uint64_t *count_;
+  cudaEvent_t kernelStart_;
+  cudaEvent_t kernelStop_;
 
 public:
   LinearTC(int dev) : dev_(dev), count_(nullptr) {
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
+    // error may be deferred to a cudaHostGetDevicePointer
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
   }
@@ -65,6 +70,9 @@ public:
       LOG(critical, "stream device {} and counter device {} mismatch", stream.device(), dev);
     }
     CUDA_RUNTIME(cudaSetDevice(dev_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
+
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
     // error may be deferred to a cudaHostGetDevicePointer
@@ -74,14 +82,18 @@ public:
 
   /*! move constructor
    */
-  LinearTC(LinearTC &&other)
-      : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_) {
+  LinearTC(LinearTC &&other) : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_) {
     other.count_ = nullptr;
+    CUDA_RUNTIME(cudaSetDevice(dev_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
   }
 
   LinearTC() : LinearTC(0) {}
   ~LinearTC() {
     CUDA_RUNTIME(cudaFree(count_));
+    CUDA_RUNTIME(cudaEventDestroy(kernelStart_));
+    CUDA_RUNTIME(cudaEventDestroy(kernelStop_));
   }
 
   template <typename CsrCoo>
@@ -99,10 +111,12 @@ public:
     const int dimGrid = (numEdges + dimBlock - 1) / dimBlock;
     assert(edgeOffset + numEdges <= mat.nnz());
     LOG(debug, "tc_edge_linear_kernel device = {}, <<<{}, {}, 0, {}>>>", dev_, dimGrid, dimBlock, stream_);
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_));
 
 #define CASE(const_dimBlock)                                                                                           \
   case const_dimBlock:                                                                                                 \
-    tc_edge_linear_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_.stream()>>>(count_, mat, numEdges, edgeOffset);                \
+    tc_edge_linear_kernel<const_dimBlock>                                                                              \
+        <<<dimGrid, const_dimBlock, 0, stream_.stream()>>>(count_, mat, numEdges, edgeOffset);                         \
     break;
 
     switch (dimBlock) {
@@ -117,6 +131,7 @@ public:
     }
 
 #undef CASE
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_));
     CUDA_RUNTIME(cudaGetLastError());
   }
 
@@ -136,10 +151,19 @@ public:
 
   /*! return the most recent count
    */
-  uint64_t count() { 
-    return *count_;
-  }
+  uint64_t count() { return *count_; }
   int device() const { return dev_; }
+
+  /*! return the number of ms the GPU spent in the triangle counting kernel
+
+    After this call, the kernel will have been completed, though the count may not be available.
+   */
+  float get_kernel_ms() {
+    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
+    float ms;
+    CUDA_RUNTIME(cudaEventElapsedTime(&ms, kernelStart_, kernelStop_));
+    return ms;
+  }
 };
 
 } // namespace pangolin
