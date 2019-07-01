@@ -26,9 +26,8 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
 
   typedef typename CsrCooView::index_type Index;
 
-  // increase the scale the computed binary cost by this amount when deciding which algorithm
-  // 0.125: ~binary on scale 23, ~linear on cit-Patents (RTX 6000)
-  constexpr float FAVOR_LINEAR = 0.125;
+  // scale the computed binary cost by this amount when deciding which algorithm
+  constexpr float FAVOR_LINEAR = 0.25; // 0.25;
 
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
   constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
@@ -115,16 +114,17 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         edgeBinaryCost = srcSz * (sizeof(dstSz) * CHAR_BIT - __clz(dstSz));
       }
     }
+    // atomicAdd(&linearCost[wx], edgeLinearCost);
     size_t warpLinearCost = pangolin::warp_sum(edgeLinearCost);
     if (0 == lx) {
       linearCost[wx] = warpLinearCost;
     }
+    // atomicAdd(&binaryCost[wx], edgeBinaryCost);
     size_t warpBinaryCost = pangolin::warp_sum(edgeBinaryCost);
     if (0 == lx) {
       binaryCost[wx] = warpBinaryCost;
     }
-    // atomicAdd(&linearCost[wx], edgeLinearCost);
-    // atomicAdd(&binaryCost[wx], edgeBinaryCost);
+
     __syncwarp(); // wait for all threads in the warp to have contributed to the cost
     // if (lx == 0) {
     //   printf("warp %lu @ edge %lu: linear %lu binary %lu\n", wx, warpEdgeIdx, linearCost[wx], binaryCost[wx]);
@@ -150,21 +150,25 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         // }
 
         // FIXME: some lane already has these values, no need to reload
-        const Index src = adj.rowInd_[j];
-        const Index dst = adj.colInd_[j];
-        const Index *srcBegin = &adj.colInd_[adj.rowPtr_[src]];
-        const Index *srcEnd = &adj.colInd_[adj.rowPtr_[src + 1]];
-        const Index srcSz = srcEnd - srcBegin;
-        const Index *dstBegin = &adj.colInd_[adj.rowPtr_[dst]];
-        const Index *dstEnd = &adj.colInd_[adj.rowPtr_[dst + 1]];
-        const Index dstSz = dstEnd - dstBegin;
+        // const Index edgeSrc = adj.rowInd_[j];
+        // const Index edgeDst = adj.colInd_[j];
+        // const Index *edgeSrcBegin = &adj.colInd_[adj.rowPtr_[edgeSrc]];
+        const Index *edgeSrcBegin = pangolin::warp_broadcast2(srcBegin, j - warpEdgeIdx);
+        // const Index *srcEnd = &adj.colInd_[adj.rowPtr_[edgeSrc + 1]];
+        // const Index srcSz = srcEnd - srcBegin;
+        const Index edgeSrcSz = pangolin::warp_broadcast2(srcSz, j - warpEdgeIdx);
+        // const Index *edgeDstBegin = &adj.colInd_[adj.rowPtr_[edgeDst]];
+        const Index *edgeDstBegin = pangolin::warp_broadcast2(dstBegin, j - warpEdgeIdx);
+        // const Index *dstEnd = &adj.colInd_[adj.rowPtr_[edgeDst + 1]];
+        // const Index dstSz = dstEnd - edgeDstBegin;
+        const Index edgeDstSz = pangolin::warp_broadcast2(dstSz, j - warpEdgeIdx);
 
-        if (srcSz > dstSz) {
+        if (edgeSrcSz > edgeDstSz) {
           threadCount += pangolin::warp_sorted_count_binary<1, warpsPerBlock, Index, false /*no reduction*/>(
-              dstBegin, dstSz, srcBegin, srcSz);
+              edgeDstBegin, edgeDstSz, edgeSrcBegin, edgeSrcSz);
         } else {
           threadCount += pangolin::warp_sorted_count_binary<1, warpsPerBlock, Index, false /*no reduction*/>(
-              srcBegin, srcSz, dstBegin, dstSz);
+              edgeSrcBegin, edgeSrcSz, edgeDstBegin, edgeDstSz);
         }
         // if (threadCount != 0) {
         //   printf("warp %lu lane %lu tris so far %lu \n", wx, lx, threadCount);
