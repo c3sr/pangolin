@@ -49,6 +49,21 @@ template <typename T> __device__ __forceinline__ T warp_broadcast2(T val, const 
   return val;
 }
 
+/*! Broadcast value from threadIdx.x root to all threads in the warp
+ */
+template <typename T> __device__ __forceinline__ T *warp_broadcast2(T *val, const int root) {
+
+  uintptr_t pval = uintptr_t(val);
+
+#if __CUDACC_VER_MAJOR__ >= 9
+  pval = __shfl_sync(0xffffffff /* all threads */, pval, root);
+#else
+  pval = __shfl(pval, root);
+#endif
+
+  return (T *)pval;
+}
+
 /*! Broadcast value from threadIdx.x root to all threads in the block
  */
 template <typename T> __device__ __forceinline__ T block_broadcast(const T val, const int root) {
