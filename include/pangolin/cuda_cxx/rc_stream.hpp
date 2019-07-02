@@ -1,3 +1,9 @@
+/*! A reference-counted cudaStream_t, which can operate in two modes:
+
+
+
+*/
+
 #pragma once
 
 #include <cassert>
@@ -12,8 +18,11 @@ namespace pangolin {
 
 /*! A reference-counted CUDA stream
 
-    The stream is destroyed when all references to it are gone.
-    Not thread-safe
+  As a reference to an existing cudaStream_t, in which case the RcStream will not manage the lifetime of the stream.
+  Or, by internally creating and managing the lifetime of a cudaStream_t. The stream is destroyed when all references to
+  it are gone.
+
+  Not thread-safe
  */
 class RcStream {
 private:
@@ -22,6 +31,8 @@ private:
   std::shared_ptr<size_t> count_;
 
 public:
+  /*! Create an RcStream that owns a stream
+   */
   RcStream() : stream_(nullptr) {
     SPDLOG_TRACE(logger::console(), "default ctor");
     count_ = std::make_shared<size_t>(1);
@@ -38,13 +49,21 @@ public:
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
   }
 
-  explicit inline operator cudaStream_t() const {
-    return stream_;
+  /*! Create an RcStream that refers to an existing stream
+
+      The RcStream will not destroy the stream
+  */
+  explicit RcStream(int dev, cudaStream_t stream) : dev_(dev), stream_(stream) {
+    SPDLOG_TRACE(logger::console(), "stream ctor {}", dev);
+    count_ = std::make_shared<size_t>(2); // start with a count of 2 so stream_ is never destroyed
+    assert(count_);
+    CUDA_RUNTIME(cudaSetDevice(dev));
+    CUDA_RUNTIME(cudaStreamCreate(&stream_));
   }
 
-  explicit inline operator bool() const {
-    return bool(stream_);
-  }
+  explicit inline operator cudaStream_t() const { return stream_; }
+
+  explicit inline operator bool() const { return bool(stream_); }
 
   ~RcStream() {
     if (count_) {
@@ -99,10 +118,10 @@ public:
 
   inline int device() const noexcept { return dev_; }
   inline cudaStream_t stream() const noexcept { return stream_; }
-  void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
+  inline void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
   size_t count() const noexcept { return *count_; }
 
-  friend std::ostream&operator<<(std::ostream&os, const RcStream &r) {
+  friend std::ostream &operator<<(std::ostream &os, const RcStream &r) {
     return os << "stream:" << uintptr_t(r.stream_);
   }
 };
