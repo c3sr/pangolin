@@ -33,3 +33,20 @@ TEST_CASE("ctor", "[gpu]") {
     REQUIRE(stream.stream());
   }
 }
+
+TEST_CASE("ref ctor", "[gpu]") {
+  pangolin::init();
+  logger::set_level(logger::Level::TRACE);
+
+  int device;
+  cudaStream_t raw;
+  CUDA_RUNTIME(cudaGetDevice(&device));
+  CUDA_RUNTIME(cudaStreamCreate(&raw));
+  {
+    RcStream stream(device, raw);
+    REQUIRE(stream.stream() == raw);
+  }
+  REQUIRE(raw); // stream should not have been freed
+
+  CUDA_RUNTIME(cudaStreamDestroy(raw));
+}

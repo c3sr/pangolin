@@ -57,8 +57,6 @@ public:
     SPDLOG_TRACE(logger::console(), "stream ctor {}", dev);
     count_ = std::make_shared<size_t>(2); // start with a count of 2 so stream_ is never destroyed
     assert(count_);
-    CUDA_RUNTIME(cudaSetDevice(dev));
-    CUDA_RUNTIME(cudaStreamCreate(&stream_));
   }
 
   explicit inline operator cudaStream_t() const { return stream_; }
