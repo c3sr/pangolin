@@ -20,37 +20,34 @@ __device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!
   const T *ap = aBegin;
   const T *bp = bBegin;
 
-  if (ap < aEnd && bp < bEnd) {
+  bool loadA = true;
+  bool loadB = true;
 
-    bool loadA = false;
-    bool loadB = false;
-    T a = *ap;
-    T b = *bp;
+  while (ap < aEnd && bp < bEnd) {
 
-    while (ap < aEnd && bp < bEnd) {
+    T a, b;
 
-      if (loadA) {
-        a = *ap;
-        loadA = false;
-      }
-      if (loadB) {
-        b = *bp;
-        loadB = false;
-      }
+    if (loadA) {
+      a = *ap;
+      loadA = false;
+    }
+    if (loadB) {
+      b = *bp;
+      loadB = false;
+    }
 
-      if (a == b) {
-        ++count;
-        ++ap;
-        ++bp;
-        loadA = true;
-        loadB = true;
-      } else if (a < b) {
-        ++ap;
-        loadA = true;
-      } else {
-        ++bp;
-        loadB = true;
-      }
+    if (a == b) {
+      ++count;
+      ++ap;
+      ++bp;
+      loadA = true;
+      loadB = true;
+    } else if (a < b) {
+      ++ap;
+      loadA = true;
+    } else {
+      ++bp;
+      loadB = true;
     }
   }
   return count;
