@@ -158,11 +158,11 @@ public:
 
     After this call, the kernel will have been completed, though the count may not be available.
    */
-  float get_kernel_ms() {
+  float kernel_time() {
     CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     float ms;
     CUDA_RUNTIME(cudaEventElapsedTime(&ms, kernelStart_, kernelStop_));
-    return ms;
+    return ms / 1e3;
   }
 };
 
