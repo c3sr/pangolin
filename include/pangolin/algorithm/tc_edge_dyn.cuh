@@ -33,10 +33,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
   constexpr size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
 
-  // per-warp estimated costs of linear and binary search method
-  __shared__ size_t linearCost[WARPS_PER_BLOCK];
-  __shared__ size_t binaryCost[WARPS_PER_BLOCK];
-
   // assign each thread a lane within a warp (lx) and a global warp id (gwx), and a warp id within the threadblock (wx)
   const size_t lx = threadIdx.x % 32;
   const size_t wx = threadIdx.x / 32;
@@ -68,15 +64,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
       // }
       break;
     }
-
-    // zero the cost of these 32 edges
-    if (0 == lx) {
-      linearCost[wx] = 0;
-    }
-    if (1 == lx) {
-      binaryCost[wx] = 0;
-    }
-    __syncwarp();
 
     // each lane computes the cost of a different edge
     const size_t i = warpEdgeIdx + lx;
@@ -115,50 +102,27 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         edgeBinaryCost = srcSz * (sizeof(dstSz) * CHAR_BIT - __clz(dstSz));
       }
     }
-    size_t warpLinearCost = pangolin::warp_sum(edgeLinearCost);
-    if (0 == lx) {
-      linearCost[wx] = warpLinearCost;
-    }
-    size_t warpBinaryCost = pangolin::warp_sum(edgeBinaryCost);
-    if (0 == lx) {
-      binaryCost[wx] = warpBinaryCost;
-    }
 
-    __syncwarp(); // wait for all threads in the warp to have contributed to the cost
-    // if (lx == 0) {
-    //   printf("warp %lu @ edge %lu: linear %lu binary %lu\n", wx, warpEdgeIdx, linearCost[wx], binaryCost[wx]);
-    // }
+    // which approach is better for this edge
+    // const bool doLinear = (edgeBinaryCost * scaleBinary) > edgeLinearCost;
+
+    size_t warpLinearCost = pangolin::warp_sum(edgeLinearCost);
+    size_t warpBinaryCost = pangolin::warp_sum(edgeBinaryCost);
+    warpLinearCost = pangolin::warp_broadcast2(warpLinearCost, 0);
+    warpBinaryCost = pangolin::warp_broadcast2(warpBinaryCost, 0);
 
     // based on estimated costs, choose which approach all threads will take
-    if (linearCost[wx] <= scaleBinary * binaryCost[wx]) {
+    if (warpLinearCost <= scaleBinary * warpBinaryCost) {
 
       // use one thread per edge to do the linear search
       // lanes without an edge have nullptrs for begin and end, so they won't count;
       threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
 
     } else {
-      // if (lx == 0) {
-      //   printf("binary %lu %lu\n", linearCost[wx], binaryCost[wx]);
-      // }
-      // use all threads in the warp to do a parallel binary search for each edge
       for (size_t j = warpEdgeIdx; j < warpEdgeIdx + 32 && j < edgeStart + numEdges; ++j) {
-
-        // if (lx == 0) {
-        //   printf("warp %lu working on binary edge %lu\n", wx, j);
-        // }
-
-        // FIXME: some lane already has these values, no need to reload
-        // const Index edgeSrc = adj.rowInd_[j];
-        // const Index edgeDst = adj.colInd_[j];
-        // const Index *edgeSrcBegin = &adj.colInd_[adj.rowPtr_[edgeSrc]];
         const Index *edgeSrcBegin = pangolin::warp_broadcast2(srcBegin, j - warpEdgeIdx);
-        // const Index *srcEnd = &adj.colInd_[adj.rowPtr_[edgeSrc + 1]];
-        // const Index srcSz = srcEnd - srcBegin;
         const Index edgeSrcSz = pangolin::warp_broadcast2(srcSz, j - warpEdgeIdx);
-        // const Index *edgeDstBegin = &adj.colInd_[adj.rowPtr_[edgeDst]];
         const Index *edgeDstBegin = pangolin::warp_broadcast2(dstBegin, j - warpEdgeIdx);
-        // const Index *dstEnd = &adj.colInd_[adj.rowPtr_[edgeDst + 1]];
-        // const Index dstSz = dstEnd - edgeDstBegin;
         const Index edgeDstSz = pangolin::warp_broadcast2(dstSz, j - warpEdgeIdx);
 
         if (edgeSrcSz > edgeDstSz) {
@@ -168,21 +132,14 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
           threadCount += pangolin::warp_sorted_count_binary<1, WARPS_PER_BLOCK, Index, false /*no reduction*/>(
               edgeSrcBegin, edgeSrcSz, edgeDstBegin, edgeDstSz);
         }
-        // if (threadCount != 0) {
-        //   printf("warp %lu lane %lu tris so far %lu \n", wx, lx, threadCount);
-        // }
       }
     }
-
-    // wait for everyone in the warp to be done before potentially modifying the cost again
-    __syncwarp();
   }
 
   // if (threadCount != 0) {
   //   printf("warp %lu lane %lu tris total %lu \n", wx, lx, threadCount);
   // }
 
-  // __syncthreads();
   // Block-wide reduction of threadCount
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
   __shared__ typename BlockReduce::TempStorage tempStorage;
