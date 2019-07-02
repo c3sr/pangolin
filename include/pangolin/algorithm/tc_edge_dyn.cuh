@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include <cub/cub.cuh>
 
 #include "count.cuh"
@@ -11,30 +13,29 @@
 #include "pangolin/algorithm/fill.cuh"
 #include "pangolin/algorithm/reduction.cuh"
 #include "pangolin/algorithm/zero.cuh"
+#include "pangolin/cuda_cxx/rc_stream.hpp"
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
 #include "search.cuh"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
-    tc_edge_dyn_kernel(uint64_t *count,        //!< [inout] the count, caller should zero
-                       const CsrCooView adj,   //<! [in] the matrix
-                       const size_t numEdges,  //<! [in] the number of edges this kernel will count
-                       const size_t edgeStart, // <! [in] the starting edge this kernel will count
+    tc_edge_dyn_kernel(uint64_t *count,         //!< [inout] the count, caller should zero
+                       const CsrCooView adj,    //<! [in] the matrix
+                       const size_t numEdges,   //<! [in] the number of edges this kernel will count
+                       const size_t edgeStart,  //<! [in] the starting edge this kernel will count
+                       const float scaleBinary, //<! [in] amount to scale the binary cost by in the cost model
                        size_t *edgeIdx //<! [inout] a gpu memory area for work-stealing. caller should set to edgeStart
     ) {
 
   typedef typename CsrCooView::index_type Index;
 
-  // scale the computed binary cost by this amount when deciding which algorithm
-  constexpr float FAVOR_LINEAR = 0.25; // 0.25;
-
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
-  constexpr size_t warpsPerBlock = BLOCK_DIM_X / 32;
+  constexpr size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
 
   // per-warp estimated costs of linear and binary search method
-  __shared__ size_t linearCost[warpsPerBlock];
-  __shared__ size_t binaryCost[warpsPerBlock];
+  __shared__ size_t linearCost[WARPS_PER_BLOCK];
+  __shared__ size_t binaryCost[WARPS_PER_BLOCK];
 
   // assign each thread a lane within a warp (lx) and a global warp id (gwx), and a warp id within the threadblock (wx)
   const size_t lx = threadIdx.x % 32;
@@ -58,7 +59,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     // }
 
     // broadcast the starting edge of the warp to all lanes
-    warpEdgeIdx = pangolin::warp_broadcast<warpsPerBlock>(warpEdgeIdx, 0 /*root*/);
+    warpEdgeIdx = pangolin::warp_broadcast<WARPS_PER_BLOCK>(warpEdgeIdx, 0 /*root*/);
 
     // bail out of loop if all lanes don't have a real edge
     if (warpEdgeIdx >= edgeStart + numEdges) {
@@ -114,12 +115,10 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         edgeBinaryCost = srcSz * (sizeof(dstSz) * CHAR_BIT - __clz(dstSz));
       }
     }
-    // atomicAdd(&linearCost[wx], edgeLinearCost);
     size_t warpLinearCost = pangolin::warp_sum(edgeLinearCost);
     if (0 == lx) {
       linearCost[wx] = warpLinearCost;
     }
-    // atomicAdd(&binaryCost[wx], edgeBinaryCost);
     size_t warpBinaryCost = pangolin::warp_sum(edgeBinaryCost);
     if (0 == lx) {
       binaryCost[wx] = warpBinaryCost;
@@ -131,13 +130,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     // }
 
     // based on estimated costs, choose which approach all threads will take
-    if (linearCost[wx] <= FAVOR_LINEAR * binaryCost[wx]) {
-      // if (lx == 0) {
-      //   printf("linear\n");
-      // }
+    if (linearCost[wx] <= scaleBinary * binaryCost[wx]) {
+
       // use one thread per edge to do the linear search
       // lanes without an edge have nullptrs for begin and end, so they won't count;
       threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
+
     } else {
       // if (lx == 0) {
       //   printf("binary %lu %lu\n", linearCost[wx], binaryCost[wx]);
@@ -164,10 +162,10 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         const Index edgeDstSz = pangolin::warp_broadcast2(dstSz, j - warpEdgeIdx);
 
         if (edgeSrcSz > edgeDstSz) {
-          threadCount += pangolin::warp_sorted_count_binary<1, warpsPerBlock, Index, false /*no reduction*/>(
+          threadCount += pangolin::warp_sorted_count_binary<1, WARPS_PER_BLOCK, Index, false /*no reduction*/>(
               edgeDstBegin, edgeDstSz, edgeSrcBegin, edgeSrcSz);
         } else {
-          threadCount += pangolin::warp_sorted_count_binary<1, warpsPerBlock, Index, false /*no reduction*/>(
+          threadCount += pangolin::warp_sorted_count_binary<1, WARPS_PER_BLOCK, Index, false /*no reduction*/>(
               edgeSrcBegin, edgeSrcSz, edgeDstBegin, edgeDstSz);
         }
         // if (threadCount != 0) {
@@ -205,42 +203,42 @@ namespace pangolin {
 class EdgeWarpDynTC {
 private:
   int dev_;
-  cudaStream_t stream_;
+  RcStream stream_;              //<! the stream that this triangle counter will use
   uint64_t *count_;              //<! the triangle count
   DeviceBuffer<size_t> edgeIdx_; //<! index of the next available edge for counting
-  bool destroyStream_;
+  float scaleBinary_;            //<! scale the binary cost model in the kernel
 
   // events for measuring time
-  float kernelMillis_;
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
 
 public:
-  EdgeWarpDynTC(int dev)
-      : dev_(dev), stream_(nullptr), count_(nullptr), edgeIdx_(1, dev), destroyStream_(true), kernelMillis_(0) {
+  EdgeWarpDynTC(int dev, const float scaleBinary = 0.25)
+      : dev_(dev), stream_(std::move(RcStream(dev))), count_(nullptr), edgeIdx_(1, dev), scaleBinary_(scaleBinary) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    SPDLOG_TRACE(logger::console(), "create stream");
-    CUDA_RUNTIME(cudaStreamCreate(&stream_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
 
-    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
+    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
 
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
   }
 
-  EdgeWarpDynTC(int dev, cudaStream_t stream)
-      : dev_(dev), stream_(stream), count_(nullptr), edgeIdx_(1, dev), destroyStream_(false), kernelMillis_(0) {
+  EdgeWarpDynTC(int dev, cudaStream_t stream, const float scaleBinary = 0.25)
+      : dev_(dev), stream_(std::move(RcStream(dev, stream))), count_(nullptr), edgeIdx_(1, dev),
+        scaleBinary_(scaleBinary) {
+    if (stream_.device() != dev) {
+      LOG(critical, "device and stream device do not match");
+      exit(1);
+    }
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
-    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
+    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
     // error may be deferred to a cudaHostGetDevicePointer
     // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
     // *count_ = 0;
@@ -250,21 +248,15 @@ public:
   }
 
   EdgeWarpDynTC(EdgeWarpDynTC &&other)
-      : dev_(other.dev_), stream_(other.stream_), count_(other.count_), edgeIdx_(std::move(other.edgeIdx_)),
-        destroyStream_(other.destroyStream_), kernelStart_(other.kernelStart_), kernelStop_(other.kernelStop_) {
+      : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_), edgeIdx_(std::move(other.edgeIdx_)),
+        scaleBinary_(other.scaleBinary_), kernelStart_(other.kernelStart_), kernelStop_(other.kernelStop_) {
     other.count_ = nullptr;
-    other.destroyStream_ = false;
-    other.stream_ = nullptr;
     other.kernelStart_ = nullptr;
     other.kernelStop_ = nullptr;
   }
 
   EdgeWarpDynTC() : EdgeWarpDynTC(0) {}
   ~EdgeWarpDynTC() {
-    if (destroyStream_ && stream_) {
-      SPDLOG_TRACE(logger::console(), "destroy stream {}", uintptr_t(stream_));
-      CUDA_RUNTIME(cudaStreamDestroy(stream_));
-    }
     CUDA_RUNTIME(cudaFree(count_));
 
     if (kernelStart_) {
@@ -280,9 +272,9 @@ public:
     assert(count_);
     assert(edgeOffset + numEdges <= adj.nnz());
     assert(edgeIdx_.data());
-    CUDA_RUNTIME(cudaSetDevice(dev_));
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
-    zero_async<1>(count_, dev_, stream_);
+    // CUDA_RUNTIME(cudaSetDevice(dev_)); // FIXME: needed?
+    // stream_.sync();                    // FIXME: needed?
+    zero_async<1>(count_, dev_, cudaStream_t(stream_));
     CUDA_RUNTIME(cudaGetLastError());
     device_fill(edgeIdx_.data(), 1, edgeOffset);
     CUDA_RUNTIME(cudaGetLastError());
@@ -295,12 +287,11 @@ public:
     cudaDeviceProp props;                                                                                              \
     CUDA_RUNTIME(cudaGetDeviceProperties(&props, dev_));                                                               \
     const int dimGrid = maxActiveBlocks * props.multiProcessorCount;                                                   \
-    LOG(debug, "device = {}, tc_edge_dyn_kernel<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock,                    \
-        uintptr_t(stream_));                                                                                           \
-    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                              \
-    tc_edge_dyn_kernel<const_dimBlock>                                                                                 \
-        <<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj, numEdges, edgeOffset, edgeIdx_.data());                 \
-    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                               \
+    LOG(debug, "device = {}, tc_edge_dyn_kernel<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock, stream_);          \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));                                                \
+    tc_edge_dyn_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(                         \
+        count_, adj, numEdges, edgeOffset, scaleBinary_, edgeIdx_.data());                                             \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));                                                 \
     break;                                                                                                             \
   }
 
@@ -331,13 +322,16 @@ public:
     return count();
   }
 
-  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
+  void sync() { stream_.sync(); }
 
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }
 
+  /*! Get the time spent by the last kernel in seconds
+   */
   double kernel_time() const {
     float millis;
+    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     CUDA_RUNTIME(cudaEventElapsedTime(&millis, kernelStart_, kernelStop_));
     return millis / 1e3;
   }
