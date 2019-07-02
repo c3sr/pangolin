@@ -35,7 +35,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
 
   // assign each thread a lane within a warp (lx) and a global warp id (gwx), and a warp id within the threadblock (wx)
   const size_t lx = threadIdx.x % 32;
-  const size_t wx = threadIdx.x / 32;
   uint64_t threadCount = 0;
 
   // size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
