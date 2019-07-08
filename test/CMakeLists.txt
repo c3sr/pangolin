@@ -32,6 +32,7 @@ function(pangolin_add_gpu_test)
 endfunction()
 
 function(pangolin_add_mpi_gpu_test)
+  if (MPI_FOUND)
   cmake_parse_arguments(
     PARSED_ARGS # prefix of output variables
     "" # list of names of boolean arguments
@@ -41,6 +42,7 @@ function(pangolin_add_mpi_gpu_test)
   )
   pangolin_add_test(${ARGN})
   set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu;mpi")
+  endif()
 endfunction()
 
 pangolin_add_test(
@@ -187,6 +189,11 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_tc_edge_warp_dyn
   SRCS test_tc_edge_warp_dyn.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_edge_warp_dysel
+  SRCS test_tc_edge_warp_dysel.cu
 )
 
 pangolin_add_gpu_test(
