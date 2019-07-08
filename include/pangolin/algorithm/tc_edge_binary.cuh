@@ -62,7 +62,6 @@ private:
   uint64_t *count_;
 
   // events for measuring time
-  float kernelMillis_;
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
   float countMillis_;
@@ -74,7 +73,7 @@ public:
 
       Create a counter on device dev
   */
-  BinaryTC(int dev) : dev_(dev), count_(nullptr), kernelMillis_(0), countMillis_(0) {
+  BinaryTC(int dev) : dev_(dev), count_(nullptr), countMillis_(0) {
     SPDLOG_TRACE(logger::console(), "device ctor");
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
@@ -152,16 +151,16 @@ public:
 
 #define IF_CASE(const_dimBlock, const_c)                                                                               \
   if (dimBlock == const_dimBlock && c == const_c) {                                                                    \
-    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                                       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                              \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
-    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                                        \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                               \
   }
 
 #define ELSE_IF_CASE(const_dimBlock, const_c)                                                                          \
   else if (dimBlock == const_dimBlock && c == const_c) {                                                               \
-    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                                       \
+    CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));                                                              \
     kernel<const_dimBlock, const_c><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, mat, numEdges, edgeOffset);       \
-    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                                        \
+    CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));                                                               \
   }
 
     IF_CASE(32, 1)
@@ -184,7 +183,6 @@ public:
 #undef IF_CASE
 #undef ELSE_IF_CASE
     CUDA_RUNTIME(cudaEventRecord(countStop_, stream_));
-    
   }
 
   template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
@@ -195,8 +193,6 @@ public:
 
   void sync() {
     CUDA_RUNTIME(cudaStreamSynchronize(stream_));
-    kernelMillis_ = 0;
-    CUDA_RUNTIME(cudaEventElapsedTime(&kernelMillis_, kernelStart_, kernelStop_));
     countMillis_ = 0;
     CUDA_RUNTIME(cudaEventElapsedTime(&countMillis_, countStart_, countStop_));
   }
@@ -207,9 +203,17 @@ public:
   /*! return the number of ms the GPU spent counting
    */
   float get_count_ms() { return countMillis_; }
+
   /*! return the number of ms the GPU spent in the triangle counting kernel
+
+    After this call, the kernel will have been completed, though the count may not be available.
    */
-  float get_kernel_ms() { return kernelMillis_; }
+  float kernel_time() {
+    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
+    float ms;
+    CUDA_RUNTIME(cudaEventElapsedTime(&ms, kernelStart_, kernelStop_));
+    return ms / 1e3;
+  }
 };
 
 } // namespace pangolin
