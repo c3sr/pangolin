@@ -50,7 +50,7 @@ public:
   HOST DEVICE INLINE const Index *device_row_ind() const { return rowInd_; } //!< row index array
 };
 
-/*! \brief A hybrid CSRCOO matrix 
+/*! \brief A hybrid CSRCOO matrix
 
 Copying to a GPU kernel by value will cause the underling memory to be copied as
 well. For read-only GPU access, use the view() method to get a lightweight
@@ -150,6 +150,29 @@ public:
     rowPtr_.prefetch_async(dev, stream);
     rowInd_.prefetch_async(dev, stream);
     colInd_.prefetch_async(dev, stream);
+  }
+
+  /*! Call shrink_to_fit on the underlying containers
+   */
+  HOST void shrink_to_fit() {
+    rowPtr_.shrink_to_fit();
+    rowInd_.shrink_to_fit();
+    colInd_.shrink_to_fit();
+  }
+
+  /*! The total capacity of the underlying containers in bytes
+   */
+  HOST uint64_t capacity_bytes() const noexcept {
+    return rowPtr_.capacity() * sizeof(typename decltype(rowPtr_)::value_type) +
+           rowInd_.capacity() * sizeof(typename decltype(rowInd_)::value_type) +
+           colInd_.capacity() * sizeof(typename decltype(colInd_)::value_type);
+  }
+  /*! The total size of the underlying containers in bytes
+   */
+  HOST uint64_t size_bytes() const noexcept {
+    return rowPtr_.size() * sizeof(typename decltype(rowPtr_)::value_type) +
+           rowInd_.size() * sizeof(typename decltype(rowInd_)::value_type) +
+           colInd_.size() * sizeof(typename decltype(colInd_)::value_type);
   }
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array

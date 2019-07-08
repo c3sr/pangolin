@@ -87,6 +87,26 @@ public:
    */
   PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
 
+  /*! Call shrink_to_fit on the underlying containers
+   */
+  PANGOLIN_HOST void shrink_to_fit() {
+    rowPtr_.shrink_to_fit();
+    colInd_.shrink_to_fit();
+  }
+
+  /*! The total capacity of the underlying containers in bytes
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t capacity_bytes() const noexcept {
+    return rowPtr_.capacity() * sizeof(typename decltype(rowPtr_)::value_type) +
+           colInd_.capacity() * sizeof(typename decltype(colInd_)::value_type);
+  }
+  /*! The total size of the underlying containers in bytes
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t size_bytes() const noexcept {
+    return rowPtr_.size() * sizeof(typename decltype(rowPtr_)::value_type) +
+           colInd_.size() * sizeof(typename decltype(colInd_)::value_type);
+  }
+
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
 
