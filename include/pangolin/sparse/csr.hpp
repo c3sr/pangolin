@@ -35,14 +35,18 @@ public:
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *colInd_; //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const noexcept { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const noexcept { return num_rows_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_nodes() const noexcept { return num_rows(); }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_nodes() const noexcept { return num_rows(); }
 
-  const Index *row_ptr() const { return rowPtr_; }                                      //!< row offset array
-  const Index *col_ind() const { return colInd_; }                                      //!< column index array
-  PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
-  PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_col_ind() const { return colInd_; } //!< column index array
+  __forceinline__ const Index *row_ptr() const noexcept { return rowPtr_; } //!< row offset array
+  __forceinline__ const Index *col_ind() const noexcept { return colInd_; } //!< column index array
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const Index *device_row_ptr() const {
+    return rowPtr_;
+  } //!< row offset array
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const Index *device_col_ind() const {
+    return colInd_;
+  } //!< column index array
 };
 
 /*! \brief A CSR matrix backed by CUDA Unified Memory

@@ -187,6 +187,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_tc_vertex_dyn
+  SRCS test_tc_vertex_dyn.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_tc_edge_warp_dyn
   SRCS test_tc_edge_warp_dyn.cu
 )
