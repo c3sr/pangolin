@@ -119,13 +119,13 @@ public:
   );
 
   CSRCOOView<Index, Vector> view() const {
-    CSRCOOView<Index, Vector> view;
-    view.nnz_ = nnz();
-    view.num_rows_ = num_rows();
-    view.rowPtr_ = rowPtr_.data();
-    view.colInd_ = colInd_.data();
-    view.rowInd_ = rowInd_.data();
-    return view;
+    CSRCOOView<Index, Vector> ret;
+    ret.nnz_ = nnz();
+    ret.num_rows_ = num_rows();
+    ret.rowPtr_ = rowPtr_.data();
+    ret.colInd_ = colInd_.data();
+    ret.rowInd_ = rowInd_.data();
+    return ret;
   }
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
