@@ -53,10 +53,10 @@ private:
 
 public:
   LinearTC(int dev) : dev_(dev), count_(nullptr) {
-    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
-    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
+    CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
@@ -159,8 +159,8 @@ public:
     After this call, the kernel will have been completed, though the count may not be available.
    */
   float kernel_time() {
-    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     float ms;
+    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     CUDA_RUNTIME(cudaEventElapsedTime(&ms, kernelStart_, kernelStop_));
     return ms / 1e3;
   }
