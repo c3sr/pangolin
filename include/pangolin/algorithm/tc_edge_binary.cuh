@@ -64,7 +64,6 @@ private:
   // events for measuring time
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
-  float countMillis_;
   cudaEvent_t countStart_;
   cudaEvent_t countStop_;
 
@@ -73,19 +72,18 @@ public:
 
       Create a counter on device dev
   */
-  BinaryTC(int dev) : dev_(dev), count_(nullptr), countMillis_(0) {
+  BinaryTC(int dev) : dev_(dev), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "device ctor");
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
+    CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
     CUDA_RUNTIME(cudaEventCreate(&countStart_));
     CUDA_RUNTIME(cudaEventCreate(&countStop_));
-
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
   }
 
   /*! default ctor - counter on device 0
@@ -191,26 +189,27 @@ public:
     return count();
   }
 
-  void sync() {
-    CUDA_RUNTIME(cudaStreamSynchronize(stream_));
-    countMillis_ = 0;
-    CUDA_RUNTIME(cudaEventElapsedTime(&countMillis_, countStart_, countStop_));
-  }
+  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }
 
   /*! return the number of ms the GPU spent counting
    */
-  float get_count_ms() { return countMillis_; }
+  float count_time() {
+    float ms;
+    CUDA_RUNTIME(cudaEventSynchronize(countStop_));
+    CUDA_RUNTIME(cudaEventElapsedTime(&ms, countStart_, countStop_));
+    return ms / 1e3;
+  }
 
   /*! return the number of ms the GPU spent in the triangle counting kernel
 
     After this call, the kernel will have been completed, though the count may not be available.
    */
   float kernel_time() {
-    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     float ms;
+    CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));
     CUDA_RUNTIME(cudaEventElapsedTime(&ms, kernelStart_, kernelStop_));
     return ms / 1e3;
   }
