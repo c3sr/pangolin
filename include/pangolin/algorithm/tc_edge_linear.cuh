@@ -50,9 +50,10 @@ private:
   uint64_t *count_;
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
+  size_t numEdges_; //<! the number of edges count_async was last invoked with
 
 public:
-  LinearTC(int dev) : dev_(dev), count_(nullptr) {
+  LinearTC(int dev) : dev_(dev), count_(nullptr), numEdges_(0) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
@@ -65,7 +66,7 @@ public:
     // *count_ = 0;
   }
 
-  LinearTC(int dev, RcStream stream) : dev_(dev), stream_(stream), count_(nullptr) {
+  LinearTC(int dev, RcStream stream) : dev_(dev), stream_(stream), count_(nullptr), numEdges_(0) {
     if (dev != stream.device()) {
       LOG(critical, "stream device {} and counter device {} mismatch", stream.device(), dev);
     }
@@ -82,7 +83,8 @@ public:
 
   /*! move constructor
    */
-  LinearTC(LinearTC &&other) : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_) {
+  LinearTC(LinearTC &&other)
+      : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_), numEdges_(other.numEdges_) {
     other.count_ = nullptr;
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
@@ -98,6 +100,7 @@ public:
 
   template <typename CsrCoo>
   void count_async(const CsrCoo &mat, const size_t edgeOffset, const size_t numEdges, const size_t dimBlock = 256) {
+    numEdges_ = numEdges;
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     zero_async<1>(count_, dev_, cudaStream_t(stream_));
@@ -152,7 +155,12 @@ public:
   /*! return the most recent count
    */
   uint64_t count() { return *count_; }
+  /*! The device this counter is assocated with
+   */
   int device() const { return dev_; }
+  /*! The number of edges count_async() was last called with
+   */
+  size_t num_edges() const noexcept { return numEdges_; }
 
   /*! return the number of ms the GPU spent in the triangle counting kernel
 
