@@ -10,7 +10,7 @@ TEST_CASE("get_cpus") {
   pangolin::init();
   logger::set_level(logger::Level::TRACE);
 
-  auto &topology = topology::topology();
+  auto &topology = topology::get();
 
   SECTION("at least 1 cpu") { REQUIRE(topology.cpus_.size() >= 1); }
 

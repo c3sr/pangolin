@@ -27,8 +27,9 @@ struct GPU {
   unsigned int nvmlIdx_;   //<! the Nvidia management library device index
   std::set<NUMA_t> numas_; //<! the NUMA regions of the CPUs that have affinity with this GPU
   std::set<CPU_t> cpus_;   //<! the CPUs that have affinity with this GPU
+  cudaDeviceProp props_;   //<! the CUDA device properties
 
-  GPU(int cudaId, unsigned int nvmlIdx) : cudaId_(cudaId), nvmlIdx_(nvmlIdx) {}
+  GPU(int cudaId, unsigned int nvmlIdx, cudaDeviceProp props) : cudaId_(cudaId), nvmlIdx_(nvmlIdx), props_(props) {}
 };
 
 struct CPU {
@@ -77,7 +78,11 @@ inline std::vector<GPU_t> make_gpus() {
     unsigned int nvmlIdx;
     NVML(nvmlDeviceGetIndex(nvmlDevice, &nvmlIdx));
 
-    gpus.push_back(std::make_shared<GPU>(cudaId, nvmlIdx));
+    // get the device properties for each GPU
+    cudaDeviceProp props;
+    CUDA_RUNTIME(cudaGetDeviceProperties(&props, cudaId));
+
+    gpus.push_back(std::make_shared<GPU>(cudaId, nvmlIdx, props));
   }
 
   return gpus;
@@ -188,7 +193,7 @@ struct Topology {
 
 /*! Lazily build and return the system Topology
  */
-Topology &topology() {
+Topology &get() {
 
   // only build topology structure once
   static bool init = false;

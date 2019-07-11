@@ -47,7 +47,7 @@ endfunction()
 
 pangolin_add_test(
   NAME test_binary_search
-  SRCS test_binary_search.cpp
+  SRCS test_binary_search.cu
 )
 
 pangolin_add_gpu_test(
@@ -92,7 +92,7 @@ pangolin_add_gpu_test(
 
 pangolin_add_test(
   NAME test_double_buffer
-  SRCS test_double_buffer.cpp
+  SRCS test_double_buffer.cu
 )
 
 pangolin_add_test(
@@ -112,7 +112,7 @@ pangolin_add_gpu_test(
 
 pangolin_add_gpu_test(
   NAME test_logger
-  SRCS test_logger.cpp test_logger_helper.cpp
+  SRCS test_logger.cu test_logger_helper.cu
 )
 
 pangolin_add_gpu_test(
@@ -122,7 +122,7 @@ pangolin_add_gpu_test(
 
 pangolin_add_test(
   NAME test_merge_path
-  SRCS test_merge_path.cpp
+  SRCS test_merge_path.cu
 )
 
 pangolin_add_mpi_gpu_test(
