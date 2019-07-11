@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <cstdio>
 
 #include <nvml.h>
 
@@ -197,10 +198,11 @@ Topology &get() {
 
   // only build topology structure once
   static bool init = false;
-  detail::init_nvml();
+  
   static Topology topology;
 
   if (!init) {
+    detail::init_nvml();
 
     topology.pageSize_ = sysconf(_SC_PAGESIZE);
 
@@ -272,6 +274,7 @@ Topology &get() {
         gpu->cpus_.insert(cpu);
       }
     }
+    init = true;
   }
 
   return topology;
