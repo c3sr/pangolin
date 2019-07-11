@@ -17,6 +17,7 @@
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
 #include "search.cuh"
+#include "pangolin/topology/topology.hpp"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
@@ -54,7 +55,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     // }
 
     // broadcast the starting edge of the warp to all lanes
-    warpEdgeIdx = pangolin::warp_broadcast<WARPS_PER_BLOCK>(warpEdgeIdx, 0 /*root*/);
+    warpEdgeIdx = pangolin::warp_broadcast2(warpEdgeIdx, 0 /*root*/);
 
     // bail out of loop if all lanes don't have a real edge
     if (warpEdgeIdx >= edgeStart + numEdges) {
@@ -175,14 +176,10 @@ public:
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
+    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
-
-    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
-
-    // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
-    // *count_ = 0;
   }
 
   EdgeWarpDynTC(int dev, cudaStream_t stream, const float scaleBinary = 0.25)
@@ -228,8 +225,6 @@ public:
     assert(count_);
     assert(edgeOffset + numEdges <= adj.nnz());
     assert(edgeIdx_.data());
-    // CUDA_RUNTIME(cudaSetDevice(dev_)); // FIXME: needed?
-    // stream_.sync();                    // FIXME: needed?
     zero_async<1>(count_, dev_, cudaStream_t(stream_));
     CUDA_RUNTIME(cudaGetLastError());
     device_fill(edgeIdx_.data(), 1, edgeOffset);
@@ -240,8 +235,7 @@ public:
     int maxActiveBlocks;                                                                                               \
     CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(                                                        \
         &maxActiveBlocks, tc_edge_dyn_kernel<const_dimBlock, CsrCoo>, const_dimBlock, 0));                             \
-    cudaDeviceProp props;                                                                                              \
-    CUDA_RUNTIME(cudaGetDeviceProperties(&props, dev_));                                                               \
+    cudaDeviceProp &props = topology::get().cudaGpus_[dev_]->props_;                                                \
     const int dimGrid = maxActiveBlocks * props.multiProcessorCount;                                                   \
     LOG(debug, "device = {}, tc_edge_dyn_kernel<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock, stream_);          \
     CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));                                                \
