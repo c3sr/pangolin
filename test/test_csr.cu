@@ -9,6 +9,12 @@ using namespace pangolin;
 TEST_CASE("ctor") {
   pangolin::init();
   CSR<int> m;
+
+  SECTION("reserve") {
+    m.reserve(10, 100);
+    REQUIRE(m.num_rows() == 0);
+    REQUIRE(m.nnz() == 0);
+  }
 }
 
 TEST_CASE("COO<int>::from_edgelist") {

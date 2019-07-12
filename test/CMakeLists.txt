@@ -65,10 +65,7 @@ pangolin_add_test(
   SRCS test_complete.cu
 )
 
-pangolin_add_gpu_test(
-  NAME test_csr_coo
-  SRCS test_csr_coo.cu
-)
+
 
 pangolin_add_gpu_test(
   NAME test_count
@@ -78,6 +75,16 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_csr
   SRCS test_csr.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_binned
+  SRCS test_csr_binned.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_coo
+  SRCS test_csr_coo.cu
 )
 
 pangolin_add_gpu_test(
