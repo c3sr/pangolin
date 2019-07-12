@@ -98,6 +98,13 @@ public:
     colInd_.shrink_to_fit();
   }
 
+  /*! pre-allocate space for numRows rows and nnz non-zeros
+   */
+  PANGOLIN_HOST void reserve(size_t numRows, size_t nnz) {
+    rowPtr_.reserve(numRows + 1);
+    colInd_.reserve(nnz);
+  }
+
   /*! The total capacity of the underlying containers in bytes
    */
   PANGOLIN_HOST PANGOLIN_DEVICE uint64_t capacity_bytes() const noexcept {
