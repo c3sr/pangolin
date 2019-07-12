@@ -25,32 +25,32 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
                       const size_t rowStart,        //!< [in] the starting row this kernel will count
                       const size_t numRows          //!< [in] the number of rows this kernel will count
     ) {
-
+  typedef typename CsrView::edge_index_type EdgeIndex;
+  typedef typename CsrView::node_index_type NodeIndex;
   constexpr size_t REG_CACHE_SIZE = 10;
 
-  typedef typename CsrView::index_type Index;
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
 
   // each thread can cache short rows
-  Index rowCache[REG_CACHE_SIZE];
+  NodeIndex rowCache[REG_CACHE_SIZE];
 
   // per-thread triangle count
   uint64_t threadCount = 0;
 
   // each thread handles a row
-  for (Index rowIdx = rowStart + blockDim.x * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
+  for (NodeIndex rowIdx = rowStart + blockDim.x * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
        rowIdx += blockDim.x * gridDim.x) {
 
-    const Index rowStart = adj.rowPtr_[rowIdx];
-    const Index rowStop = adj.rowPtr_[rowIdx + 1];
-    const Index rowSz = rowStop - rowStart;
+    const EdgeIndex rowStart = adj.rowStart_[rowIdx];
+    const EdgeIndex rowStop = adj.rowStop_[rowIdx];
+    const EdgeIndex rowSz = rowStop - rowStart;
 
     if (rowSz == 0) {
       continue; // no triangles from empty row
     } else if (rowSz <= REG_CACHE_SIZE) {
       // cache the source row in the registers
 #pragma unroll(REG_CACHE_SIZE)
-      for (Index i = 0; i < REG_CACHE_SIZE; ++i) {
+      for (NodeIndex i = 0; i < REG_CACHE_SIZE; ++i) {
         if (i < rowSz) {
           rowCache[i] = adj.colInd_[rowStart + i];
         }
@@ -60,16 +60,16 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
       for (size_t srcIdx = rowStart; srcIdx < rowStop; ++srcIdx) {
 
         // using rowCache in here is a non-constant access , which causes an access from global memory anyway
-        Index nbr = adj.colInd_[srcIdx];
-        Index nbrStart = adj.rowPtr_[nbr];
-        Index nbrStop = adj.rowPtr_[nbr + 1];
-        const Index *nbrBegin = &adj.colInd_[nbrStart];
-        const Index *nbrEnd = &adj.colInd_[nbrStop];
+        NodeIndex nbr = adj.colInd_[srcIdx];
+        EdgeIndex nbrStart = adj.rowStart_[nbr];
+        EdgeIndex nbrStop = adj.rowStop_[nbr];
+        const NodeIndex *nbrBegin = &adj.colInd_[nbrStart];
+        const NodeIndex *nbrEnd = &adj.colInd_[nbrStop];
         /*!
         unroll this loop so all accesses to rowCache[] are known statically
         and can be replaced by a register access
        */
-        const Index *nbrPtr = nbrBegin;
+        const NodeIndex *nbrPtr = nbrBegin;
 #pragma unroll(REG_CACHE_SIZE)
         for (size_t regIdx = 0; regIdx < REG_CACHE_SIZE; ++regIdx) {
           // early exit if we have run out of values in either array
@@ -78,7 +78,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
           }
 
           // load the current non-zero from the row
-          Index rowVal = rowCache[regIdx];
+          EdgeIndex rowVal = rowCache[regIdx];
 
           // catch nbrPtr up to rowVal or the end of the list
           while (true) {
@@ -87,7 +87,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
             if (nbrPtr == nbrEnd) {
               break;
             }
-            Index nbrVal = *nbrPtr;
+            NodeIndex nbrVal = *nbrPtr;
             if (nbrVal == rowVal) { // done if we have caught up
               threadCount++;
               nbrPtr++;
@@ -101,12 +101,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         }
       }
     } else { // row is too large. read src from global memory
-      const Index *srcBegin = &adj.colInd_[rowStart];
-      const Index *srcEnd = &adj.colInd_[rowStop];
-      for (const Index *srcPtr = srcBegin; srcPtr < srcEnd; ++srcPtr) {
-        Index src = *srcPtr;
-        const Index *dstBegin = &adj.colInd_[adj.rowPtr_[src]];
-        const Index *dstEnd = &adj.colInd_[adj.rowPtr_[src + 1]];
+      const NodeIndex *srcBegin = &adj.colInd_[rowStart];
+      const NodeIndex *srcEnd = &adj.colInd_[rowStop];
+      for (const NodeIndex *srcPtr = srcBegin; srcPtr < srcEnd; ++srcPtr) {
+        NodeIndex src = *srcPtr;
+        const NodeIndex *dstBegin = &adj.colInd_[adj.rowStart_[src]];
+        const NodeIndex *dstEnd = &adj.colInd_[adj.rowStop_[src]];
         threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
       }
     }

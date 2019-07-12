@@ -26,6 +26,11 @@ Any modifications to the underlying CSR may invalidate this view.
 template <typename NodeIndex, typename EdgeIndex> class CSRBinnedView {
   friend class CSRBinned<NodeIndex, EdgeIndex>;
 
+public:
+  typedef EdgeIndex edge_index_type;
+  typedef NodeIndex node_index_type;
+  typedef EdgeTy<NodeIndex> edge_type;
+
 private:
   uint64_t nnz_;     //!< number of non-zeros
   uint64_t numRows_; //!< length of rowOffset - 1
@@ -51,11 +56,12 @@ template <typename NodeIndex, typename EdgeIndex> class CSRBinned {
   static_assert(NUM_PARTS >= 1, "expect at least one partition");
 
 private:
-  NodeIndex maxCol_;
+  NodeIndex partitionSize_;
 
 public:
   typedef EdgeIndex edge_index_type;
   typedef NodeIndex node_index_type;
+  typedef EdgeTy<NodeIndex> edge_type;
 
   std::vector<Vector<EdgeIndex>>
       rowPtrs_; //!< NUM_PARTS+1 offsets in colInd where each partition starts at. Final array is where row ends
@@ -63,7 +69,10 @@ public:
 
   /*! Empty CSR
    */
-  PANGOLIN_HOST CSRBinned() : rowPtrs_(NUM_PARTS + 1 /* last one is end of the rows */) {}
+  explicit PANGOLIN_HOST CSRBinned(const NodeIndex maxExpectedNode)
+      : rowPtrs_(NUM_PARTS + 1 /* last one is end of the rows */) {
+    partitionSize_ = (maxExpectedNode + 1 + NUM_PARTS - 1) / NUM_PARTS; // ensure partition size is at least 1
+  }
 
   PANGOLIN_HOST uint64_t nnz() const noexcept {
     return colInd_.size();
@@ -81,6 +90,54 @@ public:
 
   PANGOLIN_HOST NodeIndex num_partitions() const noexcept { return NUM_PARTS; }
 
+  /*!
+   */
+  void add_next_edge(const Edge &edge) {
+
+    const NodeIndex src = edge.first;
+    const NodeIndex dst = edge.second;
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
+
+    // edge has a new src and should be in a new row
+    while (num_rows() != size_t(src + 1)) {
+      // expecting inputs to be sorted by src, so it should be at least
+      // as big as the current largest row we have recored
+      assert(src >= num_rows() && "are edges not ordered by source?");
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, num_rows());
+
+      // every partition starts at the beginning of the new row
+      for (auto &rowPtr : rowPtrs_) {
+        rowPtr.push_back(colInd_.size());
+      }
+    }
+
+    colInd_.push_back(dst);
+
+    // every partition after the one this edge is in starts after this edge
+    size_t edgePartIdx = min(NUM_PARTS - 1, dst / partitionSize_); // cap in case the estimated max node is wrong
+    SPDLOG_TRACE(logger::console(), "edge {}->{} in partition {}", edge.first, edge.second, edgePartIdx);
+    for (size_t incPartIdx = edgePartIdx + 1; incPartIdx < rowPtrs_.size(); ++incPartIdx) {
+      auto &rowPtr = rowPtrs_[incPartIdx];
+      assert(!rowPtr.empty() && "expecting there to be at least one row");
+      (*(rowPtr.end() - 1))++;
+    }
+  }
+
+  void finish_edges(const NodeIndex maxNode) {
+    // add empty nodes until we reach largestNode
+    SPDLOG_TRACE(logger::console(), "adding empty nodes through {}", maxNode);
+    while (num_rows() <= size_t(maxNode)) {
+      for (auto &rowPtr : rowPtrs_) {
+        rowPtr.push_back(colInd_.size());
+      }
+    }
+    SPDLOG_TRACE(logger::console(), "num_rows now {}", num_rows());
+
+    for (const auto &rowPtr : rowPtrs_) {
+      assert(rowPtr.size() == rowPtrs_[0].size() && "not all rowPtrs are the same length");
+    }
+  }
+
   /*! Build a CSR from a range of edges [first, last)
 
     Only include edges where f is true (default = all edges)
@@ -93,6 +150,35 @@ public:
                (void)e;
                return true;
              }) {
+    CSRBinned csr(estMaxNode);
+
+    if (begin == end) {
+      LOG(warn, "constructing from empty edge sequence");
+      return csr;
+    }
+
+    NodeIndex largestNode = 0;
+    size_t acceptedEdges = 0;
+
+    for (auto ei = begin; ei != end; ++ei) {
+      auto edge = *ei;
+      const NodeIndex src = edge.first;
+      const NodeIndex dst = edge.second;
+      if (f(edge)) {
+        ++acceptedEdges;
+        largestNode = max(largestNode, src);
+        largestNode = max(largestNode, dst);
+
+        csr.add_next_edge(edge);
+      }
+    }
+    if (acceptedEdges) {
+      csr.finish_edges(largestNode);
+    }
+
+    return csr;
+
+#if 0
     CSRBinned csr;
     const NodeIndex partSize = (estMaxNode + 1 + NUM_PARTS - 1) / NUM_PARTS; // ensure partition size is at least 1
     LOG(debug, "partition size is {}", partSize);
@@ -167,6 +253,7 @@ public:
     }
 
     return csr;
+#endif
   }
 
   /*! array of offsets in colInd_ where rows start

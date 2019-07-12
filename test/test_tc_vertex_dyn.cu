@@ -8,29 +8,31 @@
 #include "pangolin/generator/hubspoke.hpp"
 #include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
-#include "pangolin/sparse/csr.hpp"
+#include "pangolin/sparse/csr_binned.hpp"
 
 using namespace pangolin;
 
-template <typename NodeTy> void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c) {
+template <typename NodeIndex, typename EdgeIndex>
+void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c, const uint64_t maxExpectedNode) {
   char *graphDir = std::getenv("PANGOLIN_GRAPH_DIR");
   if (nullptr != graphDir) {
     std::string graphDirPath(graphDir);
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<NodeTy>> edges;
-      std::vector<EdgeTy<NodeTy>> fileEdges;
+      std::vector<EdgeTy<NodeIndex>> edges;
+      std::vector<EdgeTy<NodeIndex>> fileEdges;
       while (file.get_edges(fileEdges, 100)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
-      auto csr = CSR<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
+      auto upperTriangularFilter = [](EdgeTy<NodeIndex> e) { return e.first < e.second; };
+      auto csr = CSRBinned<NodeIndex, EdgeIndex>::from_edges(edges.begin(), edges.end(), maxExpectedNode,
+                                                             upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csr.view()));
     }
   } else {
-    LOG(debug, "PANGOLIN_GRAPH_DIR undefined, skipping count");
+    LOG(warn, "PANGOLIN_GRAPH_DIR undefined, skipping count of {}", graphFile);
   }
 }
 
@@ -58,12 +60,15 @@ TEST_CASE("single counter", "[gpu]") {
   REQUIRE(c.count() == 0);
 
   SECTION("hub-spoke 3 ut", "[gpu]") {
-    using NodeTy = int;
+    typedef uint32_t NodeIndex;
+    typedef uint64_t EdgeIndex;
+    typedef EdgeTy<NodeIndex> Edge;
+    typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     // hub is node with highest index
-    generator::HubSpoke<NodeTy> g(3);
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
-    auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    generator::HubSpoke<NodeIndex> g(3);
+    auto keep = [](Edge e) { return e.first < e.second; };
+    auto csr = CSR::from_edges(g.begin(), g.end(), 3, keep);
 
     REQUIRE(csr.nnz() == 5);
     REQUIRE(csr.num_rows() == 4);
@@ -73,12 +78,15 @@ TEST_CASE("single counter", "[gpu]") {
   }
 
   SECTION("hub-spoke 3 lt", "[gpu]") {
-    using NodeTy = int;
+    typedef uint32_t NodeIndex;
+    typedef uint64_t EdgeIndex;
+    typedef EdgeTy<NodeIndex> Edge;
+    typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     // hub is node with highest index
-    generator::HubSpoke<NodeTy> g(3);
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
-    auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    generator::HubSpoke<NodeIndex> g(3);
+    auto keep = [](Edge e) { return e.first > e.second; };
+    auto csr = CSR::from_edges(g.begin(), g.end(), 3, keep);
 
     REQUIRE(csr.nnz() == 5);
     REQUIRE(csr.num_rows() == 4);
@@ -89,38 +97,46 @@ TEST_CASE("single counter", "[gpu]") {
 
   SECTION("hub-spoke 539 lt", "[gpu]") {
     LOG(debug, "starting hub-spoke 539 lt");
-    using NodeTy = int;
+    typedef uint32_t NodeIndex;
+    typedef uint64_t EdgeIndex;
+    typedef EdgeTy<NodeIndex> Edge;
+    typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
-    generator::HubSpoke<NodeTy> g(539);
+    generator::HubSpoke<NodeIndex> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
-    auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    auto keep = [](Edge e) { return e.first > e.second; };
+    auto csr = CSR::from_edges(g.begin(), g.end(), 539, keep);
 
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
 
   SECTION("hub-spoke 539 ut", "[gpu]") {
-    using NodeTy = int;
+    typedef uint32_t NodeIndex;
+    typedef uint64_t EdgeIndex;
+    typedef EdgeTy<NodeIndex> Edge;
+    typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
-    generator::HubSpoke<NodeTy> g(539);
+    generator::HubSpoke<NodeIndex> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
-    auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
+    auto keep = [](Edge e) { return e.first < e.second; };
+    auto csr = CSR::from_edges(g.begin(), g.end(), 539, keep);
 
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
 
   SECTION("as20000102_adj.bel", "[gpu]") {
-    using NodeTy = int;
-    count<NodeTy>(6584, "as20000102_adj.bel", c);
+    using NodeIndex = uint32_t;
+    using EdgeIndex = uint64_t;
+    count<NodeIndex, EdgeIndex>(6584, "as20000102_adj.bel", c, 6474);
   }
 
   SECTION("amazon0302_adj.bel", "[gpu]") {
-    using NodeTy = int;
-    count<NodeTy>(717719, "amazon0302_adj.bel", c);
+    using NodeIndex = uint32_t;
+    using EdgeIndex = uint64_t;
+    count<NodeIndex, EdgeIndex>(717719, "amazon0302_adj.bel", c, 262111);
   }
 }

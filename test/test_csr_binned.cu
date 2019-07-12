@@ -12,7 +12,7 @@ typedef uint64_t EdgeIndex;
 TEST_CASE("ctor") {
   pangolin::init();
   typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  CSR m;
+  CSR m(0);
 
   SECTION("reserve") {
     m.reserve(10, 100);
@@ -96,7 +96,7 @@ TEST_CASE("edge 2->100 ut") {
 
 TEST_CASE("edge 2->100 lt") {
   pangolin::init();
-  pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
+  pangolin::logger::set_level(pangolin::logger::Level::TRACE);
   typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
   typedef EdgeTy<NodeIndex> Edge;
   std::vector<Edge> el = {{2, 100}};
