@@ -18,7 +18,6 @@
 #include "search.cuh"
 
 template <size_t BLOCK_DIM_X, typename CsrView>
-
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     dyn_thread_kernel(uint64_t *__restrict__ count, //!< [inout] the count, caller should zero
                       const CsrView adj,            //!< [in] the matrix
@@ -32,82 +31,92 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
 
   // each thread can cache short rows
-  NodeIndex rowCache[REG_CACHE_SIZE];
+  NodeIndex srcPartCache[REG_CACHE_SIZE];
 
   // per-thread triangle count
   uint64_t threadCount = 0;
 
   // each thread handles a row
-  for (NodeIndex rowIdx = rowStart + blockDim.x * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
-       rowIdx += blockDim.x * gridDim.x) {
+  for (NodeIndex rowIdx = rowStart + BLOCK_DIM_X * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
+       rowIdx += BLOCK_DIM_X * gridDim.x) {
 
-    const EdgeIndex rowStart = adj.rowStart_[rowIdx];
-    const EdgeIndex rowStop = adj.rowStop_[rowIdx];
-    const EdgeIndex rowSz = rowStop - rowStart;
+      // the part of the row we are responsible for comparing for triangle counts
+      const EdgeIndex srcPartStart = adj.partitionStart_[rowIdx];
+      const EdgeIndex srcPartStop = adj.partitionStop_[rowIdx];
+      const NodeIndex *srcPartBegin = &adj.colInd_[srcPartStart];
+      const NodeIndex *srcPartEnd = &adj.colInd_[srcPartStop];
+      const EdgeIndex srcPartSz = srcPartStop - srcPartStart;
 
-    if (rowSz == 0) {
+      // the whole row
+      const EdgeIndex srcStart = adj.rowStart_[rowIdx];
+      const EdgeIndex srcStop = adj.rowStop_[rowIdx];
+      const NodeIndex *srcBegin = &adj.colInd_[srcStart];
+      const NodeIndex *srcEnd = &adj.colInd_[srcStop];
+      // const EdgeIndex srcSz = srcStop - srcStart;
+
+    if (srcPartSz == 0) {
       continue; // no triangles from empty row
-    } else if (rowSz <= REG_CACHE_SIZE) {
+    } else if (srcPartSz <= REG_CACHE_SIZE) {
       // cache the source row in the registers
 #pragma unroll(REG_CACHE_SIZE)
       for (NodeIndex i = 0; i < REG_CACHE_SIZE; ++i) {
-        if (i < rowSz) {
-          rowCache[i] = adj.colInd_[rowStart + i];
+        if (i < srcPartSz) {
+          srcPartCache[i] = adj.colInd_[srcPartStart + i];
         }
       }
 
       // compare each neighbor row
-      for (size_t srcIdx = rowStart; srcIdx < rowStop; ++srcIdx) {
+      for (const NodeIndex *srcPtr = srcBegin; srcPtr < srcEnd; ++srcPtr) {
 
         // using rowCache in here is a non-constant access , which causes an access from global memory anyway
-        NodeIndex nbr = adj.colInd_[srcIdx];
-        EdgeIndex nbrStart = adj.rowStart_[nbr];
-        EdgeIndex nbrStop = adj.rowStop_[nbr];
-        const NodeIndex *nbrBegin = &adj.colInd_[nbrStart];
-        const NodeIndex *nbrEnd = &adj.colInd_[nbrStop];
+        NodeIndex dst = *srcPtr;
+        const EdgeIndex dstPartStart = adj.partitionStart_[dst];
+        const EdgeIndex dstPartStop = adj.partitionStop_[dst];
+        const NodeIndex *dstPartBegin = &adj.colInd_[dstPartStart];
+        const NodeIndex *dstPartEnd = &adj.colInd_[dstPartStop];
         /*!
         unroll this loop so all accesses to rowCache[] are known statically
         and can be replaced by a register access
        */
-        const NodeIndex *nbrPtr = nbrBegin;
+        const NodeIndex *dstPtr = dstPartBegin;
 #pragma unroll(REG_CACHE_SIZE)
         for (size_t regIdx = 0; regIdx < REG_CACHE_SIZE; ++regIdx) {
           // early exit if we have run out of values in either array
-          if (nbrPtr == nbrEnd || regIdx == rowSz) {
+          if (dstPtr == dstPartEnd || regIdx == srcPartSz) {
             break;
           }
 
           // load the current non-zero from the row
-          EdgeIndex rowVal = rowCache[regIdx];
+          EdgeIndex srcVal = srcPartCache[regIdx];
 
-          // catch nbrPtr up to rowVal or the end of the list
+          // catch dstPtr up to srcVal or the end of the list
           while (true) {
 
             // done if we are at the end of the list
-            if (nbrPtr == nbrEnd) {
+            if (dstPtr == dstPartEnd) {
               break;
             }
-            NodeIndex nbrVal = *nbrPtr;
-            if (nbrVal == rowVal) { // done if we have caught up
+            NodeIndex dstVal = *dstPtr;
+            if (dstVal == srcVal) { // done if we have caught up
               threadCount++;
-              nbrPtr++;
+              dstPtr++;
               break;
-            } else if (nbrVal > rowVal) { // done if we have gone too far
+            } else if (dstVal > srcVal) { // done if we have gone too far
               break;
-            } else { // nbrVal < rowVal
-              nbrPtr++;
+            } else { // dstVal < srcVal
+              dstPtr++;
             }
           }
         }
       }
     } else { // row is too large. read src from global memory
-      const NodeIndex *srcBegin = &adj.colInd_[rowStart];
-      const NodeIndex *srcEnd = &adj.colInd_[rowStop];
       for (const NodeIndex *srcPtr = srcBegin; srcPtr < srcEnd; ++srcPtr) {
-        NodeIndex src = *srcPtr;
-        const NodeIndex *dstBegin = &adj.colInd_[adj.rowStart_[src]];
-        const NodeIndex *dstEnd = &adj.colInd_[adj.rowStop_[src]];
-        threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
+        NodeIndex dst = *srcPtr;
+        const EdgeIndex dstPartStart = adj.partitionStart_[dst];
+        const EdgeIndex dstPartStop = adj.partitionStop_[dst];
+        const NodeIndex *dstPartBegin = &adj.colInd_[dstPartStart];
+        const NodeIndex *dstPartEnd = &adj.colInd_[dstPartStop];
+        threadCount += pangolin::serial_sorted_count_linear(srcPartBegin, srcPartEnd, dstPartBegin, dstPartEnd);
       }
     }
   }
@@ -136,7 +145,7 @@ private:
   cudaEvent_t kernelStop_;
 
 public:
-  VertexDynTC(int dev) : dev_(dev), stream_(dev), count_(nullptr) {
+  explicit VertexDynTC(int dev) : dev_(dev), stream_(dev), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
@@ -214,14 +223,19 @@ public:
     CUDA_RUNTIME(cudaGetLastError());
   }
 
-  template <typename Csr> uint64_t count_sync(const Csr &adj, const size_t rowOffset, const size_t n) {
-    count_async(adj, rowOffset, n);
+  template <typename Csr> void count_async(const Csr &adj, const size_t dimBlock = 256) {
+    count_async(adj, 0, adj.num_rows(), dimBlock);
+  }
+
+  template <typename Csr>
+  uint64_t count_sync(const Csr &adj, const size_t rowOffset, const size_t n, const size_t dimBlock = 256) {
+    count_async(adj, rowOffset, n, dimBlock);
     sync();
     return count();
   }
 
-  template <typename Csr> uint64_t count_sync(const Csr &adj) {
-    count_async(adj, 0, adj.num_rows());
+  template <typename Csr> uint64_t count_sync(const Csr &adj, const size_t dimBlock = 256) {
+    count_async(adj, dimBlock);
     sync();
     return count();
   }

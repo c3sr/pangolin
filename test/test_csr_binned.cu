@@ -56,6 +56,15 @@ TEST_CASE("CSR<int>::from_edges upper triangular") {
   auto csr = CSR::from_edges(el.begin(), el.end(), 4, ut);
 
   REQUIRE(csr.nnz() == 8);
+
+  INFO("check partitions are contiguous");
+  for (size_t i = 0; i < csr.num_partitions() - 1; ++i) {
+    auto view = csr.view(i);
+    auto nextView = csr.view(i + 1);
+    REQUIRE(view.rowStop_ == nextView.rowStart_);
+  }
+  INFO("last partition end should be row ends");
+  REQUIRE(csr.view(csr.num_partitions() - 1).rowStop_ == csr.view().rowStop_);
 }
 
 TEST_CASE("CSR<int>::from_edges lower triangular") {

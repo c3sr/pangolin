@@ -51,7 +51,7 @@ public:
 
   /*! Create an RcStream that refers to an existing stream
 
-      The RcStream will not destroy the stream
+      The RcStream will not manage the lifetime of the stream (caller should cudaStreamDestroy)
   */
   explicit RcStream(int dev, cudaStream_t stream) : dev_(dev), stream_(stream) {
     SPDLOG_TRACE(logger::console(), "stream ctor {}", dev);
