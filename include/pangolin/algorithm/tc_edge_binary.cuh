@@ -64,26 +64,21 @@ private:
   // events for measuring time
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
-  cudaEvent_t countStart_;
-  cudaEvent_t countStop_;
 
 public:
   /*! Device constructor
 
       Create a counter on device dev
   */
-  BinaryTC(int dev) : dev_(dev), count_(nullptr) {
+  BinaryTC(int dev, cudaStream_t stream = 0) : dev_(dev), stream_(stream), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "device ctor");
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    CUDA_RUNTIME(cudaStreamCreate(&stream_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
     CUDA_RUNTIME(cudaGetLastError());
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
-    CUDA_RUNTIME(cudaEventCreate(&countStart_));
-    CUDA_RUNTIME(cudaEventCreate(&countStop_));
   }
 
   /*! default ctor - counter on device 0
@@ -94,15 +89,12 @@ public:
 
   All fields are reset
    */
-  BinaryTC(const BinaryTC &other) : BinaryTC(other.dev_) { SPDLOG_TRACE(logger::console(), "copy ctor"); }
+  BinaryTC(const BinaryTC &other) : BinaryTC(other.dev_, other.stream_) { SPDLOG_TRACE(logger::console(), "copy ctor"); }
 
   ~BinaryTC() {
     SPDLOG_TRACE(logger::console(), "dtor");
     CUDA_RUNTIME(cudaEventDestroy(kernelStart_));
     CUDA_RUNTIME(cudaEventDestroy(kernelStop_));
-    CUDA_RUNTIME(cudaEventDestroy(countStart_));
-    CUDA_RUNTIME(cudaEventDestroy(countStop_));
-    CUDA_RUNTIME(cudaStreamDestroy(stream_));
   }
 
   BinaryTC &operator=(BinaryTC &&other) noexcept {
@@ -122,8 +114,6 @@ public:
     std::swap(other.dev_, dev_);
     std::swap(other.kernelStart_, kernelStart_);
     std::swap(other.kernelStop_, kernelStop_);
-    std::swap(other.countStart_, countStart_);
-    std::swap(other.countStop_, countStop_);
     std::swap(other.stream_, stream_);
   }
 
@@ -137,7 +127,6 @@ public:
   void count_async(const CsrCoo &mat, const size_t numEdges, const size_t edgeOffset = 0, const size_t dimBlock = 256,
                    const size_t c = 1) {
 
-    CUDA_RUNTIME(cudaEventRecord(countStart_, stream_));
     zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     // create one warp per edge
@@ -180,7 +169,6 @@ public:
 
 #undef IF_CASE
 #undef ELSE_IF_CASE
-    CUDA_RUNTIME(cudaEventRecord(countStop_, stream_));
   }
 
   template <typename CsrCoo> uint64_t count_sync(const CsrCoo &mat, const size_t edgeOffset, const size_t n) {
@@ -194,14 +182,7 @@ public:
   uint64_t count() const { return *count_; }
   int device() const { return dev_; }
 
-  /*! return the number of ms the GPU spent counting
-   */
-  float count_time() {
-    float ms;
-    CUDA_RUNTIME(cudaEventSynchronize(countStop_));
-    CUDA_RUNTIME(cudaEventElapsedTime(&ms, countStart_, countStop_));
-    return ms / 1e3;
-  }
+
 
   /*! return the number of ms the GPU spent in the triangle counting kernel
 
