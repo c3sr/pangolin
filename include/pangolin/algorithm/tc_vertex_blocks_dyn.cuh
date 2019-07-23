@@ -31,17 +31,18 @@ __device__ size_t get_bitmap(T *bitmap, size_t k) {
     size_t fieldIdx = k / (sizeof(T)*CHAR_BIT);    
     size_t bitIdx = k % (sizeof(T)*CHAR_BIT);
     T bits = bitmap[fieldIdx];
-    return bits >> bitIdx & 1;
+    return (bits >> bitIdx) & T(1);
 }
 
-//bitmap reset function
+//bitmap reset function --cleanup
 template <typename T>
 __device__ void reset_bitmap(T *bitmap, size_t c) {
     size_t fieldIdx = c / (sizeof(T)*CHAR_BIT);
     bitmap[fieldIdx] = 0;
 }
 
-
+//zero bitmap before launching it on host
+//hollywood 2009 data set
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     dyn_blocks_kernel(uint64_t *__restrict__ count, //!< [inout] the count(the number of triangles found by each block), caller should zero 
@@ -66,113 +67,64 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { //have to do sizeof the array which needs to be added
     const Index io_s = adj.rowPtr_[bi];
     const Index io_e = adj.rowPtr_[bi + 1];
+    if(bi == 539 && threadIdx.x == 0) {
+      printf("io_s: %d io_e:  %d\n" , io_s, io_e);
+      
+    } 
     if (threadIdx.x == 0) {
-       printf("%d %d\n", blockIdx.x, bi); 
+//       printf(" blockID: %d  bi: %d\n", blockIdx.x, bi); 
     }
-    for(Index io = io_s; io < io_e; io += blockDim.x) {
+
+    Index blk_bound = (io_e + BLOCK_DIM_X - 1) / BLOCK_DIM_X * BLOCK_DIM_X;
+ 
+    for(Index io = io_s; io < io_e; io += blockDim.x) { //find a multiple of blockDim.x that is larger than io_e and use that so io < xyz
       const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1;
       if (c > -1) {
+        if (bi == 539 ) {
         printf("tid %d c = %ld\n", threadIdx.x, c);
+        }
         atomic_set(&bitmaps[blockIdx.x * bitmapSz], c);
       }
-      for (Index t = 0; t < blockDim.x; t++) {
+    }
+    __syncthreads();
+
+    for(Index io = io_s; io < blk_bound; io += blockDim.x) { 
+       const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1;
+      
+       for (Index t = 0; t < blockDim.x; t++) {
          const int64_t j = pangolin::block_broadcast(c,t);
          if (j == -1) {
             break;
          }
          const Index jo_s = adj.rowPtr_[j];
          const Index jo_e = adj.rowPtr_[j+1];
+         if (bi == 539 && threadIdx.x == 0) {
+            printf(" j %lld jo_s: %d jo_e: %d \n", j, jo_s , jo_e); 
+         }
          for (Index jo = jo_s + threadIdx.x; jo < jo_e; jo += blockDim.x) {
 	    const int64_t k = adj.colInd_[jo];
             if (get_bitmap(&bitmaps[blockIdx.x * bitmapSz], k) == 1) {
               threadCount++;
- 	    }
+ 	    } else {
+              if (bi == 539) {
+              printf(" k: %d  j: %lld  \n" , k , j);
+            }
          }
-      }
-     if (c != -1) {    
+
+       }
+    }
+    } //need to figure out the braket situation
+     __syncthreads();
+
+     for(Index io = io_s; io < blk_bound; io += blockDim.x) {
+       const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1;
+       if (c != -1) {    
           reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], c); //multiplied by bitmapSz here
+       }
      }
-    }
-  }
+     __syncthreads();
+  } //acconted for
  
-  
-#if 0
-//everything below here is part of the original program 
-  // each thread handles a row
-  for (Index rowIdx = rowStart + blockDim.x * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
-       rowIdx += blockDim.x * gridDim.x) {
-
-    const Index rowStart = adj.rowPtr_[rowIdx];
-    const Index rowStop = adj.rowPtr_[rowIdx + 1];
-    const Index rowSz = rowStop - rowStart;
-
-    if (rowSz == 0) {
-      continue; // no triangles from empty row
-    } else if (rowSz <= REG_CACHE_SIZE) {
-      // cache the source row in the registers
-#pragma unroll(REG_CACHE_SIZE)
-      for (Index i = 0; i < REG_CACHE_SIZE; ++i) {
-        if (i < rowSz) {
-          rowCache[i] = adj.colInd_[rowStart + i];
-        }
-      }
-
-      // compare each neighbor row
-      for (size_t srcIdx = rowStart; srcIdx < rowStop; ++srcIdx) {
-
-        // using rowCache in here is a non-constant access , which causes an access from global memory anyway
-        Index nbr = adj.colInd_[srcIdx];
-        Index nbrStart = adj.rowPtr_[nbr];
-        Index nbrStop = adj.rowPtr_[nbr + 1];
-        const Index *nbrBegin = &adj.colInd_[nbrStart];
-        const Index *nbrEnd = &adj.colInd_[nbrStop];
-        /*!
-        unroll this loop so all accesses to rowCache[] are known statically
-        and can be replaced by a register access
-       */
-        const Index *nbrPtr = nbrBegin;
-#pragma unroll(REG_CACHE_SIZE)
-        for (size_t regIdx = 0; regIdx < REG_CACHE_SIZE; ++regIdx) {
-          // early exit if we have run out of values in either array
-          if (nbrPtr == nbrEnd || regIdx == rowSz) {
-            break;
-          }
-
-          // load the current non-zero from the row
-          Index rowVal = rowCache[regIdx];
-
-          // catch nbrPtr up to rowVal or the end of the list
-          while (true) {
-
-            // done if we are at the end of the list
-            if (nbrPtr == nbrEnd) {
-              break;
-            }
-            Index nbrVal = *nbrPtr;
-            if (nbrVal == rowVal) { // done if we have caught up
-              threadCount++;
-              nbrPtr++;
-              break;
-            } else if (nbrVal > rowVal) { // done if we have gone too far
-              break;
-            } else { // nbrVal < rowVal
-              nbrPtr++;
-            }
-          }
-        }
-      }
-    } else { // row is too large. read src from global memory
-      const Index *srcBegin = &adj.colInd_[rowStart];
-      const Index *srcEnd = &adj.colInd_[rowStop];
-      for (const Index *srcPtr = srcBegin; srcPtr < srcEnd; ++srcPtr) {
-        Index src = *srcPtr;
-        const Index *dstBegin = &adj.colInd_[adj.rowPtr_[src]];
-        const Index *dstEnd = &adj.colInd_[adj.rowPtr_[src + 1]];
-        threadCount += pangolin::serial_sorted_count_linear(srcBegin, srcEnd, dstBegin, dstEnd);
-      }
-    }
-  }
-#endif
   // Block-wide reduction of threadCount
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
   __shared__ typename BlockReduce::TempStorage tempStorage;
@@ -181,7 +133,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   // Add to total count
   
   if (0 == threadIdx.x) {
-    printf("%p", count);
+   // printf("%p", count);
     atomicAdd(count, aggregate);
   }
 }
@@ -197,7 +149,8 @@ private:
   // events for measuring time
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
-  Buffer<uint32_t> bitmaps_;
+  float time;
+  DeviceBuffer<uint32_t> bitmaps_;
 
 public:
   BissonFaticaTC(int dev) : dev_(dev), stream_(dev), count_(nullptr) {
@@ -247,6 +200,7 @@ public:
     zero_async<1>(count_, dev_, cudaStream_t(stream_));
     CUDA_RUNTIME(cudaGetLastError());
     bitmaps_.resize(1 << 30);
+    zero_async(bitmaps_.data(), bitmaps_.size(), 0, cudaStream_t(stream_));
 
 #define CASE(const_dimBlock)                                                                                           \
   case const_dimBlock: {                                                                                               \
@@ -261,7 +215,10 @@ public:
     dyn_blocks_kernel<const_dimBlock>                                                                                  \
         <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, rowOffset, numRows, bitmaps_.data(), bitmaps_.size()/dimGrid );  \
     CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));                                                 \
-    break;                                                                                                             \
+   CUDA_RUNTIME(cudaEventSynchronize(kernelStop_));                                                                    \
+   CUDA_RUNTIME(cudaEventElapsedTime(&time, kernelStart_, kernelStop_));                                               \
+   printf("Generation Time: %3.1f ms \n" , time);                                                                     \
+   break;                                                                                                             \
   }
 
     switch (dimBlock) {

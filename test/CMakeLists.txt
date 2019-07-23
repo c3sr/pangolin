@@ -221,6 +221,11 @@ pangolin_add_gpu_test(
   SRCS test_zero_copy_allocator.cu
 )
 
+pangolin_add_gpu_test(
+  NAME test_tc_vertex_blocks_dyn
+  SRCS test_tc_vertex_blocks_dyn.cu
+)
+
 # pangolin_add_test(
 #   NAME test_tc_vertex_linear
 #   SRCS test_tc_vertex_linear.cu
