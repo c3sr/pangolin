@@ -51,6 +51,11 @@ pangolin_add_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_bmtx_stream
+  SRCS test_bmtx_stream.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_broadcast
   SRCS test_broadcast.cu
 )
