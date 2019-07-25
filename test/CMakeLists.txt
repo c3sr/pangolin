@@ -226,6 +226,11 @@ pangolin_add_gpu_test(
   SRCS test_tc_vertex_blocks_dyn.cu
 )
 
+pangolin_add_gpu_test(
+  NAME test_tc_vertex_blocks_dyn_low_tri
+  SRCS test_tc_vertex_blocks_dyn_low_tri.cu
+)
+
 # pangolin_add_test(
 #   NAME test_tc_vertex_linear
 #   SRCS test_tc_vertex_linear.cu
