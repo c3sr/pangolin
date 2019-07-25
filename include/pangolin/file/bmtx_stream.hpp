@@ -50,15 +50,23 @@ public:
     double weight;
 
     if (stream_.eof()) {
+      SPDLOG_TRACE(logger::console(), "reached eof");
       return false;
     } else {
+      SPDLOG_TRACE(logger::console(), "position {} before read", stream_.tellg());
       stream_.read((char *)srcdst, 16);
-      if (stream_.fail()) {
+      if (stream_.eof()) {
+        return false;
+      } else if (stream_.fail()) {
         LOG(error, "error reading stream");
+        return false;
       }
       stream_.read((char *)&weight, 8);
-      if (stream_.fail()) {
+      if (stream_.eof()) {
+        return false;
+      } else if (stream_.fail()) {
         LOG(error, "error reading stream");
+        return false;
       }
       int64_t src = srcdst[0];
       int64_t dst = srcdst[1];
