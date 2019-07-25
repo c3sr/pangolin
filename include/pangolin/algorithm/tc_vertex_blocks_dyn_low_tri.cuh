@@ -37,13 +37,14 @@ __device__ size_t get_bitmap(T *bitmap, size_t k) {
 }
 
 //bitmap reset function --clean-up and try more efficient way
-template <typename T, typename Index>
-__device__ void reset_bitmap(T *bitmap, Index first, Index second) {
-    Index firstIdx = first / (sizeof(T)*CHAR_BIT);
-    Index secondIdx = second / (sizeof(T)*CHAR_BIT);
-    for (Index i = threadIdx.x + firstIdx; i < secondIdx ; i+= blockDim.x) {
+template <typename T, typename Index> //typename Index
+__device__ void reset_bitmap(T *bitmap, Index start, Index end) {
+    //Index firstIdx = first / (sizeof(T)*CHAR_BIT);
+    //Index secondIdx = second / (sizeof(T)*CHAR_BIT);
+    for (Index i = threadIdx.x + start; i < end ; i+= blockDim.x) {
        bitmap[i] = 0;
     }
+    
     
 }
 
@@ -119,18 +120,13 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
                }
             }
          }
-      __syncthreads();
-#if 0  
-    if (c != -1) {
-        reset_bitmap(&bitmaps[blockIdx.x * bitmapSz],c );
-      }
-#endif
-      __syncthreads();
+
     } //need to figure out the braket situation
+    __syncthreads();
     const Index first =  adj.colInd_[adj.rowPtr_[bi]];
     const Index second = adj.colInd_[adj.rowPtr_[bi + 1]];
-    reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], first, second);
-
+    reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], (size_t) 0, bitmapSz);
+    __syncthreads();
   } //acconted for
   
 // Block-wide reduction of threadCount
