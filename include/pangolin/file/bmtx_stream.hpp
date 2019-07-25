@@ -68,8 +68,8 @@ public:
       if (dst > cols_) {
         LOG(warn, "{} is greater than expected cols {}", dst, cols_);
       }
-      edge.first = src;
-      edge.second = dst;
+      edge.first = src - 1;
+      edge.second = dst - 1;
       return true;
     }
   }
@@ -77,7 +77,7 @@ public:
 
 /*! Open a new Bmtx stream from path
  */
-template <typename T> BmtxStream<T, std::ifstream> openBmtxStream(const std::string &path) {
+template <typename T> BmtxStream<T, std::ifstream> open_bmtx_stream(const std::string &path) {
   auto stream = std::ifstream(path, std::ifstream::binary);
   return BmtxStream<T, std::ifstream>(std::move(stream));
 }
