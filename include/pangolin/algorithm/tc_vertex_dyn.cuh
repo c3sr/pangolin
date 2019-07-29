@@ -40,19 +40,19 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   for (NodeIndex rowIdx = rowStart + BLOCK_DIM_X * blockIdx.x + threadIdx.x; rowIdx < rowStart + numRows;
        rowIdx += BLOCK_DIM_X * gridDim.x) {
 
-      // the part of the row we are responsible for comparing for triangle counts
-      const EdgeIndex srcPartStart = adj.partitionStart_[rowIdx];
-      const EdgeIndex srcPartStop = adj.partitionStop_[rowIdx];
-      const NodeIndex *srcPartBegin = &adj.colInd_[srcPartStart];
-      const NodeIndex *srcPartEnd = &adj.colInd_[srcPartStop];
-      const EdgeIndex srcPartSz = srcPartStop - srcPartStart;
+    // the part of the row we are responsible for comparing for triangle counts
+    const EdgeIndex srcPartStart = adj.partitionStart_[rowIdx];
+    const EdgeIndex srcPartStop = adj.partitionStop_[rowIdx];
+    const NodeIndex *srcPartBegin = &adj.colInd_[srcPartStart];
+    const NodeIndex *srcPartEnd = &adj.colInd_[srcPartStop];
+    const EdgeIndex srcPartSz = srcPartStop - srcPartStart;
 
-      // the whole row
-      const EdgeIndex srcStart = adj.rowStart_[rowIdx];
-      const EdgeIndex srcStop = adj.rowStop_[rowIdx];
-      const NodeIndex *srcBegin = &adj.colInd_[srcStart];
-      const NodeIndex *srcEnd = &adj.colInd_[srcStop];
-      // const EdgeIndex srcSz = srcStop - srcStart;
+    // the whole row
+    const EdgeIndex srcStart = adj.rowStart_[rowIdx];
+    const EdgeIndex srcStop = adj.rowStop_[rowIdx];
+    const NodeIndex *srcBegin = &adj.colInd_[srcStart];
+    const NodeIndex *srcEnd = &adj.colInd_[srcStop];
+    // const EdgeIndex srcSz = srcStop - srcStart;
 
     if (srcPartSz == 0) {
       continue; // no triangles from empty row
@@ -87,7 +87,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
           }
 
           // load the current non-zero from the row
-          EdgeIndex srcVal = srcPartCache[regIdx];
+          NodeIndex srcVal = srcPartCache[regIdx];
 
           // catch dstPtr up to srcVal or the end of the list
           while (true) {
