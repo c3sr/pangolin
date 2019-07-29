@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "pangolin/dense/array_view.hpp"
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/edge_list.hpp"
 #include "pangolin/types.hpp"
@@ -108,7 +109,7 @@ public:
     return rowPtrs_[0].size();
   }
 
-  PANGOLIN_HOST uint64_t num_parts() const noexcept { return numParts_; }
+  PANGOLIN_HOST uint64_t num_partitions() const noexcept { return numParts_; }
 
   /*!
    */
@@ -118,7 +119,8 @@ public:
     const NodeIndex dst = edge.second;
     SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
 
-    assert(src >= num_rows() && "edges must be sorted by src");
+    // for an edge with src 0, we should have no more than 1 row
+    assert(src + 1 >= num_rows() && "edges must be sorted by src");
 
     // edge has a new src and should be in a new row
     while (num_rows() <= src) {
@@ -135,7 +137,7 @@ public:
     colInd_.push_back(dst);
 
     // every partition after the one this edge is in starts after this edge
-    size_t edgePartIdx = min(dst / partitionSize_, numParts_); // cap in case the estimated max node is wrong
+    size_t edgePartIdx = min(dst / partitionSize_, numParts_ - 1); // cap in case the estimated max node is wrong
     SPDLOG_TRACE(logger::console(), "edge {}->{} in partition {}", edge.first, edge.second, edgePartIdx);
     // LOG(debug, "edge {}->{} in partition {}", edge.first, edge.second, edgePartIdx);
     for (size_t incPartIdx = edgePartIdx + 1; incPartIdx < rowPtrs_.size(); ++incPartIdx) {
@@ -149,14 +151,16 @@ public:
   }
 
   void finish_edges() {
-    // add empty nodes until we reach largestNode
-    SPDLOG_TRACE(logger::console(), "adding empty nodes through {}", maxNode_);
-    while (num_rows() <= maxNode_) {
-      for (auto &rowPtr : rowPtrs_) {
-        rowPtr.push_back(colInd_.size());
+    if (nnz() > 0) {
+      // add empty nodes until we reach largestNode
+      SPDLOG_TRACE(logger::console(), "adding empty nodes through {}", maxNode_);
+      while (num_rows() <= maxNode_) {
+        for (auto &rowPtr : rowPtrs_) {
+          rowPtr.push_back(colInd_.size());
+        }
       }
+      SPDLOG_TRACE(logger::console(), "num_rows now {}", num_rows());
     }
-    SPDLOG_TRACE(logger::console(), "num_rows now {}", num_rows());
 
     for (const auto &rowPtr : rowPtrs_) {
       assert(rowPtr.size() == rowPtrs_[0].size() && "not all rowPtrs are the same length");
@@ -327,6 +331,22 @@ public:
 
     return csr;
 #endif
+  }
+
+  /*! Return an ArrayView of row i of the CSR
+   */
+  ArrayView<NodeIndex> row(NodeIndex i) const noexcept {
+    const EdgeIndex rowStart = rowPtrs_[0][i];
+    const EdgeIndex rowStop = rowPtrs_.back()[i];
+    return ArrayView<NodeIndex>(&colInd_[rowStart], rowStop - rowStart);
+  }
+
+  /*! Return an ArrayView of partition p of row i of the CSR
+   */
+  ArrayView<NodeIndex> row_part(NodeIndex i, size_t p) const noexcept {
+    const EdgeIndex rowStart = rowPtrs_[p][i];
+    const EdgeIndex rowStop = rowPtrs_[p + 1][i];
+    return ArrayView<NodeIndex>(&colInd_[rowStart], rowStop - rowStart);
   }
 
   /*! array of offsets in colInd_ where rows start

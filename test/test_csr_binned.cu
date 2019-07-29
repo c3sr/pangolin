@@ -48,25 +48,33 @@ TEST_CASE("from_edgelist") {
   REQUIRE(csr.colInd_[0] == 1);
 }
 
-#if 0
 TEST_CASE("CSR<int>::from_edges upper triangular") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
   typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  std::vector<EdgeTy<NodeIndex>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
-                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
+  typedef EdgeTy<NodeIndex> Edge;
+  std::vector<Edge> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
+                          {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
   INFO("from_edgelist");
-  auto ut = [](EdgeTy<NodeIndex> e) { return e.first < e.second; };
-  auto csr = CSR::from_edges(el.begin(), el.end(), 4, ut);
+  auto keep = [](Edge e) { return e.first < e.second; };
+  CSR csr(5, 8);
+  for (auto edge : el) {
+    if (keep(edge)) {
+      csr.add_next_edge(edge);
+    }
+  }
+  csr.finish_edges();
 
   REQUIRE(csr.nnz() == 8);
+  REQUIRE(csr.num_rows() == 5);
 
   INFO("check partitions are contiguous");
   for (size_t i = 0; i < csr.num_partitions() - 1; ++i) {
+    LOG(debug, "views for parts {} and {}", i, i + i);
     auto view = csr.view(i);
     auto nextView = csr.view(i + 1);
-    REQUIRE(view.rowStop_ == nextView.rowStart_);
+    REQUIRE(view.partitionStop_ == nextView.partitionStart_);
   }
   INFO("last partition end should be row ends");
   REQUIRE(csr.view(csr.num_partitions() - 1).rowStop_ == csr.view().rowStop_);
@@ -81,8 +89,14 @@ TEST_CASE("CSR<int>::from_edges lower triangular") {
                           {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
   INFO("from_edgelist");
-  auto lt = [](Edge e) { return e.first > e.second; };
-  auto csr = CSR::from_edges(el.begin(), el.end(), 4, lt);
+  auto keep = [](Edge e) { return e.first > e.second; };
+  CSR csr(5, 8);
+  for (auto edge : el) {
+    if (keep(edge)) {
+      csr.add_next_edge(edge);
+    }
+  }
+  csr.finish_edges();
 
   REQUIRE(csr.nnz() == 8);
 }
@@ -95,7 +109,13 @@ TEST_CASE("edge 2->100 ut") {
   std::vector<Edge> el = {{2, 100}};
 
   auto keep = [](Edge e) { return e.first < e.second; };
-  auto csr = CSR::from_edges(el.begin(), el.end(), 100, keep);
+  CSR csr(101, 1);
+  for (auto edge : el) {
+    if (keep(edge)) {
+      csr.add_next_edge(edge);
+    }
+  }
+  csr.finish_edges();
 
   SECTION("nnz") {
     REQUIRE(csr.nnz() == 1);
@@ -116,7 +136,13 @@ TEST_CASE("edge 2->100 lt") {
   std::vector<Edge> el = {{2, 100}};
 
   auto keep = [](Edge e) { return e.first > e.second; };
-  auto csr = CSR::from_edges(el.begin(), el.end(), 100, keep);
+  CSR csr(101, 1);
+  for (auto edge : el) {
+    if (keep(edge)) {
+      csr.add_next_edge(edge);
+    }
+  }
+  csr.finish_edges();
 
   SECTION("nnz") {
     REQUIRE(csr.nnz() == 0);
@@ -128,4 +154,3 @@ TEST_CASE("edge 2->100 lt") {
     REQUIRE(csr.num_rows() == csr.view().num_rows());
   }
 }
-#endif
