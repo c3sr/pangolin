@@ -46,6 +46,11 @@ function(pangolin_add_mpi_gpu_test)
 endfunction()
 
 pangolin_add_test(
+  NAME test_array_view
+  SRCS test_array_view.cu
+)
+
+pangolin_add_test(
   NAME test_binary_search
   SRCS test_binary_search.cu
 )
@@ -69,8 +74,6 @@ pangolin_add_test(
   NAME test_complete
   SRCS test_complete.cu
 )
-
-
 
 pangolin_add_gpu_test(
   NAME test_count
