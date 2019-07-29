@@ -12,6 +12,7 @@
 
 using namespace pangolin;
 
+#if 0
 template <typename NodeIndex, typename EdgeIndex>
 void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c, const uint64_t maxExpectedNode) {
   char *graphDir = std::getenv("PANGOLIN_GRAPH_DIR");
@@ -35,6 +36,7 @@ void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c, cons
     LOG(warn, "PANGOLIN_GRAPH_DIR undefined, skipping count of {}", graphFile);
   }
 }
+#endif
 
 TEST_CASE("ctor") {
   pangolin::init();
@@ -67,8 +69,18 @@ TEST_CASE("single counter", "[gpu]") {
 
     // hub is node with highest index
     generator::HubSpoke<NodeIndex> g(3);
-    auto keep = [](Edge e) { return e.first < e.second; };
-    auto csr = CSR::from_edges(g.begin(), g.end(), 3, keep);
+    auto ut = [](Edge e) { return e.first < e.second; };
+    std::vector<Edge> edges;
+    for (auto edge : g) {
+      if (ut(edge)) {
+        edges.push_back(edge);
+      }
+    }
+    CSR csr(4, edges.size());
+    for (auto edge : edges) {
+      csr.add_next_edge(edge);
+    }
+    csr.finish_edges();
 
     REQUIRE(csr.nnz() == 5);
     REQUIRE(csr.num_rows() == 4);
@@ -86,7 +98,17 @@ TEST_CASE("single counter", "[gpu]") {
     // hub is node with highest index
     generator::HubSpoke<NodeIndex> g(3);
     auto keep = [](Edge e) { return e.first > e.second; };
-    auto csr = CSR::from_edges(g.begin(), g.end(), 3, keep);
+    std::vector<Edge> edges;
+    for (auto edge : g) {
+      if (keep(edge)) {
+        edges.push_back(edge);
+      }
+    }
+    CSR csr(4, edges.size());
+    for (auto edge : edges) {
+      csr.add_next_edge(edge);
+    }
+    csr.finish_edges();
 
     REQUIRE(csr.nnz() == 5);
     REQUIRE(csr.num_rows() == 4);
@@ -102,12 +124,24 @@ TEST_CASE("single counter", "[gpu]") {
     typedef EdgeTy<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
+    // highest index node is the hub
     generator::HubSpoke<NodeIndex> g(539);
 
-    // highest index node is the hub, so keep those for high out-degree
     auto keep = [](Edge e) { return e.first > e.second; };
-    auto csr = CSR::from_edges(g.begin(), g.end(), 539, keep);
+    std::vector<Edge> edges;
+    for (auto edge : g) {
+      if (keep(edge)) {
+        edges.push_back(edge);
+      }
+    }
+    CSR csr(540, edges.size());
+    for (auto edge : edges) {
+      csr.add_next_edge(edge);
+    }
+    csr.finish_edges();
 
+    REQUIRE(csr.view().num_rows() == 540);
+    REQUIRE(csr.view().nnz() == 1077);
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
@@ -122,12 +156,23 @@ TEST_CASE("single counter", "[gpu]") {
 
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](Edge e) { return e.first < e.second; };
-    auto csr = CSR::from_edges(g.begin(), g.end(), 539, keep);
+    std::vector<Edge> edges;
+    for (auto edge : g) {
+      if (keep(edge)) {
+        edges.push_back(edge);
+      }
+    }
+    CSR csr(540, edges.size());
+    for (auto edge : edges) {
+      csr.add_next_edge(edge);
+    }
+    csr.finish_edges();
 
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
 
+#if 0
   SECTION("as20000102_adj.bel", "[gpu]") {
     using NodeIndex = uint32_t;
     using EdgeIndex = uint64_t;
@@ -139,4 +184,5 @@ TEST_CASE("single counter", "[gpu]") {
     using EdgeIndex = uint64_t;
     count<NodeIndex, EdgeIndex>(717719, "amazon0302_adj.bel", c, 262111);
   }
+#endif
 }
