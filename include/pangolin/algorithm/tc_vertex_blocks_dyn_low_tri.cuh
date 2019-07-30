@@ -22,8 +22,7 @@ __device__ void atomic_set(T *bitmap, size_t c) {
     size_t field = c / (sizeof(T)*CHAR_BIT);
     size_t bit = c % (sizeof(T)*CHAR_BIT);
     T bits = T(1) << bit;
-    atomicOr((uint32_t*)&bitmap[field], bits);
-//    printf("Or: %x \n tid: %d ", bitmap[field], threadIdx.x);
+    atomicOr(&bitmap[field], bits);
 }
 
 //bitmap get function: return whether if bit is 1 or  0 return a number
@@ -32,20 +31,17 @@ __device__ size_t get_bitmap(T *bitmap, size_t k) {
     size_t fieldIdx = k / (sizeof(T)*CHAR_BIT);    
     size_t bitIdx = k % (sizeof(T)*CHAR_BIT);
     T bits = bitmap[fieldIdx];
-//    printf("bits: %x tid: %d \n" , bits, threadIdx.x );
     return (bits >> bitIdx) & T(1);
 }
 
-//bitmap reset function --clean-up and try more efficient way
+//bitmap reset function --isn't working
 template <typename T, typename Index> //typename Index
-__device__ void reset_bitmap(T *bitmap, Index start, Index end) {
-    //Index firstIdx = first / (sizeof(T)*CHAR_BIT);
-    //Index secondIdx = second / (sizeof(T)*CHAR_BIT);
-    for (Index i = threadIdx.x + start; i < end ; i+= blockDim.x) {
+__device__ void reset_bitmap(T *bitmap, Index first, Index second) {
+    const Index firstIdx = first / (sizeof(T)*CHAR_BIT);
+    const Index secondIdx = second / (sizeof(T)*CHAR_BIT);
+    for (Index i = firstIdx + threadIdx.x; i <= secondIdx + secondIdx - firstIdx; i+= blockDim.x) { 
        bitmap[i] = 0;
     }
-    
-    
 }
 
 //zero bitmap before launching it on host
@@ -55,49 +51,32 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
                       const CsrView adj,            //!< [in] the matrix
                       const size_t rowStart,        //!< [in] the starting row this kernel will count a.k.a roff[]
                       const size_t numRows,         //!< [in] the number of rows this kernel will count a.k.a rows[]
-		      volatile uint32_t *bitmaps,            //!< [in] array of bitmaps, one per thread block
+		      uint32_t *bitmaps,            //!< [in] array of bitmaps, one per thread block
                       const size_t bitmapSz           
     ) {
 
-  constexpr size_t REG_CACHE_SIZE = 10;
+//  constexpr size_t REG_CACHE_SIZE = 10;
 
   typedef typename CsrView::index_type Index;
-  static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
+//  static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
 
   // each thread can cache short rows
-  Index rowCache[REG_CACHE_SIZE];
+//  Index rowCache[REG_CACHE_SIZE];
 
-  // per-thread triangle count (is this the tricnt?) (nope)
   uint64_t threadCount = 0;
-  //syncthreads threads writing values and then getting cached
-  //marking global memroy bitmap as volatile
+ 
   for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { //have to do sizeof the array which needs to be added
     const Index io_s = adj.rowPtr_[bi];
     const Index io_e = adj.rowPtr_[bi + 1];
-    if(bi == 539 && threadIdx.x == 0) {
-      printf("io_s: %d io_e:  %d\n" , io_s, io_e);
-      
-    }
 
     Index blk_bound = (io_e + BLOCK_DIM_X - 1) / BLOCK_DIM_X * BLOCK_DIM_X;
- 
-    for(Index io = io_s; io < blk_bound; io += blockDim.x) { //find a multiple of blockDim.x that is larger than io_e and use that so io < xyz
-         const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1;
+
+    for(Index io = io_s; io < blk_bound; io += blockDim.x) { 
+         const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1; //io_s shoudl be io_e
          if (c > -1) {
-            if (bi == 539 ) {
-               printf("tid %d c = %ld\n", threadIdx.x, c);
-            }
             atomic_set(&bitmaps[blockIdx.x * bitmapSz], c);
-            
          }
          __syncthreads();
-         if (bi == 539 && threadIdx.x == 0) {
-            for(Index i = 0; i < 8; i++ ) {
-              printf(" %x ", bitmaps[blockIdx.x * bitmapSz + i]);
-
-            }
-            printf(" \n");
-         }
          for (Index t = 0; t < blockDim.x; t++) {
             const int64_t j = pangolin::block_broadcast(c,t);
             if (j == -1) {
@@ -105,29 +84,25 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
             }
             const Index jo_s = adj.rowPtr_[j];
             const Index jo_e = adj.rowPtr_[j+1];
-            if (bi == 539 && threadIdx.x == 0) {
-              printf(" j %lld jo_s: %d jo_e: %d \n", j, jo_s, jo_e);
-            }
             for (Index jo = jo_s + threadIdx.x; jo < jo_e; jo += blockDim.x) {
               const int64_t k = adj.colInd_[jo];
         
                if (get_bitmap(&bitmaps[blockIdx.x * bitmapSz], k) == 1) {
                   threadCount++;
-               } else {
-                    if (bi == 539) {
-                       printf(" k: %d j: %lld \n", k, j);
-                    }
-               }
+               } 
             }
          }
-
-    } //need to figure out the braket situation
+    } 
     __syncthreads();
-    const Index first =  adj.colInd_[adj.rowPtr_[bi]];
-    const Index second = adj.colInd_[adj.rowPtr_[bi + 1]];
-    reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], (size_t) 0, bitmapSz);
+    const Index first =  adj.colInd_[io_s];
+    //second maybe less than first
+    if (io_e != io_s) {
+         const Index second = adj.colInd_[io_e - 1];
+         reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], first, second);
+    } 
+   // bitmaps[blockIdx.x * bitmapSz] = 0;
     __syncthreads();
-  } //acconted for
+  } 
   
 // Block-wide reduction of threadCount
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
@@ -216,9 +191,9 @@ public:
     LOG(debug, "dyn_blocks_low_tri_kernel({})<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock, stream_);                    \
     CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));                                                \
     dyn_blocks_low_tri_kernel<const_dimBlock>                                                                                  \
-        <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, rowOffset, numRows, bitmaps_.data(), bitmaps_.size()/dimGrid );  \
+        <<< dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, rowOffset, numRows, bitmaps_.data(), bitmaps_.size()/dimGrid/ 32*32 );  \
     CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));                                                 \
-   break;                                                                                                             \
+    break;                                                                                                             \
   }
 
     switch (dimBlock) {
