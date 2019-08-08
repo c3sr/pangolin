@@ -5,6 +5,7 @@
 #include "pangolin/dense/array_view.hpp"
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/edge_list.hpp"
+#include "pangolin/logger.hpp"
 #include "pangolin/types.hpp"
 
 #ifdef __CUDACC__
@@ -53,6 +54,74 @@ public:
       nnz += partitionStop_[row] - partitionStart_[row];
     }
     return nnz;
+  }
+
+  /*! Return an ArrayView of row i of the CSR
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row(NodeIndex i) const noexcept {
+    const NodeIndex rowStart = rowStart_[i];
+    const NodeIndex rowStop = rowStop_[i];
+    return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
+  }
+
+  /*! Return an ArrayView of partition p of row i of the CSR
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_part(NodeIndex i) const noexcept {
+    const NodeIndex rowStart = partitionStart_[i];
+    const NodeIndex rowStop = partitionStop_[i];
+    return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
+  }
+};
+
+/*! \brief a read-only view of a CSR suitable for passing to a GPU kernel by
+value.
+
+Any modifications to the underlying CSR may invalidate this view.
+*/
+template <typename NodeIndex, typename EdgeIndex> class TwoColView {
+  friend class CSRBinned<NodeIndex, EdgeIndex>;
+
+public:
+  typedef EdgeIndex edge_index_type;
+  typedef NodeIndex node_index_type;
+  typedef EdgeTy<NodeIndex> edge_type;
+
+private:
+  uint64_t nnz_;
+  uint64_t numRows_;       //!< length of rowOffset - 1
+  uint64_t partitionSize_; //!< the number of rows/cols in a partition
+
+public:
+  const EdgeIndex *jStartPtrs_; //<! offsets in colInd_ where the partition starts
+  const EdgeIndex *jStopPtrs_;  //<! offsets in colInd_ where the partition ends
+  const EdgeIndex *kStartPtrs_; //<! offsets in colInd_ where the partition starts
+  const EdgeIndex *kStopPtrs_;  //<! offsets in colInd_ where the partition ends
+  const NodeIndex *colInd_;     //!< non-zero column indices
+
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t partition_size() const noexcept { return partitionSize_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return numRows_; }
+
+  /*! Return an ArrayView of partition p of row i of the CSR
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_j(NodeIndex i) const noexcept {
+    assert(i < num_rows());
+    const NodeIndex rowStart = jStartPtrs_[i];
+    const NodeIndex rowStop = jStopPtrs_[i];
+    assert(rowStop >= rowStart);
+    return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
+  }
+
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_k(NodeIndex i) const noexcept {
+    assert(i < num_rows());
+    const NodeIndex rowStart = kStartPtrs_[i];
+    const NodeIndex rowStop = kStopPtrs_[i];
+    if (!(rowStop >= rowStart)) {
+      LOG(critical, "i={}: partition ends before it begins {} !>= {}", i, rowStop, rowStart);
+      exit(1);
+    }
+    assert(rowStop >= rowStart);
+    return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
   }
 };
 
@@ -166,8 +235,17 @@ public:
       assert(rowPtr.size() == rowPtrs_[0].size() && "not all rowPtrs are the same length");
     }
 
-    // check that all rows are contiguous
+    for (int64_t i = 0; i < int64_t(rowPtrs_.size()) - 1; ++i) {
+      assert(rowPtrs_[i + 1][0] >= rowPtrs_[i][0]);
+    }
+
+    for (int i = 0; i < rowPtrs_.size() - 1; ++i) {
+      for (size_t j = 0; j < rowPtrs_[0].size(); ++j) {
+        assert(rowPtrs_[i + 1][j] >= rowPtrs_[i][j]);
+      }
+    }
 #if 0
+    // check that all rows are contiguous
     LOG(debug, "checking csr for consistency...");
     for (size_t i = 0; i < rowPtrs_.size() - 1; ++i) {
       LOG(debug, "comparing rowPtrs_ {} and {}", i, i + 1);
@@ -371,11 +449,11 @@ public:
     return result;
   }
 
-  /*! Create a CSRBinnedView for partition part of this BinnerCSR
+  /*! Create a CSRBinnedView for partition part of this BinnedCSR
    */
   CSRBinnedView<NodeIndex, EdgeIndex> view(size_t part) const { return view(part, part + 1); }
 
-  /*! Create a CSRBinnedView for a span of partitions of this BinnerCSR
+  /*! Create a CSRBinnedView for a span of partitions of this BinnedCSR
    */
   CSRBinnedView<NodeIndex, EdgeIndex> view(size_t partStart, size_t partStop) const {
     assert(partStart < numParts_ && "Requested partition Start >= numParts_");
@@ -388,6 +466,25 @@ public:
     result.colInd_ = colInd_.data();
     result.numRows_ = num_rows();
     result.nnz_ = nnz();
+    return result;
+  }
+
+  TwoColView<NodeIndex, EdgeIndex> two_col_view(size_t j, size_t k) const {
+    assert(j < numParts_ && "Requested j >= numParts_");
+    // assert(j <= numParts_ && "Requested j > numParts_");
+    assert(k < numParts_ && "Requested k >= numParts_");
+    // assert(k <= numParts_ && "Requested k > numParts_");
+    TwoColView<NodeIndex, EdgeIndex> result;
+    result.nnz_ = nnz();
+    result.numRows_ = num_rows();
+    result.colInd_ = colInd_.data();
+    result.partitionSize_ = partitionSize_;
+
+    result.jStartPtrs_ = rowPtrs_[j].data();
+    result.jStopPtrs_ = rowPtrs_[j + 1].data();
+    result.kStartPtrs_ = rowPtrs_[k].data();
+    result.kStopPtrs_ = rowPtrs_[k + 1].data();
+
     return result;
   }
 
