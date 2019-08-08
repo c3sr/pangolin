@@ -2,12 +2,9 @@
 
 #pragma once
 
-
-#include "pangolin/logger.hpp"
 #include "count.cuh"
+#include "pangolin/logger.hpp"
 #include "search.cuh"
-
-
 
 namespace pangolin {
 
@@ -16,15 +13,21 @@ private:
   uint64_t count_;
 
 public:
-  VertexCPUTC(int dev) {}
+  VertexCPUTC(int dev) : count_(0) {}
 
-  VertexCPUTC(int dev, cudaStream_t stream) {}
+  VertexCPUTC(int dev, cudaStream_t stream) : count_(0) {}
 
-  VertexCPUTC(VertexCPUTC &&other) {}
+  VertexCPUTC(VertexCPUTC &&other) : count_(other.count_) {}
 
   VertexCPUTC() : VertexCPUTC(0) {}
 
   ~VertexCPUTC() {}
+
+  struct Task {
+    size_t i;
+    size_t j;
+    size_t k;
+  };
 
   template <typename Csr>
   void count_async(const Csr &adj, const size_t rowOffset, const size_t numRows, const size_t dimBlock = 256) {
@@ -75,11 +78,48 @@ public:
     return count();
   }
 
-  void sync() {}
+  template <typename TwoColCsr> void count_async(const TwoColCsr &adj, const Task &task) {
+    typedef typename TwoColCsr::edge_index_type EdgeIndex;
+    typedef typename TwoColCsr::node_index_type NodeIndex;
 
+    NodeIndex rowStart = task.i * adj.partition_size();
+    NodeIndex rowStop = min((task.i + 1) * adj.partition_size(), adj.num_rows());
+
+    LOG(debug, "rows {}-{}", rowStart, rowStop);
+
+    for (NodeIndex src = rowStart; src < rowStop; src += 1) {
+
+      auto srcSlice = adj.row_k(src);
+      auto dsts = adj.row_j(src);
+      // if (srcSlice.size()) {
+      //   LOG(debug, "src k slice: {} {} nnz", srcSlice.size());
+      // }
+      // if (dsts.size()) {
+      //   LOG(debug, "dsts in src j slice: {} nnz", dsts.size());
+      // }
+
+      for (const auto dst : dsts) {
+        auto dstSlice = adj.row_k(dst);
+        // if (dstSlice.size() && srcSlice.size()) {
+        //   LOG(debug, "comparing srcSlice {} with dstSlice {}", srcSlice.size(), dstSlice.size());
+        // }
+        if (srcSlice.begin() + srcSlice.size() > adj.colInd_ + adj.nnz()) {
+          LOG(critical, "src too big {} {}", srcSlice.size(), adj.nnz());
+          exit(1);
+        }
+        if (dstSlice.begin() + dstSlice.size() > adj.colInd_ + adj.nnz()) {
+          LOG(critical, "dst too big {} {}", dstSlice.size(), adj.nnz());
+          exit(1);
+        }
+        count_ +=
+            pangolin::serial_sorted_count_linear(srcSlice.begin(), srcSlice.end(), dstSlice.begin(), dstSlice.end());
+      }
+    }
+  }
+
+  void sync() {}
   uint64_t count() const { return count_; }
   int device() const { return 0; }
-
   double kernel_time() const { return 0; }
 };
 
