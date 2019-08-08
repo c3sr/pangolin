@@ -70,10 +70,10 @@ public:
       }
       int64_t src = srcdst[0];
       int64_t dst = srcdst[1];
-      if (src > rows_) {
+      if (src > int64_t(rows_)) {
         LOG(warn, "{} is greater than expected rows {}", src, rows_);
       }
-      if (dst > cols_) {
+      if (dst > int64_t(cols_)) {
         LOG(warn, "{} is greater than expected cols {}", dst, cols_);
       }
       edge.first = src - 1;
