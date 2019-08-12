@@ -28,8 +28,8 @@ private:
   std::atomic<bool> consumer_ready_;
 
   std::mutex mtx_;
-  std::condition_variable consumerBusy; //<! block producer from flipping
-  std::condition_variable producerBusy; //<! block consumers until flipped
+  std::condition_variable consumerBusy; //!< block producer from flipping
+  std::condition_variable producerBusy; //!< block consumers until flipped
   
   std::atomic<bool> close_; //!< true if new values will never be added to the queue
 

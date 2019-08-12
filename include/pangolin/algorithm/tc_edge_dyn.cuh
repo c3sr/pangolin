@@ -16,17 +16,17 @@
 #include "pangolin/cuda_cxx/rc_stream.hpp"
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
-#include "search.cuh"
 #include "pangolin/topology/topology.hpp"
+#include "search.cuh"
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     tc_edge_dyn_kernel(uint64_t *count,         //!< [inout] the count, caller should zero
-                       const CsrCooView adj,    //<! [in] the matrix
-                       const size_t numEdges,   //<! [in] the number of edges this kernel will count
-                       const size_t edgeStart,  //<! [in] the starting edge this kernel will count
-                       const float scaleBinary, //<! [in] amount to scale the binary cost by in the cost model
-                       size_t *edgeIdx //<! [inout] a gpu memory area for work-stealing. caller should set to edgeStart
+                       const CsrCooView adj,    //!< [in] the matrix
+                       const size_t numEdges,   //!< [in] the number of edges this kernel will count
+                       const size_t edgeStart,  //!< [in] the starting edge this kernel will count
+                       const float scaleBinary, //!< [in] amount to scale the binary cost by in the cost model
+                       size_t *edgeIdx //!< [inout] a gpu memory area for work-stealing. caller should set to edgeStart
     ) {
 
   typedef typename CsrCooView::index_type Index;
@@ -160,10 +160,10 @@ namespace pangolin {
 class EdgeWarpDynTC {
 private:
   int dev_;
-  RcStream stream_;              //<! the stream that this triangle counter will use
-  uint64_t *count_;              //<! the triangle count
-  DeviceBuffer<size_t> edgeIdx_; //<! index of the next available edge for counting
-  float scaleBinary_;            //<! scale the binary cost model in the kernel
+  RcStream stream_;              //!< the stream that this triangle counter will use
+  uint64_t *count_;              //!< the triangle count
+  DeviceBuffer<size_t> edgeIdx_; //!< index of the next available edge for counting
+  float scaleBinary_;            //!< scale the binary cost model in the kernel
 
   // events for measuring time
   cudaEvent_t kernelStart_;
@@ -182,9 +182,8 @@ public:
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
   }
 
-  EdgeWarpDynTC(int dev, cudaStream_t stream, const float scaleBinary = 0.25)
-      : dev_(dev), stream_(std::move(RcStream(dev, stream))), count_(nullptr), edgeIdx_(1, dev),
-        scaleBinary_(scaleBinary) {
+  EdgeWarpDynTC(int dev, RcStream stream, const float scaleBinary = 0.25)
+      : dev_(dev), stream_(stream), count_(nullptr), edgeIdx_(1, dev), scaleBinary_(scaleBinary) {
     if (stream_.device() != dev) {
       LOG(critical, "device and stream device do not match");
       exit(1);
@@ -192,13 +191,13 @@ public:
     CUDA_RUNTIME(cudaSetDevice(dev_));
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
     zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
-    // error may be deferred to a cudaHostGetDevicePointer
-    // CUDA_RUNTIME(cudaHostAlloc(&count_, sizeof(*count_), cudaHostAllocPortable | cudaHostAllocMapped));
-    // *count_ = 0;
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
   }
+
+  EdgeWarpDynTC(int dev, cudaStream_t stream, const float scaleBinary = 0.25)
+      : EdgeWarpDynTC(dev, RcStream(dev, stream), scaleBinary) {}
 
   EdgeWarpDynTC(EdgeWarpDynTC &&other)
       : dev_(other.dev_), stream_(std::move(other.stream_)), count_(other.count_), edgeIdx_(std::move(other.edgeIdx_)),
@@ -235,7 +234,7 @@ public:
     int maxActiveBlocks;                                                                                               \
     CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(                                                        \
         &maxActiveBlocks, tc_edge_dyn_kernel<const_dimBlock, CsrCoo>, const_dimBlock, 0));                             \
-    cudaDeviceProp &props = topology::get().cudaGpus_[dev_]->props_;                                                \
+    cudaDeviceProp &props = topology::get().cudaGpus_[dev_]->props_;                                                   \
     const int dimGrid = maxActiveBlocks * props.multiProcessorCount;                                                   \
     LOG(debug, "device = {}, tc_edge_dyn_kernel<<<{}, {}, 0, {}>>>", dev_, dimGrid, const_dimBlock, stream_);          \
     CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));                                                \

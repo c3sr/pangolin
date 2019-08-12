@@ -22,9 +22,9 @@ public:
   typedef int device_id_type;
 
 private:
-  device_id_type device_; //<! the cuda device this buffer is on
-  size_t capacity_;       //<! the number of elements the underlying allocation can hold
-  value_type *data_;      //<! the underlying allocation
+  device_id_type device_; //!< the cuda device this buffer is on
+  size_t capacity_;       //!< the number of elements the underlying allocation can hold
+  value_type *data_;      //!< the underlying allocation
   PANGOLIN_HOST void set_device();
 
 public:
@@ -63,9 +63,9 @@ public:
   typedef int device_id_type;
 
 private:
-  device_id_type device_; //<! the device of the underlying allocation
-  size_t capacity_;       //<! the number of elements the underlying allocation can hold
-  value_type *data_;      //<! the underlying allocation
+  device_id_type device_; //!< the device of the underlying allocation
+  size_t capacity_;       //!< the number of elements the underlying allocation can hold
+  value_type *data_;      //!< the underlying allocation
 
 public:
   /*! Construct from a DeviceBuffer

@@ -143,7 +143,6 @@ target_compile_options(
     -Xcompiler=-Wpointer-arith;
     -Xcompiler=-Winit-self;
     -Xcompiler=-Wswitch-enum;
-    -Xcompiler=-Wredundant-decls;
     -Xcompiler=-Wfloat-equal;
     -Xcompiler=-Wundef;
     -Xcompiler=-Wvla;
@@ -163,7 +162,6 @@ target_compile_options(
     -Wpointer-arith;
     -Winit-self;
     -Wswitch-enum;
-    -Wredundant-decls;
     -Wfloat-equal;
     -Wundef;
     -Wvla;

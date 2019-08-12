@@ -37,8 +37,8 @@ private:
     \return the number of edges read
   */
   template <typename T>
-  size_t read_bel(EdgeTy<T> *ptr, //<! buffer for edges (allocated by caller)
-                  const size_t n  //<! number of edges to read
+  size_t read_bel(EdgeTy<T> *ptr, //!< buffer for edges (allocated by caller)
+                  const size_t n  //!< number of edges to read
   ) {
     if (fp_ == nullptr) {
       LOG(error, "error reading {} or file was already closed ", path_);

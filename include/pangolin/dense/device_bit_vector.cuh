@@ -6,12 +6,12 @@ namespace pangolin {
 class DeviceBitVector {
 public:
   typedef uint32_t field_type;
-  static constexpr size_t BITS_PER_FIELD = sizeof(field_type) * CHAR_BIT; //<! the number of bits stored in each field
+  static constexpr size_t BITS_PER_FIELD = sizeof(field_type) * CHAR_BIT; //!< the number of bits stored in each field
 
 private:
-  field_type *fields_; //<! the data used to store the bitvector
-  size_t size_;        //<! the number of fields in the bitvector
-  size_t offset_;      //<! the idx represented by the zeroth bit
+  field_type *fields_; //!< the data used to store the bitvector
+  size_t size_;        //!< the number of fields in the bitvector
+  size_t offset_;      //!< the idx represented by the zeroth bit
 
 public:
   /*! construct a bit vector out of n fields

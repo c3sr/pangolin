@@ -33,7 +33,7 @@ template <typename T> PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(void) : device
 Constructs a container with n elements
 */
 template <typename T>
-PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(size_t n, const device_id_type device //<! [in] the CUDA device ID
+PANGOLIN_HOST DeviceBuffer<T>::DeviceBuffer(size_t n, const device_id_type device //!< [in] the CUDA device ID
                                             )
     : device_(device), capacity_(0), data_(nullptr) {
   resize(n);

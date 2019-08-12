@@ -46,8 +46,18 @@ function(pangolin_add_mpi_gpu_test)
 endfunction()
 
 pangolin_add_test(
+  NAME test_array_view
+  SRCS test_array_view.cu
+)
+
+pangolin_add_test(
   NAME test_binary_search
   SRCS test_binary_search.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_bmtx_stream
+  SRCS test_bmtx_stream.cu
 )
 
 pangolin_add_gpu_test(
@@ -66,11 +76,6 @@ pangolin_add_test(
 )
 
 pangolin_add_gpu_test(
-  NAME test_csr_coo
-  SRCS test_csr_coo.cu
-)
-
-pangolin_add_gpu_test(
   NAME test_count
   SRCS test_count.cu
 )
@@ -78,6 +83,16 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_csr
   SRCS test_csr.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_binned
+  SRCS test_csr_binned.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_coo
+  SRCS test_csr_coo.cu
 )
 
 pangolin_add_gpu_test(

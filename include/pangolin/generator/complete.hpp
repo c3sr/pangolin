@@ -29,7 +29,7 @@ public:
 
   private:
     const uint64_t numNodes_;
-    Node pos_; //<! flat position in 2D numNodes_ * numNodes_ space
+    Node pos_; //!< flat position in 2D numNodes_ * numNodes_ space
 
     iterator(uint64_t numNodes, Node pos) : numNodes_(numNodes), pos_(pos) {
       // possible that the first edge should be skipped
