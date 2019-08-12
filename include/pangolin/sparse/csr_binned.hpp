@@ -38,10 +38,10 @@ private:
   uint64_t numRows_; //!< length of rowOffset - 1
 
 public:
-  const EdgeIndex *rowStart_;       //<! offset in colInd_ where the row starts
-  const EdgeIndex *rowStop_;        //<! offset in colInd_ where the row ends
-  const EdgeIndex *partitionStart_; //<! offset in colInd_ where the partition starts
-  const EdgeIndex *partitionStop_;  //<! offset in colInd_ where the partition ends
+  const EdgeIndex *rowStart_;       //!< offset in colInd_ where the row starts
+  const EdgeIndex *rowStop_;        //!< offset in colInd_ where the row ends
+  const EdgeIndex *partitionStart_; //!< offset in colInd_ where the partition starts
+  const EdgeIndex *partitionStop_;  //!< offset in colInd_ where the partition ends
   const NodeIndex *colInd_;         //!< non-zero column indices
 
   PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
@@ -92,11 +92,11 @@ private:
   uint64_t partitionSize_; //!< the number of rows/cols in a partition
 
 public:
-  const EdgeIndex *jStartPtrs_; //<! offsets in colInd_ where the partition starts
-  const EdgeIndex *jStopPtrs_;  //<! offsets in colInd_ where the partition ends
-  const EdgeIndex *kStartPtrs_; //<! offsets in colInd_ where the partition starts
-  const EdgeIndex *kStopPtrs_;  //<! offsets in colInd_ where the partition ends
-  const NodeIndex *colInd_;     //!< non-zero column indices
+  const EdgeIndex *jStartPtrs_; //!< offsets in colInd_ where the partition starts
+  const EdgeIndex *jStopPtrs_;  //!< offsets in colInd_ where the partition ends
+  const EdgeIndex *kStartPtrs_; //!< offsets in colInd_ where the partition starts
+  const EdgeIndex *kStopPtrs_;  //!< offsets in colInd_ where the partition ends
+  NodeIndex *colInd_;           //!< non-zero column indices
 
   PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t partition_size() const noexcept { return partitionSize_; }
   PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
@@ -104,7 +104,7 @@ public:
 
   /*! Return an ArrayView of partition p of row i of the CSR
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_j(NodeIndex i) const noexcept {
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ ArrayView<NodeIndex> row_j(NodeIndex i) const noexcept {
     assert(i < num_rows());
     const NodeIndex rowStart = jStartPtrs_[i];
     const NodeIndex rowStop = jStopPtrs_[i];
@@ -112,14 +112,14 @@ public:
     return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
   }
 
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_k(NodeIndex i) const noexcept {
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ ArrayView<NodeIndex> row_k(NodeIndex i) const noexcept {
     assert(i < num_rows());
     const NodeIndex rowStart = kStartPtrs_[i];
     const NodeIndex rowStop = kStopPtrs_[i];
-    if (!(rowStop >= rowStart)) {
-      LOG(critical, "i={}: partition ends before it begins {} !>= {}", i, rowStop, rowStart);
-      exit(1);
-    }
+    // if (!(rowStop >= rowStart)) {
+    //   LOG(critical, "i={}: partition ends before it begins {} !>= {}", i, rowStop, rowStart);
+    //   exit(1);
+    // }
     assert(rowStop >= rowStart);
     return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
   }
@@ -231,19 +231,19 @@ public:
       SPDLOG_TRACE(logger::console(), "num_rows now {}", num_rows());
     }
 
-    for (const auto &rowPtr : rowPtrs_) {
-      assert(rowPtr.size() == rowPtrs_[0].size() && "not all rowPtrs are the same length");
-    }
+    // for (const auto &rowPtr : rowPtrs_) {
+    //   assert(rowPtr.size() == rowPtrs_[0].size() && "not all rowPtrs are the same length");
+    // }
 
-    for (int64_t i = 0; i < int64_t(rowPtrs_.size()) - 1; ++i) {
-      assert(rowPtrs_[i + 1][0] >= rowPtrs_[i][0]);
-    }
+    // for (int64_t i = 0; i < int64_t(rowPtrs_.size()) - 1; ++i) {
+    //   assert(rowPtrs_[i + 1][0] >= rowPtrs_[i][0]);
+    // }
 
-    for (int i = 0; i < rowPtrs_.size() - 1; ++i) {
-      for (size_t j = 0; j < rowPtrs_[0].size(); ++j) {
-        assert(rowPtrs_[i + 1][j] >= rowPtrs_[i][j]);
-      }
-    }
+    // for (int64_t i = 0; i < int64_t(rowPtrs_.size()) - 1; ++i) {
+    //   for (size_t j = 0; j < rowPtrs_[0].size(); ++j) {
+    //     assert(rowPtrs_[i + 1][j] >= rowPtrs_[i][j]);
+    //   }
+    // }
 #if 0
     // check that all rows are contiguous
     LOG(debug, "checking csr for consistency...");
@@ -308,8 +308,8 @@ public:
   template <typename EdgeIter>
   static CSRBinned<NodeIndex, EdgeIndex>
   from_edges(EdgeIter begin, EdgeIter end,
-             const NodeIndex numNodes,   //<! estimate of the maximum node that will be seen
-             const EdgeIndex numEntries, //<! estimate of the number of edges
+             const NodeIndex numNodes,   //!< estimate of the maximum node that will be seen
+             const EdgeIndex numEntries, //!< estimate of the number of edges
              std::function<bool(EdgeTy<NodeIndex>)> f = [](EdgeTy<NodeIndex> e) {
                (void)e;
                return true;
@@ -469,7 +469,7 @@ public:
     return result;
   }
 
-  TwoColView<NodeIndex, EdgeIndex> two_col_view(size_t j, size_t k) const {
+  TwoColView<NodeIndex, EdgeIndex> two_col_view(size_t j, size_t k) {
     assert(j < numParts_ && "Requested j >= numParts_");
     // assert(j <= numParts_ && "Requested j > numParts_");
     assert(k < numParts_ && "Requested k >= numParts_");
