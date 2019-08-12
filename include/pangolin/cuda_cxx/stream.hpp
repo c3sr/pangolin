@@ -8,6 +8,9 @@
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
 
+// See CUDA C Programming guide: Stream and Event Behavior
+//
+
 namespace pangolin {
 
 /*! A reference to a cudaStream, with the same interface as Stream
@@ -15,10 +18,22 @@ namespace pangolin {
 class StreamRef {
 private:
   cudaStream_t stream_;
-  int dev_;
+  int dev_; //!< kernels in this stream must be launched on this device
 
 public:
   StreamRef(cudaStream_t stream, int device) : stream_(stream), dev_(device) {}
+
+  /*! default constructor
+
+    StreamRef for null stream on GPU device
+   */
+  explicit StreamRef(int device) : StreamRef(0, device) {}
+
+  /*! default constructor
+
+    StreamRef for null stream on device 0
+   */
+  StreamRef() : StreamRef(0) {}
 
   /*! move constructor
    */
@@ -44,17 +59,25 @@ public:
 
   bool operator==(const StreamRef &other) const noexcept { return stream_ == other.stream_; }
 
+  /*! Return the device against which kernels in this stream must be launched
+  */
   inline int device() const noexcept { return dev_; }
   inline cudaStream_t stream() const noexcept { return stream_; }
   StreamRef ref() const noexcept { return *this; }
-  void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_));}
+  void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
   explicit inline operator cudaStream_t() const { return stream_; }
 
   friend std::ostream &operator<<(std::ostream &os, const StreamRef &s) {
-    return os << "stream:" << uintptr_t(s.stream_);
+    return os << "streamref:" << uintptr_t(s.stream_);
   }
 };
+
+
+/*! An owned stream.
+
+    Cannot be copied, as only one of each stream exists.
+ */
 class Stream {
 private:
   cudaStream_t stream_;
@@ -106,7 +129,7 @@ public:
   int device() const noexcept { return dev_; }
   inline cudaStream_t stream() const noexcept { return stream_; }
   StreamRef ref() const noexcept { return StreamRef(stream_, dev_); }
-  void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_));}
+  void sync() const noexcept { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 
   bool operator==(const Stream &other) const noexcept { return stream_ == other.stream_; }
 
