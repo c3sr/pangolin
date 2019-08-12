@@ -7,21 +7,32 @@
 #endif
 
 template <typename T> class ArrayView {
-  const T *data_;
+  T *data_;
   size_t size_;
 
 public:
-  __PANGOLIN_HOST_DEVICE__ ArrayView(const T *data, size_t size) : data_(data), size_(size) {}
+  typedef T *pointer;
+  typedef const T *const_pointer;
+  typedef T *iterator;
+  typedef const T *const_iterator;
+  typedef T &reference;
+  typedef const T &const_reference;
+
+  __PANGOLIN_HOST_DEVICE__ ArrayView(T *data, size_t count) : data_(data), size_(count) {}
   __PANGOLIN_HOST_DEVICE__ ArrayView() : ArrayView(nullptr, 0) {}
 
-  __PANGOLIN_HOST_DEVICE__ __forceinline__ T &operator[](size_t i) noexcept { return data_[i]; }
-  __PANGOLIN_HOST_DEVICE__ __forceinline__ const T &operator[](size_t i) const noexcept { return data_[i]; }
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ reference operator[](size_t i) noexcept { return data_[i]; }
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ const_reference &operator[](size_t i) const noexcept { return data_[i]; }
 
-  __PANGOLIN_HOST_DEVICE__ __forceinline__ const T *begin() const noexcept { return data_; }
-  __PANGOLIN_HOST_DEVICE__ __forceinline__ const T *end() const noexcept { return data_ + size_; }
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ iterator begin() noexcept { return data_; }
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ iterator end() noexcept { return data_ + size_; }
+
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ const_iterator begin() const noexcept { return data_; }
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ const_iterator end() const noexcept { return data_ + size_; }
 
   __PANGOLIN_HOST_DEVICE__ __forceinline__ size_t size() const noexcept { return size_; }
-  __PANGOLIN_HOST_DEVICE__ __forceinline__ const T *data() const noexcept { return data_; }
+
+  __PANGOLIN_HOST_DEVICE__ __forceinline__ pointer data() const noexcept { return data_; }
 };
 
 #undef __PANGOLIN_HOST_DEVICE__

@@ -51,4 +51,17 @@ TEMPLATE_TEST_CASE("array_view more", "", int, uint64_t) {
     ArrayView<TestType> b = a;
     REQUIRE(b.size() == 1);
   }
+
+  SECTION("operator[]") {
+    a[0] = 10;
+    REQUIRE(a[0] == 10);
+  }
+}
+
+TEST_CASE("array_view const", "") {
+  pangolin::init();
+  logger::set_level(logger::Level::TRACE);
+  const std::vector<int> v(1, 7);
+  ArrayView<const int> a(v.data(), v.size());
+  REQUIRE(a[0] == 7);
 }
