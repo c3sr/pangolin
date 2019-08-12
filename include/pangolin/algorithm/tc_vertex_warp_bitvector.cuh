@@ -153,9 +153,9 @@ class VertexWarpBitvectorTC {
 private:
   int dev_;
   cudaStream_t stream_;
-  uint64_t *count_;                    //<! the triangle count
-  DeviceBuffer<size_t> rowIdx_;        //<! index of the next available row for counting
-  DeviceBuffer<char> globalBitVector_; //<! device array for the bit vector
+  uint64_t *count_;                    //!< the triangle count
+  DeviceBuffer<size_t> rowIdx_;        //!< index of the next available row for counting
+  DeviceBuffer<char> globalBitVector_; //!< device array for the bit vector
 
   // whether we own the stream we are using
   bool ownStream_;

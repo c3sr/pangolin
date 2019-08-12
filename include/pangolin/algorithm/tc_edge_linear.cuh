@@ -50,7 +50,7 @@ private:
   uint64_t *count_;
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
-  size_t numEdges_; //<! the number of edges count_async was last invoked with
+  size_t numEdges_; //!< the number of edges count_async was last invoked with
 
 public:
   LinearTC(int dev) : dev_(dev), count_(nullptr), numEdges_(0) {

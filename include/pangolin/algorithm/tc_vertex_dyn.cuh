@@ -138,7 +138,7 @@ class VertexDynTC {
 private:
   int dev_;
   RcStream stream_;
-  uint64_t *count_; //<! the triangle count
+  uint64_t *count_; //!< the triangle count
 
   // events for measuring time
   cudaEvent_t kernelStart_;

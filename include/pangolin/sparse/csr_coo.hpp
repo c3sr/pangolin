@@ -115,7 +115,7 @@ public:
     Must be provided a maxNode count to pad rows out to.
     While edges were being added, the final rows may be empty, so they never get added.
   */
-  void finish_edges(const Index &maxNode //<! [in] add empty rows out to maxNode
+  void finish_edges(const Index &maxNode //!< [in] add empty rows out to maxNode
   );
 
   CSRCOOView<Index, Vector> view() const {

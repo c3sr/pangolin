@@ -21,8 +21,8 @@ public:
   typedef const value_type &const_reference;
 
 private:
-  size_t capacity_;  //<! the number of elements the underlying allocation can hold
-  value_type *data_; //<! the underlying allocation
+  size_t capacity_;  //!< the number of elements the underlying allocation can hold
+  value_type *data_; //!< the underlying allocation
 
 public:
   PANGOLIN_HOST explicit Buffer(void);
@@ -65,8 +65,8 @@ public:
   typedef const value_type &const_reference;
 
 private:
-  size_t capacity_;  //<! the number of elements the underlying allocation can hold
-  value_type *data_; //<! the underlying allocation
+  size_t capacity_;  //!< the number of elements the underlying allocation can hold
+  value_type *data_; //!< the underlying allocation
 
 public:
   /*! Construct from a Buffer

@@ -22,11 +22,11 @@
 template <size_t BLOCK_DIM_X, typename CsrCooView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     tc_edge_dyn_kernel(uint64_t *count,         //!< [inout] the count, caller should zero
-                       const CsrCooView adj,    //<! [in] the matrix
-                       const size_t numEdges,   //<! [in] the number of edges this kernel will count
-                       const size_t edgeStart,  //<! [in] the starting edge this kernel will count
-                       const float scaleBinary, //<! [in] amount to scale the binary cost by in the cost model
-                       size_t *edgeIdx //<! [inout] a gpu memory area for work-stealing. caller should set to edgeStart
+                       const CsrCooView adj,    //!< [in] the matrix
+                       const size_t numEdges,   //!< [in] the number of edges this kernel will count
+                       const size_t edgeStart,  //!< [in] the starting edge this kernel will count
+                       const float scaleBinary, //!< [in] amount to scale the binary cost by in the cost model
+                       size_t *edgeIdx //!< [inout] a gpu memory area for work-stealing. caller should set to edgeStart
     ) {
 
   typedef typename CsrCooView::index_type Index;
@@ -160,10 +160,10 @@ namespace pangolin {
 class EdgeWarpDynTC {
 private:
   int dev_;
-  RcStream stream_;              //<! the stream that this triangle counter will use
-  uint64_t *count_;              //<! the triangle count
-  DeviceBuffer<size_t> edgeIdx_; //<! index of the next available edge for counting
-  float scaleBinary_;            //<! scale the binary cost model in the kernel
+  RcStream stream_;              //!< the stream that this triangle counter will use
+  uint64_t *count_;              //!< the triangle count
+  DeviceBuffer<size_t> edgeIdx_; //!< index of the next available edge for counting
+  float scaleBinary_;            //!< scale the binary cost model in the kernel
 
   // events for measuring time
   cudaEvent_t kernelStart_;

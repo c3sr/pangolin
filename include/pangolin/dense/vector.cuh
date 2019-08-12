@@ -21,9 +21,9 @@ public:
   typedef const value_type &const_reference;
 
 protected:
-  size_t capacity_;  //<! the number of elements the underlying allocation can hold
-  size_t size_;      //<! the number of elements in the vector
-  value_type *data_; //<! the underlying allocation
+  size_t capacity_;  //!< the number of elements the underlying allocation can hold
+  size_t size_;      //!< the number of elements in the vector
+  value_type *data_; //!< the underlying allocation
   Allocator allocator_;
 
 public:
