@@ -19,4 +19,15 @@ typedef std::pair<Uint, Uint> Edge;
 */
 template <typename NodeTy> using EdgeTy = std::pair<NodeTy, NodeTy>;
 
+/*! A directed, weighted edge
+
+    \tparam N the node at each end of the edge
+    \tparam T the type of the edge's value
+*/
+template <typename N, typename T> struct WeightedEdge {
+  N src;
+  N dst;
+  T val; //!< edge weight
+};
+
 } // namespace pangolin

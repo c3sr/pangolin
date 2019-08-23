@@ -86,6 +86,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_csr_val
+  SRCS test_csr_val.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_csr_binned
   SRCS test_csr_binned.cu
 )
