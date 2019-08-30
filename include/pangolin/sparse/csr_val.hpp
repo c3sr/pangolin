@@ -48,7 +48,7 @@ public:
    */
   CSR() : maxNode_(0) {}
 
-  void add_next_edge(const WeightedEdge<NodeI, ValT> &e) {
+  void add_next_edge(const WeightedDiEdge<NodeI, ValT> &e) {
     SPDLOG_TRACE(logger::console(), "handling edge {}->{}", e.src, e.dst);
 
     maxNode_ = std::max(e.src, maxNode_);
@@ -88,7 +88,7 @@ public:
   */
   template <typename EdgeIter>
   static CSR from_edges(EdgeIter begin, EdgeIter end,
-                        std::function<bool(WeightedEdge<NodeI, ValT>)> f = [](WeightedEdge<NodeI, ValT> e) {
+                        std::function<bool(WeightedDiEdge<NodeI, ValT>)> f = [](WeightedDiEdge<NodeI, ValT> e) {
                           (void)e;
                           return true;
                         }) {

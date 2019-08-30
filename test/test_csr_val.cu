@@ -23,20 +23,35 @@ TEST_CASE("from_edgelist") {
   typedef uint64_t EdgeI;
   typedef float ValT;
 
-  typedef WeightedEdge<NodeI, ValT> Edge;
+  typedef WeightedDiEdge<NodeI, ValT> Edge;
   typedef CSR<NodeI, EdgeI, ValT> CSR;
 
   pangolin::init();
   INFO("ctor");
 
-  std::vector<Edge> el = {
-      {0, 1, 1.0},
-  };
+  SECTION("el1") {
+    std::vector<Edge> el = {
+        {0, 1, 1.0},
+    };
 
-  INFO("from_edgelist");
-  auto m = CSR::from_edges(el.begin(), el.end());
+    INFO("from_edgelist");
+    auto m = CSR::from_edges(el.begin(), el.end());
 
-  INFO("check nnz");
-  REQUIRE(m.nnz() == 1);
-  REQUIRE(m.col_ind()[0] == 1);
+    INFO("check nnz");
+    REQUIRE(m.nnz() == 1);
+    REQUIRE(m.col_ind()[0] == 1);
+  }
+
+  SECTION("el2") {
+    std::vector<Edge> el = {
+        {0, 100, 1.0},
+    };
+
+    INFO("from_edgelist");
+    auto m = CSR::from_edges(el.begin(), el.end());
+
+    INFO("check nnz");
+    REQUIRE(m.nnz() == 1);
+    REQUIRE(m.col_ind()[0] == 100);
+  }
 }

@@ -8,21 +8,28 @@
 
 using namespace pangolin;
 
+static int64_t bitsAsInt(double d) {
+  int64_t i;
+  std::memcpy(&i, &d, sizeof(i));
+  return i;
+}
+
 TEST_CASE("0") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::TRACE);
 
-  int64_t ints[6] = {1, 7, 3, 1, 7, 0};
+  int64_t ints[6] = {1, 7, 3, 1, 7, bitsAsInt(0.0)};
   std::string data((char *)ints, sizeof(ints));
   auto stream = std::stringstream(data);
 
-  BmtxStream<uint64_t, std::stringstream> bmtx(std::move(stream));
+  BmtxStream<std::stringstream> bmtx(std::move(stream));
   REQUIRE(bmtx.num_rows() == 1);
   REQUIRE(bmtx.num_cols() == 7);
   REQUIRE(bmtx.nnz() == 3);
 
-  EdgeTy<uint64_t> edge;
+  decltype(bmtx)::edge_type edge;
   REQUIRE(bmtx.readEdge(edge));
-  REQUIRE(edge.first == 0);
-  REQUIRE(edge.second == 6);
+  REQUIRE(edge.src == 0);
+  REQUIRE(edge.dst == 6);
+  REQUIRE(edge.val == 0.0);
 }
