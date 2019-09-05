@@ -31,9 +31,9 @@ protected:
     if (stream_->fail()) {
       LOG(error, "error reading stream");
     }
-    rows_ = *reinterpret_cast<int64_t *>(buf_);
-    cols_ = *reinterpret_cast<int64_t *>(buf_ + sizeof(int64_t));
-    entries_ = *reinterpret_cast<int64_t *>(buf_ + 2 * sizeof(int64_t));
+    std::memcpy(&rows_, &buf_[0], 8);
+    std::memcpy(&cols_, &buf_[8], 8);
+    std::memcpy(&entries_, &buf_[16], 8);
   }
 
 public:
@@ -60,9 +60,12 @@ public:
         return false;
       }
 
-      int64_t src = *reinterpret_cast<int64_t *>(buf_);
-      int64_t dst = *reinterpret_cast<int64_t *>(buf_ + sizeof(int64_t));
-      double weight = *reinterpret_cast<int64_t *>(buf_ + 2 * sizeof(int64_t));
+      int64_t src, dst;
+      double weight;
+      std::memcpy(&src, &buf_[0], 8);
+      std::memcpy(&dst, &buf_[8], 8);
+      std::memcpy(&weight, &buf_[16], 8);
+
       if (src > int64_t(rows_)) {
         LOG(warn, "{} is greater than expected rows {}", src, rows_);
       }
