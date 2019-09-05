@@ -12,9 +12,9 @@ namespace pangolin {
  */
 template <typename T>
 __host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
-                                                      const T *const aEnd,   //!< end of a
-                                                      const T *const bBegin, //!< beginning of b
-                                                      const T *const bEnd    //!< end of b
+                                                               const T *const aEnd,   //!< end of a
+                                                               const T *const bBegin, //!< beginning of b
+                                                               const T *const bEnd    //!< end of b
 ) {
   uint64_t count = 0;
   const T *ap = aBegin;
@@ -23,9 +23,15 @@ __host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aB
   bool loadA = true;
   bool loadB = true;
 
-  while (ap < aEnd && bp < bEnd) {
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+  T a, b;
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-    T a, b;
+  while (ap < aEnd && bp < bEnd) {
 
     if (loadA) {
       a = *ap;
@@ -57,9 +63,9 @@ __host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aB
  */
 template <typename T>
 __host__ __device__ static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
-                                                    const size_t aSz,
-                                                    const T *const B, //!< beginning of b
-                                                    const size_t bSz) {
+                                                             const size_t aSz,
+                                                             const T *const B, //!< beginning of b
+                                                             const size_t bSz) {
   return serial_sorted_count_linear(A, &A[aSz], B, &B[bSz]);
 }
 
