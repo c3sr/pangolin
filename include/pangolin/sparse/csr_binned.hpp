@@ -149,13 +149,13 @@ public:
 
   /*! Empty CSR
    */
-  explicit PANGOLIN_HOST CSRBinned(const NodeIndex numRows, const EdgeIndex nnz)
+  explicit PANGOLIN_HOST CSRBinned(const NodeIndex numRows, const EdgeIndex numNonZeros)
       : numParts_(8), rowPtrs_(numParts_ + 1), maxNode_(0) {
     partitionSize_ = (numRows + numParts_ - 1) / numParts_;
     for (size_t i = 0; i < numParts_; ++i) {
       LOG(debug, "CSRBinned parition {}: cols {}-{}", i, i * partitionSize_, (i + 1) * partitionSize_);
     }
-    colInd_.reserve(nnz);
+    colInd_.reserve(numNonZeros);
   }
 
   PANGOLIN_HOST
