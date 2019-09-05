@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fstream>
+#include <memory>
 
 #include "pangolin/edge.hpp"
 #include "pangolin/logger.hpp"
@@ -15,19 +16,19 @@ public:
 
   /*! construct a Bmtx stream by taking ownership of another stream
    */
-  BmtxStream(istream &&stream) : stream_(std::move(stream)) { setSizeFromBanner(); }
+  BmtxStream(std::shared_ptr<istream> &stream) : stream_(stream) { setSizeFromBanner(); }
 
 protected:
-  istream stream_;
+  std::shared_ptr<istream> stream_; //<! gcc 4.8.5 does not support istream move constructor
   uint64_t rows_;
   uint64_t cols_;
   uint64_t entries_;
   char buf_[24];
 
   void setSizeFromBanner() {
-    stream_.seekg(0);
-    stream_.read(buf_, 24);
-    if (stream_.fail()) {
+    stream_->seekg(0);
+    stream_->read(buf_, 24);
+    if (stream_->fail()) {
       LOG(error, "error reading stream");
     }
     rows_ = *reinterpret_cast<int64_t *>(buf_);
@@ -42,19 +43,19 @@ public:
 
   bool readEdge(edge_type &edge) {
     // seek past the header
-    if (stream_.tellg() < 24) {
-      stream_.seekg(24);
+    if (stream_->tellg() < 24) {
+      stream_->seekg(24);
     }
 
-    if (stream_.eof()) {
+    if (stream_->eof()) {
       SPDLOG_TRACE(logger::console(), "reached eof");
       return false;
     } else {
-      SPDLOG_TRACE(logger::console(), "position {} before read", stream_.tellg());
-      stream_.read(buf_, 24);
-      if (stream_.eof()) {
+      SPDLOG_TRACE(logger::console(), "position {} before read", stream_->tellg());
+      stream_->read(buf_, 24);
+      if (stream_->eof()) {
         return false;
-      } else if (stream_.fail()) {
+      } else if (stream_->fail()) {
         LOG(error, "error reading stream");
         return false;
       }
@@ -79,8 +80,8 @@ public:
 /*! Open a new Bmtx stream from path
  */
 BmtxStream<std::ifstream> open_bmtx_stream(const std::string &path) {
-  auto stream = std::ifstream(path, std::ifstream::binary);
-  return BmtxStream<std::ifstream>(std::move(stream));
+  auto stream = std::make_shared<std::ifstream>(path, std::ifstream::binary);
+  return BmtxStream<std::ifstream>(stream);
 }
 
 }; // namespace pangolin
