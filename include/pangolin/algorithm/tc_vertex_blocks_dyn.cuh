@@ -67,22 +67,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { //have to do sizeof the array which needs to be added
     const Index io_s = adj.rowPtr_[bi];
     const Index io_e = adj.rowPtr_[bi + 1];
-    if(bi == 539 && threadIdx.x == 0) {
-      printf("io_s: %d io_e:  %d\n" , io_s, io_e);
-      
-    } 
-    if (threadIdx.x == 0) {
-//       printf(" blockID: %d  bi: %d\n", blockIdx.x, bi); 
-    }
 
     Index blk_bound = (io_e + BLOCK_DIM_X - 1) / BLOCK_DIM_X * BLOCK_DIM_X;
  
     for(Index io = io_s; io < io_e; io += blockDim.x) { //find a multiple of blockDim.x that is larger than io_e and use that so io < xyz
       const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1;
       if (c > -1) {
-        if (bi == 539 ) {
-        printf("tid %d c = %ld\n", threadIdx.x, c);
-        }
         atomic_set(&bitmaps[blockIdx.x * bitmapSz], c);
       }
     }
@@ -98,18 +88,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
          }
          const Index jo_s = adj.rowPtr_[j];
          const Index jo_e = adj.rowPtr_[j+1];
-         if (bi == 539 && threadIdx.x == 0) {
-            printf(" j %lld jo_s: %d jo_e: %d \n", j, jo_s , jo_e); 
-         }
+         
          for (Index jo = jo_s + threadIdx.x; jo < jo_e; jo += blockDim.x) {
-	    const int64_t k = adj.colInd_[jo];
+	          const int64_t k = adj.colInd_[jo];
             if (get_bitmap(&bitmaps[blockIdx.x * bitmapSz], k) == 1) {
               threadCount++;
- 	    } else {
-              if (bi == 539) {
-              printf(" k: %d  j: %lld  \n" , k , j);
-            }
-         }
+ 	          } 
 
        }
     }
