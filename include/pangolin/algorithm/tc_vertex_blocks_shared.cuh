@@ -25,7 +25,7 @@ __device__ void atomic_set(T *bitmap, size_t c) {
     atomicOr(&bitmap[field], bits);
 }
 
-//bitmap get function: return whether if bit is 1 or  0 return a number
+//bitmap get function
 template <typename T>
 __device__ size_t get_bitmap(T *bitmap, size_t k) {
     size_t fieldIdx = k / (sizeof(T)*CHAR_BIT);    
@@ -34,8 +34,8 @@ __device__ size_t get_bitmap(T *bitmap, size_t k) {
     return (bits >> bitIdx) & T(1);
 }
 
-//bitmap reset function --isn't working
-template <typename T, typename Index> //typename Index
+//bitmap reset function 
+template <typename T, typename Index> 
 __device__ void reset_bitmap(T *bitmap, Index first, Index second) {
     const Index firstIdx = first / (sizeof(T)*CHAR_BIT);
     const Index secondIdx = second / (sizeof(T)*CHAR_BIT);
@@ -43,23 +43,14 @@ __device__ void reset_bitmap(T *bitmap, Index first, Index second) {
        bitmap[i] = 0;
     }
 }
-//todo list
-//store bitmaps in shared memory if vertices < 65536 else use global memory
-//first where do i check the vertices -- if block size greater than 8192
-///98 kB for memory
-//don't use more than less than 3, start with 8kB, nope use 
 
-//other things to check
-//is broadcast done with shared memory variable -- it is
-
-//zero bitmap before launching it on host
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     dyn_blocks_low_tri_kernel(uint64_t *__restrict__ count, //!< [inout] the count(the number of triangles found by each block), caller should zero 
                       const CsrView adj,            //!< [in] the matrix
                       const size_t rowStart,        //!< [in] the starting row this kernel will count a.k.a roff[]
                       const size_t numRows,         //!< [in] the number of rows this kernel will count a.k.a rows[]
-		      uint32_t *globalBitmaps,            //!< [in] array of bitmaps, one per thread block
+            		      uint32_t *globalBitmaps,      //!< [in] array of bitmaps, one per thread block
                       const size_t bitmapSz           
     ) {
 
@@ -71,7 +62,6 @@ __shared__ uint32_t sharedBitmaps[8 * 1024 / sizeof(uint32_t)];
 
   uint32_t *bitmaps;
  
-  //pointer to 
   for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { //have to do sizeof the array which needs to be added
     const Index io_s = adj.rowPtr_[bi];
     const Index io_e = adj.rowPtr_[bi + 1];
@@ -122,7 +112,6 @@ __shared__ uint32_t sharedBitmaps[8 * 1024 / sizeof(uint32_t)];
   uint64_t aggregate = BlockReduce(tempStorage).Sum(threadCount);
 
   // Add to total count
-  
   if (0 == threadIdx.x) {
     atomicAdd(count, aggregate);
   }
@@ -134,7 +123,7 @@ class BissonFaticaTC {
 private:
   int dev_;
   RcStream stream_;
-  uint64_t *count_; //<! the triangle count (if this is the triangle count where can I use it up there)
+  uint64_t *count_; //<! the triangle count 
   // events for measuring time
   cudaEvent_t kernelStart_;
   cudaEvent_t kernelStop_;
