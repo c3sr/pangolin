@@ -25,7 +25,7 @@ __device__ void atomic_set(T *bitmap, size_t c) {
     atomicOr(&bitmap[field], bits);
 }
 
-//bitmap get function: return whether if bit is 1 or  0 return a number
+//bitmap get function
 template <typename T>
 __device__ size_t get_bitmap(T *bitmap, size_t k) {
     size_t fieldIdx = k / (sizeof(T)*CHAR_BIT);    
@@ -34,8 +34,8 @@ __device__ size_t get_bitmap(T *bitmap, size_t k) {
     return (bits >> bitIdx) & T(1);
 }
 
-//bitmap reset function --isn't working
-template <typename T, typename Index> //typename Index
+//bitmap reset function 
+template <typename T, typename Index> 
 __device__ void reset_bitmap(T *bitmap, Index first, Index second) {
     const Index firstIdx = first / (sizeof(T)*CHAR_BIT);
     const Index secondIdx = second / (sizeof(T)*CHAR_BIT);
@@ -44,7 +44,7 @@ __device__ void reset_bitmap(T *bitmap, Index first, Index second) {
     }
 }
 
-//zero bitmap before launching it on host
+
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
     dyn_blocks_low_tri_kernel(uint64_t *__restrict__ count, //!< [inout] the count(the number of triangles found by each block), caller should zero 
@@ -55,24 +55,21 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
                       const size_t bitmapSz           
     ) {
 
-//  constexpr size_t REG_CACHE_SIZE = 10;
+
 
   typedef typename CsrView::index_type Index;
-//  static_assert(BLOCK_DIM_X % 32 == 0, "block size should be multiple of 32");
 
-  // each thread can cache short rows
-//  Index rowCache[REG_CACHE_SIZE];
 
   uint64_t threadCount = 0;
  
-  for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { //have to do sizeof the array which needs to be added
+  for(int bi = blockIdx.x; bi < adj.num_rows(); bi += gridDim.x) { 
     const Index io_s = adj.rowPtr_[bi];
     const Index io_e = adj.rowPtr_[bi + 1];
 
     Index blk_bound = (io_e + BLOCK_DIM_X - 1) / BLOCK_DIM_X * BLOCK_DIM_X;
 
     for(Index io = io_s; io < blk_bound; io += blockDim.x) { 
-         const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1; //io_s shoudl be io_e
+         const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x]: -1; 
          if (c > -1) {
             atomic_set(&bitmaps[blockIdx.x * bitmapSz], c);
          }
@@ -100,7 +97,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
          const Index second = adj.colInd_[io_e - 1];
          reset_bitmap(&bitmaps[blockIdx.x * bitmapSz], first, second);
     } 
-   // bitmaps[blockIdx.x * bitmapSz] = 0;
     __syncthreads();
   } 
   
