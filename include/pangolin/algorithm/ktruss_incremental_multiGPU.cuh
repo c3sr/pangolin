@@ -10,12 +10,12 @@
 
 
 template <size_t BLOCK_DIM_X>
-__global__ void InitializeWorkSpace(int numEdges, BCTYPE *keep,  bool *affected)
+__global__ void InitializeWorkSpace(UT numEdges, BCTYPE *keep,  bool *affected)
 {
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx; i< numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		UT tx = threadIdx.x;
+		UT bx = blockIdx.x;
+		UT ptx = tx + bx*BLOCK_DIM_X;
+		for(UT i = ptx; i< numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
 			keep[i] = true;
 			affected[i] = false;
@@ -24,16 +24,16 @@ __global__ void InitializeWorkSpace(int numEdges, BCTYPE *keep,  bool *affected)
 
 
 template <size_t BLOCK_DIM_X>
-__global__ void RebuildArrays(int edgeStart, int numEdges, int totalEdges, UT *rowPtr, UT *rowInd)
+__global__ void RebuildArrays(UT edgeStart, UT numEdges, UT totalEdges, UT *rowPtr, UT *rowInd)
 {
-	int tx = threadIdx.x;
-	int bx = blockIdx.x;
+	UT tx = threadIdx.x;
+	UT bx = blockIdx.x;
 
 	__shared__ UT rows[BLOCK_DIM_X+1];
 
-	int ptx = tx + bx*BLOCK_DIM_X;
+	UT ptx = tx + bx*BLOCK_DIM_X;
 
-	for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+	for(UT i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 	{
 		rows[tx] = rowInd[ptx];
 
@@ -76,6 +76,24 @@ __global__ void RebuildArrays(int edgeStart, int numEdges, int totalEdges, UT *r
 }
 
 
+
+
+
+
+template <size_t BLOCK_DIM_X>
+__global__ void MoveData(UT sourceEdgeStart, UT destEdgeStart, const UT numEdges, UT *source1, UT *dest1, UT *source2, UT *dest2)
+{
+		UT tx = threadIdx.x;
+		UT bx = blockIdx.x;
+		UT ptx = tx + bx*BLOCK_DIM_X;
+		for(UT i = ptx; i< numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		{
+			dest1[destEdgeStart + i] = source1[sourceEdgeStart+i];
+			dest2[destEdgeStart + i] = source2[sourceEdgeStart+i];
+		}
+}
+
+
 namespace pangolin {
 
 class MultiGPU_Ktruss_Incremental {
@@ -105,7 +123,7 @@ public:
 	//Percentage of deleted edges for a specific k
 	float percentage_deleted_k;
 
-	MultiGPU_Ktruss_Incremental(int numEdges, int dev) : dev_(dev) {
+	MultiGPU_Ktruss_Incremental(UT numEdges, int dev) : dev_(dev) {
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		CUDA_RUNTIME(cudaStreamCreate(&stream_));
 		
@@ -121,13 +139,13 @@ public:
 
 	MultiGPU_Ktruss_Incremental() : MultiGPU_Ktruss_Incremental(0,0) {}
 
-	void CreateWorkspace(int numEdges)
+	void CreateWorkspace(UT numEdges)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		CUDA_RUNTIME(cudaMallocManaged(&selectedOut, sizeof(*selectedOut)));
 		CUDA_RUNTIME(cudaMallocManaged(&gKeep, numEdges*sizeof(BCTYPE)));
 		CUDA_RUNTIME(cudaMalloc(&gAffected,numEdges*sizeof(bool)));
-		CUDA_RUNTIME(cudaMalloc(&gDstKP,numEdges*sizeof(UT)));
+		//CUDA_RUNTIME(cudaMalloc(&gDstKP,numEdges*sizeof(UT)));
 	}
 	void free()
 	{
@@ -145,7 +163,7 @@ public:
 	
 	}
 
-	void InitializeWorkSpace_async(int numEdges)
+	void InitializeWorkSpace_async(UT numEdges)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
@@ -156,17 +174,27 @@ public:
 	}
 
 	//All GPUs collaborate to initialize this
-	void Inialize_Unified_async(int edgeStart, int numEdges, UT *rowPtr, UT *rowInd, UT *colInd, UT *uSrcKp, UT *reversed)
+	void Inialize_Unified_async(UT edgeStart, UT numEdges, UT *rowPtr, UT *rowInd, UT *colInd, UT *uSrcKp, UT *reversed)
+	{
+		CUDA_RUNTIME(cudaSetDevice(dev_));
+		
+		constexpr int dimBlock = 32; //For edges and nodes
+		UT dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
+
+		InitializeArrays_Unified<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, rowPtr, rowInd, colInd, uSrcKp, reversed);
+	}
+
+	void MoveData_async(UT sourceEdgeStart, UT destEdgeStart, const UT numEdges, UT *source1, UT *dest1, UT *source2, UT *dest2)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
 		constexpr int dimBlock = 1024; //For edges and nodes
 		int dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 
-		InitializeArrays_Unified<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeStart, numEdges, rowPtr, rowInd, colInd, uSrcKp, reversed);
+		MoveData<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(sourceEdgeStart, destEdgeStart, numEdges, source1, dest1, source2, dest2);
 	}
 
-	void store_async(int numEdges, BCTYPE *baseKeep)
+	void store_async(UT numEdges, BCTYPE *baseKeep)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		
@@ -175,7 +203,7 @@ public:
 		Store_base<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(0, numEdges, gKeep, baseKeep);
 	}
 
-	void compact(int numEdges, UT *srcKP)
+	void compact(UT numEdges, UT *srcKP)
 	{
 		CUDA_RUNTIME(cudaSetDevice(dev_));
 		void     *d_temp_storage = NULL;
@@ -185,9 +213,6 @@ public:
 		cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, srcKP, gKeep, gDstKP, selectedOut, numEdges, stream_);
 		cudaFree(d_temp_storage);
 	}
-
-
-
 
 	void setDevice()
 	{

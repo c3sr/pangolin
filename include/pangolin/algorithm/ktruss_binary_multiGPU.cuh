@@ -77,13 +77,13 @@ __global__ void InitializeArrays_k(int edgeStart, int numEdges, const CsrCooView
 
 
 template <size_t BLOCK_DIM_X>
-__global__ void InitializeArrays_Unified(int edgeStart, int numEdges, UT *rowPtr, UT *rowInd, UT *colInd, UT *srcKp, UT *reversed)
+__global__ void InitializeArrays_Unified(UT edgeStart, UT numEdges, UT *rowPtr, UT *rowInd, UT *colInd, UT *srcKp, UT *reversed)
 {
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
+		UT tx = threadIdx.x;
+		UT bx = blockIdx.x;
 
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		UT ptx = tx + bx*BLOCK_DIM_X;
+		for(UT i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
 
 			//node
@@ -95,13 +95,13 @@ __global__ void InitializeArrays_Unified(int edgeStart, int numEdges, UT *rowPtr
 }
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void InitializeArrays_Unified(int edgeStart, int numEdges, const CsrCooView mat, UT *srcKp, UT *reversed)
+__global__ void InitializeArrays_Unified(UT edgeStart, UT numEdges, const CsrCooView mat, UT *srcKp, UT *reversed)
 {
-		int tx = threadIdx.x;
-		int bx = blockIdx.x;
+		UT tx = threadIdx.x;
+		UT bx = blockIdx.x;
 
-		int ptx = tx + bx*BLOCK_DIM_X;
-		for(int i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
+		UT ptx = tx + bx*BLOCK_DIM_X;
+		for(UT i = ptx + edgeStart; i< edgeStart + numEdges; i+= BLOCK_DIM_X * gridDim.x)
 		{
 
 			//node

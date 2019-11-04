@@ -73,8 +73,8 @@ __global__ void InitializeArrays(UT edgeStart, UT numEdges, UT *rowPtr, UT *rowI
 		UT sl = rowPtr[sn + 1] - rowPtr[sn];
 		UT dl = rowPtr[dn + 1] -  rowPtr[dn];
  
-		keep_l[i]=true;
-		prevKept[i] = true;
+		keep_l[i]=sl>1;
+		prevKept[i] = sl>1;
 		affected_l[i] = false;
 		srcKP[i] = i;
 		destKP[i] = i;
@@ -172,13 +172,12 @@ __device__ int AffectOthers_b(UT sp, UT dp, BCTYPE* keep, bool *affected, UT *re
 	return numberAffected;
 }
 
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnumaffected, 
+template <size_t BLOCK_DIM_X>
+__global__ void core_binary_indirect(UT *gnumdeleted, UT *gnumaffected, 
 	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
+	UT *rowPtr, UT *rowInd, UT *colInd, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
 {
 	  // kernel call
-	typedef typename CsrCooView::index_type Index;
 	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
 	UT numberDeleted = 0;
 	UT numberAffected = 0;
@@ -188,34 +187,36 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 		didAffectAnybody[0] = false;
 
 	__syncthreads();
-	int startS=0, startD=0,endS=0,endD=0;
-	numberDeleted = 0;
-	for (size_t ii = gx + edgeStart; ii < edgeStart + numEdges; ii += BLOCK_DIM_X * gridDim.x) 
-	{
-		size_t i = keepPointer[ii];
+	UT startS=0, startD=0,endS=0,endD=0;
 
-		if (keep[i] && (affected[i] || ft))
+	numberDeleted = 0;
+	for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
+	{
+		UT srcNode = rowInd[i];
+		UT dstNode = colInd[i];
+		if (keep[i] /*&&  srcNode<dstNode*/ && (affected[i] || ft))
 		{
 			affected[i] = false;
-			int edgeCount = 0;
+			UT triCount = 0;
 		
-			UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
-			UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
+		
+			UT sp = rowPtr[rowInd[i]];
+			UT send = rowPtr[rowInd[i] + 1];
 
-			UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
-			UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
+			UT dp = rowPtr[colInd[i]];
+			UT dend = rowPtr[colInd[i] + 1];
 		
 			bool firstHit = true;
-			while (edgeCount<k-2 && sp < send && dp < dend)
+			while (triCount<k-2 && sp < send && dp < dend)
 			{
-				UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-				UT dv =  mat.colInd_[dp];
+				UT sv =  colInd[sp];
+				UT dv =  colInd[dp];
 
 				if (sv == dv)
 				{
 					if (keep[sp] && keep[dp])
 					{
-						edgeCount++;
+						triCount++;
 						if (firstHit)
 						{
 							startS = sp;
@@ -223,7 +224,7 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 							firstHit = false;
 						}
 	
-						bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
+						bool cond = ((dend - dp) < (k-2-triCount)) || ((send - sp) < (k-2-triCount)); //fact
 						if(!cond)
 						{
 							endS = sp+1;
@@ -231,180 +232,51 @@ __global__ void core_binary_indirect(UT *keepPointer, UT *gnumdeleted, UT *gnuma
 						}
 						else
 						{
-							numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+							numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
 						}
 
 					}
 				}
-				int yy = sp + ((sv <= dv) ? 1:0);
+				UT yy = sp + ((sv <= dv) ? 1:0);
 				dp = dp + ((sv >= dv) ? 1:0);
 				sp = yy;
 			}
 			
 			//////////////////////////////////////////////////////////////
-			if (edgeCount < (k-2))
+			if (triCount < (k-2))
 			{
-				UT ir = reversed[i];
 				keep[i] = false;
+				UT ir = reversed[i];
 				keep[ir] = false;
 				
 				UT sp = startS;
 				UT dp = startD;
 
-				while (edgeCount>0 && sp < endS && dp < endD)
+				while (triCount>0 && sp < endS && dp < endD)
 				{
-					UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-					UT dv = mat.colInd_[dp];
+					UT sv = colInd[sp];
+					UT dv = colInd[dp];
 
 					if ((sv == dv))
 					{
-						numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
+						numberAffected += AffectOthers(sp, dp, keep, affected, reversed);
 					}
-					int yy = sp + ((sv <= dv) ? 1:0);
+					UT yy = sp + ((sv <= dv) ? 1:0);
 					dp = dp + ((sv >= dv) ? 1:0);
 					sp = yy;
 				}
 			}
 		}
 
-		if(!keep[i])
-			numberDeleted++;
+		if(!keep[i] /*&& srcNode<dstNode*/)
+			numberDeleted++; // +=2;//numberDeleted++;
 	}
-	ft=false;
+
 	//Instead of reduction: hope it works
 	if(numberAffected>0)
 			didAffectAnybody[0] = true;
 
 	__syncthreads();
- 		
-	if (0 == threadIdx.x) 
-	{
-		if(didAffectAnybody[0])
-			*gnumaffected = 1;
-	}
-
-
- 	// Block-wide reduction of threadCount
- 	typedef cub::BlockReduce<UT, BLOCK_DIM_X> BlockReduce;
- 	__shared__ typename BlockReduce::TempStorage tempStorage;
-	 UT deletedByBlock = BlockReduce(tempStorage).Sum(numberDeleted);
-	 
-	 //UT affectedByBlock = BlockReduce(tempStorage).Sum(numberAffected);
-
- 	if (0 == threadIdx.x) 
-	  {
-				atomicAdd(gnumdeleted, deletedByBlock);
-				//atomicAdd(gnumaffected, affectedByBlock);
-		}
-
-}
-
-
-template <size_t BLOCK_DIM_X, typename CsrCooView>
-__global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected, 
-	const UT k, const size_t edgeStart, const size_t numEdges,
-  const CsrCooView mat, BCTYPE *keep, bool *affected, UT *reversed, bool firstTry, const int uMax)
-{
-	  // kernel call
-	typedef typename CsrCooView::index_type Index;
-	size_t gx = BLOCK_DIM_X * blockIdx.x + threadIdx.x;
-	UT numberDeleted = 0;
-	UT numberAffected = 0;
-	__shared__ bool didAffectAnybody[1];
-	bool ft = firstTry; //1
-	if(0 == threadIdx.x)
-		didAffectAnybody[0] = false;
-
-	__syncthreads();
-	int startS=0, startD=0,endS=0,endD=0;
-
-		numberDeleted = 0;
-	  for (size_t i = gx + edgeStart; i < edgeStart + numEdges; i += BLOCK_DIM_X * gridDim.x) 
-	  {
-		  if (keep[i] && (affected[i] || ft))
-		  {
-			  affected[i] = false;
-				int edgeCount = 0;
-			
-				UT sp = startS==0?mat.rowPtr_[mat.rowInd_[i]]:startS;
-				UT send = mat.rowPtr_[mat.rowInd_[i] + 1];
-
-				UT dp = startD==0?mat.rowPtr_[mat.colInd_[i]]:startD;
-				UT dend = mat.rowPtr_[mat.colInd_[i] + 1];
-			
-				bool firstHit = true;
-				while (edgeCount<k-2 && sp < send && dp < dend)
-				{
-					UT sv = /*sp <limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-					UT dv =  mat.colInd_[dp];
-
-					if (sv == dv)
-					{
-						if (keep[sp] && keep[dp])
-						{
-							edgeCount++;
-							if (firstHit)
-							{
-								startS = sp;
-								startD = dp;
-								firstHit = false;
-							}
-		
-							bool cond = ((dend - dp) < (k-2-edgeCount)) || ((send - sp) < (k-2-edgeCount)); //fact
-							if(!cond)
-							{
-								endS = sp+1;
-								endD = dp+1;
-							}
-							else
-							{
-								numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
-							}
-
-						}
-					}
-					int yy = sp + ((sv <= dv) ? 1:0);
-					dp = dp + ((sv >= dv) ? 1:0);
-					sp = yy;
-				}
-				
-				//////////////////////////////////////////////////////////////
-			  if (edgeCount < (k-2))
-			  {
-					UT ir = reversed[i];
-				  keep[i] = false;
-					keep[ir] = false;
-					
-				  UT sp = startS;
-				  UT dp = startD;
-
-					while (edgeCount>0 && sp < endS && dp < endD)
-					{
-						UT sv = /*sp < limit? source[sp -  spBase]:*/ mat.colInd_[sp];
-						UT dv = mat.colInd_[dp];
-
-						if ((sv == dv))
-						{
-							numberAffected += AffectOthers_b(sp, dp, keep, affected, reversed);
-						}
-						int yy = sp + ((sv <= dv) ? 1:0);
-						dp = dp + ((sv >= dv) ? 1:0);
-						sp = yy;
-					}
-			  }
-		  }
-
-		  if(!keep[i])
-			  numberDeleted++;
-		}
-		ft=false;
-	
-
-	//Instead of reduction: hope it works
-	if(numberAffected>0)
-			didAffectAnybody[0] = true;
-
-		__syncthreads();
  		
 	if (0 == threadIdx.x) 
 	{
@@ -425,6 +297,8 @@ __global__ void core_binary_direct(UT *gnumdeleted, UT *gnumaffected,
 	}
 
 }
+
+
 
 
 template <size_t BLOCK_DIM_X, typename CsrCooView>
@@ -816,7 +690,7 @@ public:
 				}
 				else
 				{
-					core_binary_direct<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(gnumdeleted, 
+					core_full_direct<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(gnumdeleted, 
 						gnumaffected, k, edgeOffset, *selectedOut,
 						mat, keep_l, affected_l, reversed, firstTry, 1);
 				}
@@ -903,6 +777,7 @@ public:
 
 	  UT *ptrSrc, *ptrDst;
 	  UT *s1, *d1, *s2, *d2;
+	  UT *byNodeElim;
 
 	  CUDA_RUNTIME(cudaMallocManaged((void **) &keep_l, numEdges*sizeof(BCTYPE)));
 	  cudaDeviceSynchronize();
@@ -933,11 +808,14 @@ public:
 	  cudaDeviceSynchronize();
 			CUDA_RUNTIME(cudaGetLastError());
 	  
+		
+		CUDA_RUNTIME(cudaMallocManaged((void **) &byNodeElim, sizeof(UT)));
+
 	  UT dimGridEdges = (numEdges + dimBlock - 1) / dimBlock;
 		  
   
 	  //KTRUSS skeleton
-	  //Initialize Private Data
+	  //Initialize Private Dat
 	  InitializeArrays<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, rowPtr, rowInd, colInd, keep_l, 
 		affected_l, reversed, prevKept, srcKP, destKP);
 		cudaDeviceSynchronize();
@@ -960,109 +838,94 @@ public:
 	  float percDeleted_l = 0.0;
 	  bool cond = kmax - kmin > 1;
 	  
-
 	  printf("Kmin=3, kmax=%d\n", kmax);
+	  int incrCounter = 0;
 	  while (cond)
 	  {
-		  k =  kmin*minPercentage + kmax*(1-minPercentage);
-		  printf("k=%d\n", k);
 
-		  //if(kmin==k || kmax==k)
-			  minPercentage=0.5;
-
-		  numDeleted_l = 0;
-		  firstTry = true;
-		  gnumaffected[0] = 0;
-		  assumpAffected = true;
-		  cudaDeviceSynchronize();
-
-		  while(assumpAffected)
-		  {
-			  assumpAffected = false;
-
-			  core_direct<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(gnumdeleted, 
-				gnumaffected, k, edgeOffset, numEdges,
-				rowPtr, ptrSrc, ptrDst,  keep_l, affected_l, reversed, firstTry, 1);
-			  
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
+		byNodeElim[0] = 0;
+		k =  kmin*minPercentage + kmax*(1-minPercentage);
+		if(kmin==k || kmax==k)
+			minPercentage=0.5;
 			
-			firstTry = false;
+		NodeEliminate<dimBlock><<<dimGridEdges,dimBlock,0, stream_>>>(k - 1, 0, numEdges, rowPtr, ptrSrc, ptrDst, keep_l, byNodeElim);
+	
+		numDeleted_l = 0;
+		firstTry = true;
+		gnumaffected[0] = 0;
+		assumpAffected = true;
+		cudaDeviceSynchronize();
+		CUDA_RUNTIME(cudaGetLastError());
 
-			 if(gnumaffected[0] > 0)
-			  assumpAffected = true;
+		while(assumpAffected)
+		{
+			assumpAffected = false;
 
-			 numDeleted_l = gnumdeleted[0];
-	  
-			gnumdeleted[0]=0;
-			gnumaffected[0] = 0;
-			cudaDeviceSynchronize();
+			core_binary_indirect<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(gnumdeleted, 
+			gnumaffected, k, edgeOffset, numEdges,
+			rowPtr, ptrSrc, ptrDst,  keep_l, affected_l, reversed, firstTry, 1);
+			
+		cudaDeviceSynchronize();
+		CUDA_RUNTIME(cudaGetLastError());
+		
+		firstTry = false;
 
-		  }
+			if(gnumaffected[0] > 0)
+			assumpAffected = true;
 
-		  percDeleted_l= (numDeleted_l)*1.0/numEdges;
+			numDeleted_l = gnumdeleted[0];
+		// printf("numDeleted = %d of %d\n", numDeleted_l, numEdges);
+	
+		gnumdeleted[0]=0;
+		gnumaffected[0] = 0;
+		cudaDeviceSynchronize();
 
+		}
 
-		  if(percDeleted_l==1.0f)
-		  {
-			  Rewind<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, prevKept);
-			  kmax = k;
+		percDeleted_l= (numDeleted_l)*1.0/(numEdges);
+		if(percDeleted_l>=1.0f)
+		{
+			Rewind<dimBlock><<<dimGridEdges, dimBlock, 0, stream_>>>(edgeOffset, numEdges, keep_l, prevKept);
+			kmax = k;
 
-		  }
-		  else
-		  {
+		}
+		else
+		{
+			if(percDeleted_l > 0.1)
+			{
+				//Do hard comapction where there is no return !!
+				void     *d_temp_storage = NULL;
+				size_t   temp_storage_bytes = 0;
+				cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, s1, keep_l, s2, selectedOut, numEdges, stream_);
+				CUDA_RUNTIME(cudaMallocManaged(&d_temp_storage, temp_storage_bytes));
+				cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, s1, keep_l, s2, selectedOut, numEdges, stream_);
+				cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, d1, keep_l, d2, selectedOut, numEdges, stream_);
+				CUDA_RUNTIME(cudaFree(d_temp_storage));
 
-			//Do hard comapction where there is no return !!
-			void     *d_temp_storage = NULL;
-			size_t   temp_storage_bytes = 0;
-			cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, s1, keep_l, s2, selectedOut, numEdges, stream_);
+				ptrSrc = s2;
+				s2 = s1;
+				s1 = ptrSrc;
 
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
+				ptrDst = d2;
+				d2 = d1;
+				d1 = ptrDst;
 
-			printf("# of bytes required=%u\n", temp_storage_bytes);
+				numEdges = *selectedOut;
+				dimGridEdges =  (numEdges + dimBlock - 1) / dimBlock;
+				
+				//Now let us reinialize
+				RebuildArrays<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(0, numEdges, rowPtr, ptrSrc, keep_l, prevKept, affected_l);
+				RebuildReverse<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(0, numEdges, rowPtr, ptrSrc, ptrDst, reversed);
 
-			CUDA_RUNTIME(cudaMallocManaged(&d_temp_storage, temp_storage_bytes));
+				cudaDeviceSynchronize();
+				CUDA_RUNTIME(cudaGetLastError());
 
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
-
-			cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, s1, keep_l, s2, selectedOut, numEdges, stream_);
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
-
-			cub::DevicePartition::Flagged(d_temp_storage, temp_storage_bytes, d1, keep_l, d2, selectedOut, numEdges, stream_);
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
-
-			CUDA_RUNTIME(cudaFree(d_temp_storage));
-
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
-
-			ptrSrc = s2;
-			s2 = s1;
-			s1 = ptrSrc;
-
-			ptrDst = d2;
-			d2 = d1;
-			d1 = ptrDst;
-
-
-			dimGridEdges =  (*selectedOut + dimBlock - 1) / dimBlock;
-			numEdges = *selectedOut;
-			//Now let us reinialize
-			RebuildArrays<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(0, *selectedOut, rowPtr, ptrSrc, keep_l, prevKept, affected_l);
-			RebuildReverse<dimBlock><<<dimGridEdges,dimBlock,0,stream_>>>(0, *selectedOut, rowPtr, ptrSrc, ptrDst, reversed);
-
-			cudaDeviceSynchronize();
-			CUDA_RUNTIME(cudaGetLastError());
-
+			}
 			kmin=k;
-		  }
+		}
 
-		  cudaDeviceSynchronize();
-		  cond = kmax - kmin > 1;
+		cudaDeviceSynchronize();
+		cond = kmax - kmin > 1;
 	  }
 
 	  k= numDeleted_l==numEdges? k-1:k;
