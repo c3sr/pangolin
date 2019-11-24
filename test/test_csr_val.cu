@@ -40,6 +40,8 @@ TEST_CASE("from_edgelist") {
     INFO("check nnz");
     REQUIRE(m.nnz() == 1);
     REQUIRE(m.col_ind()[0] == 1);
+    REQUIRE(m.num_rows() == 2);
+    REQUIRE(m.num_cols() == 2);
   }
 
   SECTION("el2") {
@@ -53,5 +55,7 @@ TEST_CASE("from_edgelist") {
     INFO("check nnz");
     REQUIRE(m.nnz() == 1);
     REQUIRE(m.col_ind()[0] == 100);
+    REQUIRE(m.num_rows() == 101);
+    REQUIRE(m.num_cols() == 101);
   }
 }

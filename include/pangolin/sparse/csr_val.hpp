@@ -119,6 +119,16 @@ public:
     }
   }
 
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_cols() const {
+    assert(colInd_.size() == vals_.size());
+    if (rowPtr_.empty()) {
+      return 0;
+    } else {
+      return rowPtr_.size() == maxNode_ + 1;
+      return maxNode_ + 1;
+    }
+  }
+
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
   PANGOLIN_HOST void read_mostly() {

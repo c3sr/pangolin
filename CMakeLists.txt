@@ -41,6 +41,7 @@ message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 option(USE_HUNTER "Turn on to enable using the hunter package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
 option(USE_NUMA "compile with NUMA support" ON)
+option(USE_CUSPARSE "compile with CUSparse" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -343,7 +344,10 @@ target_link_libraries(pangolin INTERFACE cub::cub)
 target_link_libraries(pangolin INTERFACE nvgraph)
 target_link_libraries(pangolin INTERFACE nvToolsExt)
 target_link_libraries(pangolin INTERFACE nvidia-ml)
-target_link_libraries(pangolin INTERFACE cusparse)
+if (USE_CUSPARSE)
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_CUSPARSE=1)
+  target_link_libraries(pangolin INTERFACE cusparse)
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang
