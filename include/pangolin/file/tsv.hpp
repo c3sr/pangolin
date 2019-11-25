@@ -30,7 +30,7 @@ public:
 
   bool read_edge(edge_type &e) {
     long long int src, dst, weight;
-    const size_t numFilled = fscanf(fp_, "%lli %lli %lli", &src, &dst, &weight);
+    const size_t numFilled = fscanf(fp_, "%lli %lli %lli", &dst, &src, &weight);
     if (numFilled != 3) {
       if (feof(fp_)) {
         return false;
