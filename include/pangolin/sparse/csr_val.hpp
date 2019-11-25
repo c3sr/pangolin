@@ -59,8 +59,8 @@ public:
     while (rowPtr_.size() != size_t(e.src + 1)) {
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
-      assert(e.src >= rowPtr_.size() && "are edges not ordered by source?");
-      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", e.src, rowPtr_.size());
+      assert(e.src >= rowPtr_.size() && "edges should be sorted by source");
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", e.src, colInd_.size());
       rowPtr_.push_back(colInd_.size());
     }
 
@@ -72,13 +72,11 @@ public:
 
     if (nnz() > 0) {
       // add empty nodes until we reach maxNode
-      SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", rowPtr_.size(), maxNode_);
-      while (rowPtr_.size() <= size_t(maxNode_)) {
+      SPDLOG_TRACE(logger::console(), "adding empty rows from {} up to {}", rowPtr_.size(), maxNode_);
+      // +1 for the final rowPtr entry past the last row
+      while (rowPtr_.size() <= size_t(maxNode_) + 1) {
         rowPtr_.push_back(colInd_.size());
       }
-
-      // add the final length of the non-zeros to the offset array
-      rowPtr_.push_back(colInd_.size());
     }
   }
 
@@ -124,7 +122,8 @@ public:
     if (rowPtr_.empty()) {
       return 0;
     } else {
-      return rowPtr_.size() == maxNode_ + 1;
+      // node maxNode's adj list is in rowPtr[maxNode], and rowPtr should be one longer than that
+      assert(rowPtr_.size() == maxNode_ + 2);
       return maxNode_ + 1;
     }
   }
@@ -185,7 +184,11 @@ public:
   /*! raw pointer to row pointer array
    */
   const edge_index_type *row_ptr() const noexcept { return rowPtr_.data(); }
+  /*! raw pointer to column index array
+   */
   const node_index_type *col_ind() const noexcept { return colInd_.data(); }
+  /*! raw pointer to nonzero values
+   */
   const value_type *data() const noexcept { return vals_.data(); }
 };
 
