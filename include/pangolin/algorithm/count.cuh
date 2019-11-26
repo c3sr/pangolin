@@ -75,10 +75,10 @@ __host__ __device__ static size_t serial_sorted_count_linear(const T *const A, /
   search method is binary search
  */
 template <typename T>
-__device__ static uint8_t serial_sorted_count_binary(const T *const array, //!< [in] array to search through
-                                                     size_t left,          //!< [in] lower bound of search
-                                                     size_t right,         //!< [in] upper bound of search
-                                                     const T search_val    //!< [in] value to search for
+__host__ __device__ static uint8_t serial_sorted_count_binary(const T *const array, //!< [in] array to search through
+                                                              size_t left,          //!< [in] lower bound of search
+                                                              size_t right,         //!< [in] upper bound of search
+                                                              const T search_val    //!< [in] value to search for
 ) {
   while (left < right) {
     size_t mid = (left + right) / 2;
@@ -92,6 +92,40 @@ __device__ static uint8_t serial_sorted_count_binary(const T *const array, //!< 
     }
   }
   return 0;
+}
+
+/*! \brief return the number of common elements between sorted lists A and B
+
+  the longer of A,B must be sorted in increasing order
+  search method is binary search
+ */
+template <typename T>
+static uint64_t serial_sorted_count_binary(const T *const A, //!< [in] beginning of a
+                                           const size_t aSz,
+                                           const T *const B, //!< [in] beginning of b
+                                           const size_t bSz) {
+
+  uint64_t count = 0;
+  const T *needles;
+  const T *haystack;
+  size_t needleSz;
+  size_t haystackSz;
+  // search from shorter into longer
+  if (aSz < bSz) {
+    needles = A;
+    haystack = B;
+    needleSz = aSz;
+    haystackSz = bSz;
+  } else {
+    needles = B;
+    haystack = A;
+    needleSz = bSz;
+    haystackSz = aSz;
+  }
+  for (size_t i = 0; i < needleSz; ++i) {
+    count += serial_sorted_count_binary(haystack, 0, haystackSz, needles[i]);
+  }
+  return count;
 }
 
 /*! \brief return 1 if search_val is between [begin, end). return 0 otherwise
