@@ -61,7 +61,9 @@ private:
 
 public:
   typedef Index index_type;
-  CSR();                 //!< empty CSR
+  /*! \brief empty CSR
+   */
+  CSR() : maxCol_(0) {}
   Vector<Index> rowPtr_; //!< offset in col_ that each row starts at
   Vector<Index> colInd_; //!< non-zero column indices
   PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const { return colInd_.size(); } //!< number of non-zeros
@@ -78,6 +80,9 @@ public:
                                  (void)e;
                                  return true;
                                });
+
+  void add_next_edge(const EdgeTy<Index> &e);
+  void finish_edges();
 
   CSRView<Index> view() const; //!< create a CSRView for this CSR
 

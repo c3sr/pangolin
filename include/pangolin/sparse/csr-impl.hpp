@@ -7,8 +7,6 @@
 
 namespace pangolin {
 
-template <typename Index> CSR<Index>::CSR() {}
-
 template <typename Index> PANGOLIN_HOST PANGOLIN_DEVICE uint64_t CSR<Index>::num_rows() const {
   if (rowPtr_.size() == 0) {
     return 0;
@@ -44,47 +42,18 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
     return csr;
   }
 
-  // track the largest node seen so far.
-  // there may be edges to nodes that have 0 out-degree.
-  // if so, at the end, we need to add empty rows up until that node id
-  Index largestNode = 0;
-  size_t acceptedEdges = 0;
+  bool acceptedEdges = false;
 
   for (auto ei = begin; ei != end; ++ei) {
     EdgeTy<Index> edge = *ei;
-    const Index src = edge.first;
-    const Index dst = edge.second;
-    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
-
     if (f(edge)) {
-      ++acceptedEdges;
-      largestNode = max(largestNode, src);
-      largestNode = max(largestNode, dst);
-
-      // edge has a new src and should be in a new row
-      while (csr.rowPtr_.size() != size_t(src + 1)) {
-        // expecting inputs to be sorted by src, so it should be at least
-        // as big as the current largest row we have recored
-        assert(src >= csr.rowPtr_.size() && "are edges not ordered by source?");
-        SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, csr.rowPtr_.size());
-        csr.rowPtr_.push_back(csr.colInd_.size());
-      }
-
-      csr.colInd_.push_back(dst);
-    } else {
-      continue;
+      acceptedEdges = true;
+      csr.add_next_edge(edge);
     }
   }
 
-  if (acceptedEdges > 0) {
-    // add empty nodes until we reach largestNode
-    SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", csr.rowPtr_.size(), largestNode);
-    while (csr.rowPtr_.size() <= size_t(largestNode)) {
-      csr.rowPtr_.push_back(csr.colInd_.size());
-    }
-
-    // add the final length of the non-zeros to the offset array
-    csr.rowPtr_.push_back(csr.colInd_.size());
+  if (acceptedEdges) {
+    csr.finish_edges();
   }
 
   return csr;
@@ -112,6 +81,37 @@ template <typename Index> PANGOLIN_HOST void CSR<Index>::accessed_by(const int d
 template <typename Index> PANGOLIN_HOST void CSR<Index>::prefetch_async(const int dev, cudaStream_t stream) {
   rowPtr_.prefetch_async(dev, stream);
   colInd_.prefetch_async(dev, stream);
+}
+
+template <typename Index> void CSR<Index>::add_next_edge(const EdgeTy<Index> &e) {
+  const Index src = e.first;
+  const Index dst = e.second;
+
+  SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
+
+  maxCol_ = std::max(src, maxCol_);
+  maxCol_ = std::max(dst, maxCol_);
+
+  // edge has a new src and should be in a new row
+  // even if the edge is filtered out, we need to add empty rows
+  while (rowPtr_.size() != size_t(src + 1)) {
+    // expecting inputs to be sorted by src, so it should be at least
+    // as big as the current largest row we have recored
+    assert(src >= rowPtr_.size() && "are edges not ordered by source?");
+    SPDLOG_TRACE(logger::console(), "node {} edges start at {}", src, rowPtr_.size());
+    rowPtr_.push_back(colInd_.size());
+  }
+
+  colInd_.push_back(dst);
+}
+
+template <typename Index> void CSR<Index>::finish_edges() {
+
+  // add empty nodes until we reach maxNode
+  SPDLOG_TRACE(logger::console(), "adding empty nodes from {} to {}", rowPtr_.size(), maxCol_);
+  while (rowPtr_.size() <= size_t(maxCol_) + 1) {
+    rowPtr_.push_back(colInd_.size());
+  }
 }
 
 } // namespace pangolin
