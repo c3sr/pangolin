@@ -1,12 +1,7 @@
 #pragma once
 
-#include <cmath>
-#include <cub/cub.cuh>
-#include <memory>
 #include <nvToolsExt.h>
 
-#include "../elementwise.cuh"
-#include "../fill.cuh"
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
 
