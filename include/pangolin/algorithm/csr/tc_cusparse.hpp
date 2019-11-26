@@ -23,7 +23,8 @@ C .*= A
 */
 class CUSparseTC {
 private:
-  int gpu_;
+  int dev_;
+  cudaStream_t stream_;
 
   cusparseHandle_t handle_;
   cusparseMatDescr_t descrA_;
@@ -40,12 +41,13 @@ private:
   float *deviceTotal_;
 
 public:
-  CUSparseTC(int dev)
-      : gpu_(dev), handle_(nullptr), descrA_(nullptr), descrC_(nullptr), csrRowPtrC_(nullptr), csrColIndC_(nullptr),
-        csrValA_(nullptr), csrValC_(nullptr), nnzC_(-1), tempStorageBytes_(0), dTempStorage_(nullptr),
-        deviceTotal_(nullptr) {
+  CUSparseTC(int dev, cudaStream_t stream = 0)
+      : dev_(dev), stream_(stream), handle_(nullptr), descrA_(nullptr), descrC_(nullptr), csrRowPtrC_(nullptr),
+        csrColIndC_(nullptr), csrValA_(nullptr), csrValC_(nullptr), nnzC_(-1), tempStorageBytes_(0),
+        dTempStorage_(nullptr), deviceTotal_(nullptr) {
     LOG(debug, "create CUSparse handle");
     CUSPARSE(cusparseCreate(&handle_));
+    CUSPARSE(cusparseSetStream(handle_, stream_));
 
     int version;
     CUSPARSE(cusparseGetVersion(handle_, &version));
@@ -147,7 +149,7 @@ public:
   first
 
   */
-  template <typename CSR> uint64_t count_sync(const CSR &csr) {
+  template <typename CSR> void count_async(const CSR &csr) {
     preallocate_vals_a(csr);
     preallocate_row_ptr_c(csr);
     precompute_layout_c(csr);
@@ -181,21 +183,25 @@ public:
     assert(csrValC_);
     assert(csrValA_);
     pangolin::csr_elementwise_inplace<dimBlockX>
-        <<<dimGridX, dimBlockX>>>(csrRowPtrC_, csrColIndC_, csrValC_, csrRowPtrA, csrColIndA, csrValA_, m);
+        <<<dimGridX, dimBlockX, 0, stream_>>>(csrRowPtrC_, csrColIndC_, csrValC_, csrRowPtrA, csrColIndA, csrValA_, m);
     CUDA_RUNTIME(cudaGetLastError());
 
     // Reduce the final non-zeros
     LOG(debug, "device reduction");
     assert(dTempStorage_);
     assert(deviceTotal_);
-    cub::DeviceReduce::Sum(dTempStorage_, tempStorageBytes_, csrValC_, deviceTotal_, nnzC_);
-    CUDA_RUNTIME(cudaDeviceSynchronize());
-
-    uint64_t total = *deviceTotal_;
-    LOG(debug, "total is {}", total);
-
-    return total;
+    cub::DeviceReduce::Sum(dTempStorage_, tempStorageBytes_, csrValC_, deviceTotal_, nnzC_, stream_);
   }
+
+  template <typename CSR> uint64_t count_sync(const CSR &csr) {
+    count_async(csr);
+    sync();
+    return count();
+  }
+
+  void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
+  uint64_t count() const { return *deviceTotal_; }
+  int device() const { return dev_; }
 
   ~CUSparseTC() {
     LOG(debug, "destroy A");
