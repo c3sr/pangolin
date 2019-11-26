@@ -184,9 +184,16 @@ public:
   /*! raw pointer to row pointer array
    */
   const edge_index_type *row_ptr() const noexcept { return rowPtr_.data(); }
+  /*! raw pointer to row pointer array
+   */
+  edge_index_type *row_ptr() noexcept { return rowPtr_.data(); }
+
   /*! raw pointer to column index array
    */
   const node_index_type *col_ind() const noexcept { return colInd_.data(); }
+  /*! raw pointer to column index array
+   */
+  node_index_type *col_ind() noexcept { return colInd_.data(); }
   /*! raw pointer to nonzero values
    */
   const value_type *data() const noexcept { return vals_.data(); }
