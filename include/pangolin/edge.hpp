@@ -30,7 +30,7 @@ template <typename N, typename T> struct WeightedDiEdge {
   T val; //!< edge weight
 };
 
-template <typename N, typename T> struct DiEdge {
+template <typename N> struct DiEdge {
   N src;
   N dst;
 };
