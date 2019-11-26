@@ -7,12 +7,7 @@
 
 namespace pangolin {
 
-/*! Count triangles with CUSparse
-
-Count triangle for a lower-triangular matrix A with (A x A .* A).
-
-A x A = C
-C .*= A
+/*! Count triangles with NVGraph
 
 */
 class NVGraphTC {
