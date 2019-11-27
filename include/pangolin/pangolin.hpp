@@ -18,7 +18,5 @@
 #include "sparse/csr_coo.hpp"
 #include "sparse/gpu_csr.hpp"
 #include "topology/topology.hpp"
-#include "triangle_counter/cpu_triangle_counter.hpp"
-#include "triangle_counter/nvgraph_triangle_counter.hpp"
 #include "types.hpp"
 #include "utilities.hpp"
