@@ -15,6 +15,7 @@
 #include "pangolin/dense/device_bit_vector.cuh"
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
+#include "pangolin/logger.hpp"
 #include "search.cuh"
 
 template <typename T, typename Index> __device__ __forceinline__ void bitmap_set_atomic(T *bitmap, Index i) {
@@ -75,7 +76,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   uint64_t threadCount = 0;
 
   // one thread per row
-  for (Index ti = threadIdx.x; ti < adj.num_rows(); ti += gridDim.x * blockDim.x) {
+  for (Index ti = blockDim.x * blockIdx.x + threadIdx.x; ti < adj.num_rows(); ti += gridDim.x * blockDim.x) {
     const Index io_s = adj.rowPtr_[ti];
     const Index io_e = adj.rowPtr_[ti + 1];
 
@@ -85,7 +86,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     }
 
     // if the row is short enough, copy to register file
-    if (io_e - io_s < REG_SZ) {
+    if (io_e - io_s < 0) {
 
       // copy row to local memory
       // expect regRow[i] to be a register access
@@ -505,8 +506,10 @@ public:
 
     // compute the average nnz per row
     double nnzPerRow = double(adj.nnz()) / double(adj.num_rows());
+    LOG(debug, "{} nnz per row", nnzPerRow);
 
     if (nnzPerRow < 3.5) { // thread_kernel
+      LOG(debug, "selected thread approach", nnzPerRow);
 
       const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
@@ -514,7 +517,7 @@ public:
       CUDA_RUNTIME(cudaGetLastError());
 
     } else if (nnzPerRow < 38) { // warp_kernel
-
+      LOG(debug, "selected warp approach", nnzPerRow);
       // determine the bitmap size
       const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
@@ -529,7 +532,7 @@ public:
       CUDA_RUNTIME(cudaGetLastError());
 
     } else if (adj.num_rows() < 65536) { // block_shared_kernel
-
+      LOG(debug, "selected block-shared approach", nnzPerRow);
       // determine the bitmap size
       const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
@@ -537,7 +540,7 @@ public:
       CUDA_RUNTIME(cudaGetLastError());
 
     } else { // block_global_kernel
-
+      LOG(debug, "selected block-global approach", nnzPerRow);
       // determine the bitmap size
       const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
