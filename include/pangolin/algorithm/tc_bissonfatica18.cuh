@@ -80,18 +80,27 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     const Index io_s = adj.rowPtr_[ti];
     const Index io_e = adj.rowPtr_[ti + 1];
 
+    if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
+      printf("row %u: [%u %u)\n", ti, io_s, io_e);
+    }
+
     // this row is empty, skip
     if (io_s == io_e) {
       continue;
     }
 
     // if the row is short enough, copy to register file
-    if (io_e - io_s < 0) {
+    if (io_e - io_s < REG_SZ) {
 
-      // copy row to local memory
-      // expect regRow[i] to be a register access
+// copy row to local memory
+// expect regRow[i] to be a register access
+#pragma unroll(REG_SZ)
       for (size_t i = 0; i < REG_SZ; ++i) {
-        regRow[i] = adj.colInd_[i + io_s];
+        if (i < io_e - io_s) {
+          regRow[i] = adj.colInd_[i + io_s];
+        } else {
+          break;
+        }
       }
 
       // search through row
@@ -100,29 +109,43 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
           break;
         }
         const Index c = regRow[i];
+        if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
+          printf("compare row %u (from reg %lu)\n", c, i);
+        }
         const Index jo_s = adj.rowPtr_[c];
         const Index jo_e = adj.rowPtr_[c + 1];
 
         // count number of intersections between row j and regRow
         // expect regRow[i] to be a register
         Index jo = jo_s;
+#pragma unroll(REG_SZ)
         for (size_t i = 0; i < REG_SZ; ++i) {
           if (jo >= jo_e) { // outside of j
             break;
           }
-          if (i > io_e - io_s) { // outside of i
+          if (i >= io_e - io_s) { // outside of i
             break;
           }
 
           // FIXME: don't need to reload k every time
-          const int64_t k = adj.colInd_[jo];
+          int64_t k = adj.colInd_[jo];
+          if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
+            printf("compare %u (reg %lu) with %lu (%u)\n", regRow[i], i, k, jo);
+          }
+
           if (regRow[i] < k) {
             continue;
-          } else if (regRow[i] > k) {
+          }
+
+          while (regRow[i] > k) {
+            ++jo;
+            k = adj.colInd_[jo];
+          }
+
+          if (regRow[i] == k) {
+            ++threadCount;
             ++jo;
             continue;
-          } else {
-            ++threadCount;
           }
         }
       }
