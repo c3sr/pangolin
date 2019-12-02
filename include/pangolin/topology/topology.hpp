@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <cstdio>
 
 #include <nvml.h>
 
@@ -23,18 +24,19 @@ typedef std::shared_ptr<GPU> GPU_t;
 typedef std::shared_ptr<NUMA> NUMA_t;
 
 struct GPU {
-  int cudaId_;             //<! the CUDA device ID
-  unsigned int nvmlIdx_;   //<! the Nvidia management library device index
-  std::set<NUMA_t> numas_; //<! the NUMA regions of the CPUs that have affinity with this GPU
-  std::set<CPU_t> cpus_;   //<! the CPUs that have affinity with this GPU
+  int cudaId_;             //!< the CUDA device ID
+  unsigned int nvmlIdx_;   //!< the Nvidia management library device index
+  std::set<NUMA_t> numas_; //!< the NUMA regions of the CPUs that have affinity with this GPU
+  std::set<CPU_t> cpus_;   //!< the CPUs that have affinity with this GPU
+  cudaDeviceProp props_;   //!< the CUDA device properties
 
-  GPU(int cudaId, unsigned int nvmlIdx) : cudaId_(cudaId), nvmlIdx_(nvmlIdx) {}
+  GPU(int cudaId, unsigned int nvmlIdx, cudaDeviceProp props) : cudaId_(cudaId), nvmlIdx_(nvmlIdx), props_(props) {}
 };
 
 struct CPU {
   int id_;
-  NUMA_t numa_;          //<! the NUMA region this CPU is in (null if none or unknown)
-  std::set<GPU_t> gpus_; //<! the GPUs with affinity for this CPU
+  NUMA_t numa_;          //!< the NUMA region this CPU is in (null if none or unknown)
+  std::set<GPU_t> gpus_; //!< the GPUs with affinity for this CPU
 
   explicit CPU(int id) : id_(id) {}
 };
@@ -42,9 +44,9 @@ struct CPU {
 /*! A NUMA node
  */
 struct NUMA {
-  int id_;               //<! the id of the numa node (from libnuma)
-  std::set<CPU_t> cpus_; //<! the cpus in this numa region
-  std::set<GPU_t> gpus_; //<! the GPUs with affinity to at least one CPU in this region
+  int id_;               //!< the id of the numa node (from libnuma)
+  std::set<CPU_t> cpus_; //!< the cpus in this numa region
+  std::set<GPU_t> gpus_; //!< the GPUs with affinity to at least one CPU in this region
 
   explicit NUMA(int id) : id_(id) {}
 };
@@ -77,7 +79,11 @@ inline std::vector<GPU_t> make_gpus() {
     unsigned int nvmlIdx;
     NVML(nvmlDeviceGetIndex(nvmlDevice, &nvmlIdx));
 
-    gpus.push_back(std::make_shared<GPU>(cudaId, nvmlIdx));
+    // get the device properties for each GPU
+    cudaDeviceProp props;
+    CUDA_RUNTIME(cudaGetDeviceProperties(&props, cudaId));
+
+    gpus.push_back(std::make_shared<GPU>(cudaId, nvmlIdx, props));
   }
 
   return gpus;
@@ -88,7 +94,7 @@ inline std::vector<GPU_t> make_gpus() {
 
     \return a set<int> of cpus that have affinity with gpu
  */
-inline std::set<int> device_cpu_affinity(const int gpu //<! the gpu to get CPU affinity for
+inline std::set<int> device_cpu_affinity(const int gpu //!< the gpu to get CPU affinity for
 ) {
   detail::init_nvml();
   nvmlDevice_t nvmlDev = nullptr;
@@ -162,12 +168,12 @@ inline std::set<int> cpu_numa_affinity(const std::set<int> &cpus) {
 /*! A representation of the CPUs, GPUs, and NUMA regions in the system
  */
 struct Topology {
-  std::map<int, NUMA_t> numas_;            //<! NUMA regions by OS id
-  std::map<int, CPU_t> cpus_;              //<! CPUs by OS id
-  std::map<int, GPU_t> cudaGpus_;          //<! GPUs by CUDA device ID
-  std::map<unsigned int, GPU_t> nvmlGpus_; //<! gpus by nvml index
+  std::map<int, NUMA_t> numas_;            //!< NUMA regions by OS id
+  std::map<int, CPU_t> cpus_;              //!< CPUs by OS id
+  std::map<int, GPU_t> cudaGpus_;          //!< GPUs by CUDA device ID
+  std::map<unsigned int, GPU_t> nvmlGpus_; //!< gpus by nvml index
 
-  size_t pageSize_; //<! the page size on the system
+  size_t pageSize_; //!< the page size on the system
 
   /*! return the numa node that the page of ptr is allocated in.
   If NUMA is not supported or otherwise it cannot be determined, return nullptr
@@ -188,14 +194,15 @@ struct Topology {
 
 /*! Lazily build and return the system Topology
  */
-Topology &topology() {
+Topology &get() {
 
   // only build topology structure once
   static bool init = false;
-  detail::init_nvml();
+  
   static Topology topology;
 
   if (!init) {
+    detail::init_nvml();
 
     topology.pageSize_ = sysconf(_SC_PAGESIZE);
 
@@ -267,6 +274,7 @@ Topology &topology() {
         gpu->cpus_.insert(cpu);
       }
     }
+    init = true;
   }
 
   return topology;

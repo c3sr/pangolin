@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/edge_list.hpp"
 #include "pangolin/types.hpp"
 
@@ -35,14 +35,18 @@ public:
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *colInd_; //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const noexcept { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_rows() const noexcept { return num_rows_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t num_nodes() const noexcept { return num_rows(); }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return num_rows_; }
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_nodes() const noexcept { return num_rows(); }
 
-  const Index *row_ptr() const { return rowPtr_; }                                      //!< row offset array
-  const Index *col_ind() const { return colInd_; }                                      //!< column index array
-  PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
-  PANGOLIN_HOST PANGOLIN_DEVICE const Index *device_col_ind() const { return colInd_; } //!< column index array
+  __forceinline__ const Index *row_ptr() const noexcept { return rowPtr_; } //!< row offset array
+  __forceinline__ const Index *col_ind() const noexcept { return colInd_; } //!< column index array
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const Index *device_row_ptr() const {
+    return rowPtr_;
+  } //!< row offset array
+  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const Index *device_col_ind() const {
+    return colInd_;
+  } //!< column index array
 };
 
 /*! \brief A CSR matrix backed by CUDA Unified Memory
@@ -57,7 +61,9 @@ private:
 
 public:
   typedef Index index_type;
-  CSR();                 //!< empty CSR
+  /*! \brief empty CSR
+   */
+  CSR() : maxCol_(0) {}
   Vector<Index> rowPtr_; //!< offset in col_ that each row starts at
   Vector<Index> colInd_; //!< non-zero column indices
   PANGOLIN_HOST PANGOLIN_DEVICE uint64_t nnz() const { return colInd_.size(); } //!< number of non-zeros
@@ -75,6 +81,9 @@ public:
                                  return true;
                                });
 
+  void add_next_edge(const EdgeTy<Index> &e);
+  void finish_edges();
+
   CSRView<Index> view() const; //!< create a CSRView for this CSR
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
@@ -86,6 +95,33 @@ public:
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
   PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0);
+
+  /*! Call shrink_to_fit on the underlying containers
+   */
+  PANGOLIN_HOST void shrink_to_fit() {
+    rowPtr_.shrink_to_fit();
+    colInd_.shrink_to_fit();
+  }
+
+  /*! pre-allocate space for numRows rows and nnz non-zeros
+   */
+  PANGOLIN_HOST void reserve(size_t numRows, size_t numNonZeros) {
+    rowPtr_.reserve(numRows + 1);
+    colInd_.reserve(numNonZeros);
+  }
+
+  /*! The total capacity of the underlying containers in bytes
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t capacity_bytes() const noexcept {
+    return rowPtr_.capacity() * sizeof(typename decltype(rowPtr_)::value_type) +
+           colInd_.capacity() * sizeof(typename decltype(colInd_)::value_type);
+  }
+  /*! The total size of the underlying containers in bytes
+   */
+  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t size_bytes() const noexcept {
+    return rowPtr_.size() * sizeof(typename decltype(rowPtr_)::value_type) +
+           colInd_.size() * sizeof(typename decltype(colInd_)::value_type);
+  }
 
   const Index *row_ptr() const { return rowPtr_.data(); } //!< row offset array
   const Index *col_ind() const { return colInd_.data(); } //!< column index array

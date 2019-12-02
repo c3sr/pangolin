@@ -10,11 +10,11 @@
 
 using namespace pangolin;
 
-TEST_CASE("vectors can be resized", "[gpu]") {
+TEST_CASE("default ctor", "[gpu]") {
   pangolin::init();
-  std::vector<int, pangolin::CUDAZeroCopyAllocator<int> > v;
+  std::vector<int, pangolin::allocator::CUDAZeroCopy<int> > v;
 
-  SECTION("vectors can be resized") {
+  SECTION("vectors can be resized", "[gpu]") {
     v.resize(100);
     REQUIRE(v.size() == 100);
 
@@ -22,7 +22,7 @@ TEST_CASE("vectors can be resized", "[gpu]") {
     REQUIRE(v.size() == 10);
   }
 
-  SECTION("vectors can be resized and written by the CPU") {
+  SECTION("vectors can be resized and written by the CPU", "[gpu]") {
     v.resize(100);
     for (auto &e : v) {
       e = 1;

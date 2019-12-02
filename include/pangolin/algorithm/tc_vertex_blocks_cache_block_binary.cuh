@@ -3,11 +3,12 @@
 #include <cub/cub.cuh>
 #include <nvToolsExt.h>
 
+#include "axpy.cuh"
 #include "count.cuh"
-#include "pangolin/algorithm/axpy.cuh"
-#include "pangolin/algorithm/load_balance.cuh"
-#include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "load_balance.cuh"
+#include "pangolin/dense/buffer.cuh"
+#include "pangolin/dense/vector.cuh"
+#include "zero.cuh"
 
 /*! Determine how many tileSize tiles are needed to cover each row of adj
 
@@ -15,12 +16,13 @@
  */
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X) vbcbb_tile_rows_kernel(
-    typename CsrView::index_type *counts,         //<! [out] the number of tiles each row (size = numRows)
-    typename CsrView::index_type *numWorkItems,   //<! [out] the total number of tiles across all rows.  caller should 0
-    const size_t tileSize,                        //<! [in] the number of non-zeros in each tile
-    const CsrView adj,                            //<! [in] the adjancency matrix whos rows we will tile
-    const typename CsrView::index_type rowOffset, //<! [in] the row to start tiling at
-    const typename CsrView::index_type numRows    //<! [in] the number of rows to tile
+    typename CsrView::index_type *__restrict__ counts, //!< [out] the number of tiles each row (size = numRows)
+    typename CsrView::index_type
+        *__restrict__ numWorkItems,               //!< [out] the total number of tiles across all rows.  caller should 0
+    const size_t tileSize,                        //!< [in] the number of non-zeros in each tile
+    const CsrView adj,                            //!< [in] the adjancency matrix whos rows we will tile
+    const typename CsrView::index_type rowOffset, //!< [in] the row to start tiling at
+    const typename CsrView::index_type numRows    //!< [in] the number of rows to tile
 ) {
 
   typedef typename CsrView::index_type Index;
@@ -61,11 +63,11 @@ Each thread block can look up which row and rank (slice within the row) it is.
 */
 template <size_t BLOCK_DIM_X, typename OI, typename WI, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
-    vbcbb_row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                           const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                           const OI *workItemRow,  //<! [in] the row associated with this work item
-                           const OI *workItemRank, //<! [in] the rank within the row for this work item
-                           const WI numWorkItems   //<! [in] the total number of work items
+    vbcbb_row_block_kernel(uint64_t *count,        //!< [out] the count will be accumulated into here
+                           const CsrView adj,      //!< [in] the CSR adjacency matrix to operate on
+                           const OI *workItemRow,  //!< [in] the row associated with this work item
+                           const OI *workItemRank, //!< [in] the rank within the row for this work item
+                           const WI numWorkItems   //!< [in] the total number of work items
     ) {
   typedef typename CsrView::index_type Index;
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
@@ -124,7 +126,8 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         const Index *dstNbrBegin = &adj.colInd_[dstStart];
         const Index *dstNbrEnd = &adj.colInd_[dstStop];
 
-        if (dstStop - dstStart > srcChunkSize) { // dst longer, we still get to reuse shmem for srcs for each dst
+        // dstStop - dstStart > srcChunkSize
+        if (false) { // dst longer, we still get to reuse shmem for srcs for each dst
           threadCount += pangolin::block_sorted_count_binary<1, BLOCK_DIM_X>(sharedSrc, srcChunkSize, dstNbrBegin,
                                                                              dstNbrEnd - dstNbrBegin);
         } else { // src longer, we are searching into shmem
@@ -163,11 +166,11 @@ namespace pangolin {
  */
 class VertexBlocksCacheBlockBinary {
 private:
-  int dev_;             //<! the CUDA device used by this counter
-  cudaStream_t stream_; //<! a stream used by this counter
-  uint64_t *count_;     //<! the triangle count
-  dim3 maxGridSize_;    //<! the maximum grid size allowed by this device
-  size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
+  int dev_;             //!< the CUDA device used by this counter
+  cudaStream_t stream_; //!< a stream used by this counter
+  uint64_t *count_;     //!< the triangle count
+  dim3 maxGridSize_;    //!< the maximum grid size allowed by this device
+  size_t rowCacheSize_; //!< the size of the kernel's shared memory row cache
 
 public:
   VertexBlocksCacheBlockBinary(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
@@ -192,13 +195,13 @@ public:
       May return before count is complete.
    */
   template <typename CsrView>
-  void count_async(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
-                   const size_t rowOffset, //<! [in] the first row to count
+  void count_async(const CsrView &adj,     //!< [in] a CSR adjacency matrix to count
+                   const size_t rowOffset, //!< [in] the first row to count
                    const size_t numRows    //!< [in] the number of rows to count
   ) {
 
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    const size_t dimBlock = 512;
+    const size_t dimBlock = 64;
     typedef typename CsrView::index_type Index;
 
     LOG(debug, "zero_async final count");
@@ -207,20 +210,24 @@ public:
     // compute the number (counts) of dimBlock-sized chunks that make up each row [rowOffset, rowOffset + numRows)
     // each workItem is dimBlock elements from a row
     nvtxRangePush("enumerate work items");
-    Vector<Index> counts(numRows);
-    Vector<Index> numWorkItems(1, 0);
+    Buffer<Index> counts(numRows);    // scratch
+    Vector<Index> numWorkItems(1, 0); // scratch
 
-    LOG(debug, "vbcbb_tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", 512, 512, 0, uintptr_t(stream_), dev_);
-    vbcbb_tile_rows_kernel<512>
-        <<<512, 512, 0, stream_>>>(counts.data(), numWorkItems.data(), dimBlock, adj, rowOffset, numRows);
+    constexpr size_t trkBlockDim = 512;
+    size_t trkGridDim = (numRows + trkBlockDim - 1) / trkBlockDim;
+    LOG(debug, "vbcbb_tile_rows_kernel<<<{}, {}, {}, {}>>> device = {} ", trkGridDim, trkBlockDim, 0,
+        uintptr_t(stream_), dev_);
+    vbcbb_tile_rows_kernel<trkBlockDim><<<trkGridDim, trkBlockDim, 0, stream_>>>(counts.data(), numWorkItems.data(),
+                                                                                 dimBlock, adj, rowOffset, numRows);
     CUDA_RUNTIME(cudaDeviceSynchronize());
     const Index hostNumWorkItems = numWorkItems[0];
     nvtxRangePop();
 
     // do the initial load-balancing search across rows
+
     nvtxRangePush("device_load_balance");
-    Vector<Index> indices(hostNumWorkItems);
-    Vector<Index> ranks(hostNumWorkItems);
+    Buffer<Index> indices(hostNumWorkItems); // scratch
+    Buffer<Index> ranks(hostNumWorkItems);   // scratch
     // FIXME: static_cast
     device_load_balance(indices.data(), ranks.data(), hostNumWorkItems, counts.data(), static_cast<Index>(numRows),
                         stream_);
@@ -250,9 +257,9 @@ public:
       Counts triangles for rows [rowOffset, rowOffset + numRows)
   */
   template <typename CsrView>
-  uint64_t count_sync(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
-                      const size_t rowOffset, //<! [in] the first row to count
-                      const size_t numRows    //<! [in] the number of rows to count
+  uint64_t count_sync(const CsrView &adj,     //!< [in] a CSR adjacency matrix to count
+                      const size_t rowOffset, //!< [in] the first row to count
+                      const size_t numRows    //!< [in] the number of rows to count
   ) {
     count_async(adj, rowOffset, numRows);
     sync();

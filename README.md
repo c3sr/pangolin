@@ -11,12 +11,69 @@ A header-only C++/CUDA library for GPU graph operations
 
 ## Getting Started
 
-Include the pangolin headers in your code
+### Install CUDA
+
+Most of pangolin only works with `nvcc`.
+
+### Install MPI (optional)
+
+`sudo apt install libopenmpi-dev openmpi-bin`
+
+### Install NUMA (optional)
+
+`sudo apt install libnuma-dev`
+
+Include the pangolin headers in your code, and somewhere before using pangolin, call `pangolin::init()`
 
 ```c++
 #include "pangolin.hpp"
 #include "pangolin.cuh"
+
+int main(int argc, char **argv) {
+    pangolin::init();
+    // your code here.
+}
+
 ```
+
+
+
+## Library Features
+
+### RcStream
+
+A reference-counted `cudaStream_t`.
+Automatically create, share, and destroy a single cudaStream_t, analogous to a `std::shared_ptr`.
+Get started at [include/pangolin/cuda_cxx/rc_stream.hpp].
+
+### Allocators
+C++ stdlib allocators for CUDA device memory, CUDA host memory, and CUDA managed memory.
+Get started at [include/pangolin/allocator].
+
+### Dense containers
+`Vector`s and `Buffer`s backed by any `pangolin::Allocator`
+Get started at [include/pangolin/dense].
+
+### Sparse containers
+CSR and CSR+COO sparse matrices backed by `pangolin::Vector`
+Get started at [include/pangolin/sparse].
+
+### Algorithms
+* Triangle Counting
+    * binary
+    * sequentia
+* K-truss
+* Fill
+* broadcast
+    * warp-collaborative
+    * block-collaborative
+
+Get started at [include/pangolin/algorithm].
+
+### System Topology Exploration
+
+Built on top of `numa` and `nvidia-ml`, query the system topology to discover which GPUs, CPUs, and NUMA regions are associated.
+Get started at [include/pangolin/topology].
 
 ### Controlling Logging
 
@@ -138,11 +195,12 @@ make
 make test
 ```
 
-Most tests require a GPU.
+Most tests require a GPU (those tests have the `gpu` label).
+Some tests require MPI (those tests have the `mpi` label)
 
 ```
 ctest -LE "gpu" # run tests that do not require a GPU
-ctest -L "gpu" # run tests that require a GPU
+ctest -L "mpi" # run tests that require MPI
 ```
 
 To run individual tests, you can do something like
@@ -156,10 +214,12 @@ test/test_csr
 
 We automatically build and test the following configurations.
 
-| CI Platform | CUDA | NUMA | Build | Test |
+| CI Platform | CUDA | NUMA | MPI |  Build | Test |
 |-|-|-|-|-|
-| Azure Pipelines | 10.1 | Yes |  Yes | non-gpu |
-| Azure Pipelines | 10.1 | No | planned | planned |
+| Azure Pipelines | 10.1 | Yes | Yes | Yes | Yes |
+| Azure Pipelines | 10.1 | No  | Yes | Yes | Yes |
+| Azure Pipelines | 10.1 | Yes | No  | Yes | non-mpi |
+| Azure Pipelines | 10.1 | No  | No  | Yes | non-mpi |
 
 ## Profiling
 
@@ -195,6 +255,68 @@ or
 `File` > `Open File` > `profile.nsight-cuprof-report`
 
 
+#### Interactive Timeline
+The Nvidia Nsight Eclipse Edition can generate a timeline
+
+* Open Nsight Eclise Edition
+
+On Ubuntu 18.04, there may be a conflict with the installed Java runtime (usually openjdk-11).
+
+```
+sudo apt install openjdk-8-jre
+```
+
+Then add the path to the java8 runtime to the top of `/usr/local/cuda/libnsight/nsight.ini` like so
+
+```
+-vm
+/usr/lib/jvm/java-8-openjdk-amd64/jre/bin
+```
+
+* Run >> Profile Configurations
+* Select "C/C++ Application" in the left panel
+* Press the 'New' button near the top-left to create a new profiling configuration
+* Give it a name near the top middle if you want
+* Main tab >> Put the path to the CUDA binary in "C/C++ Application"
+* Arguments tab >> put the command line arguments to the binary here
+
+#### Non-interactive Timeline
+
+Generate a timeline with nvprof
+
+`nvprof -o timeline.nvvp -f ./mybin`
+
+* Open Nsight Eclipse Edition
+* File >> Import
+  * CUDA `v` Nvprof
+  * Put the timeline file in the timeline file box
+  * Uncheck `Use fixed width segments for unified memory timeline`
+
+#### Interactive Detailed Profile
+
+* Open "NVIDIA Nsight Compute"
+* "Create New Project" >> cancel
+* "Connect" in top-left
+  * Put the path to the application in "Application Excecutable"
+  * Put the arguments in "Command Line Arguments"
+  * Enable NVTX Support = Yes
+* Launch
+* Profile >> auto-profile
+
+[profiler report source page](https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#profiler-report-source-page)
+
+Measuring Divergence:
+"predicated-on thread instructions executed" should be 32x "instructions executed" for no divergence.
+
+"predicated-on thread instructions executed": instructions executed: number of times an instruction was executed by a warp
+Number of times the source (instruction) was executed by any active, predicated-on thread. For instructions that are executed unconditionally (i.e. without predicate), this is the number of active threads in the warp, multiplied with the respective Instructions Executed value. 
+
+#### Non-interactive Detailed Profile
+
+Generate a profile using something like `/usr/local/cuda/NsightCompute-1.0/nv-nsight-cu-cli -o ./my-binary`
+
+* Open "NVIDIA Nsight Compute"
+* File >> Open >> `<the profile file you generated>`
 
 ## Other
 

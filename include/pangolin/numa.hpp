@@ -12,6 +12,7 @@ It should otherwise be consistent with libnuma.
 */
 
 #include <cassert>
+#include <set>
 
 #if USE_NUMA == 1
 #include <numa.h>
@@ -136,7 +137,7 @@ inline void set_strict() {
     Does nothing if pangolin::numa::numa_available() is false
     Uses numa_bind()
 */
-inline void bind(const int node //<! NUMA node to bind to
+inline void bind(const int node //!< NUMA node to bind to
 ) {
 #if USE_NUMA == 1
   if (available()) {
@@ -160,7 +161,7 @@ inline void bind(const int node //<! NUMA node to bind to
 
 /*! Bind future allocation to a numa node
  */
-inline void membind(const int node //<! NUMA node to bind to
+inline void membind(const int node //!< NUMA node to bind to
 ) {
 #if USE_NUMA == 1
   if (available()) {

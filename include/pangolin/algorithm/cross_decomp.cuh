@@ -2,7 +2,7 @@
 #include <map>
 #include <random>
 
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 
 namespace pangolin {
 

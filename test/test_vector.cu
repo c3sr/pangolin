@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/init.hpp"
 
 using namespace pangolin;
@@ -24,6 +24,29 @@ TEST_CASE("fill ctor with val") {
   Vector<int> v(10, 1);
   REQUIRE(v.size() == 10);
   for (size_t i = 0; i < v.size(); ++i) {
+    REQUIRE(v[i] == 1);
+  }
+}
+
+TEST_CASE("resize up with value") {
+  pangolin::init();
+  Vector<int> v(1, 1);
+
+  v.resize(10, 2);
+  REQUIRE(v.size() == 10);
+  REQUIRE(v[0] == 1);
+  for (size_t i = 1; i < v.size(); ++i) {
+    REQUIRE(v[i] == 2);
+  }
+}
+
+TEST_CASE("resize down with value") {
+  pangolin::init();
+  Vector<int> v(10, 1);
+
+  v.resize(5, 2);
+  REQUIRE(v.size() == 5);
+  for (size_t i = 1; i < v.size(); ++i) {
     REQUIRE(v[i] == 1);
   }
 }

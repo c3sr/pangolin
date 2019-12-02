@@ -37,7 +37,7 @@ public:
 
   private:
     const uint64_t N;
-    Node pos_; //<! check whether all pairs of edges should exist
+    Node pos_; //!< check whether all pairs of edges should exist
 
     iterator(uint64_t n, Node pos) : N(n), pos_(pos) {
       if (skip_edge()) {

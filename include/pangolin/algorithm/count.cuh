@@ -11,46 +11,49 @@ namespace pangolin {
 /*! \brief return the number of common elements between sorted lists a and b
  */
 template <typename T>
-__device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
-                                                      const T *const aEnd,   //!< end of a
-                                                      const T *const bBegin, //!< beginning of b
-                                                      const T *const bEnd    //!< end of b
+__host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
+                                                               const T *const aEnd,   //!< end of a
+                                                               const T *const bBegin, //!< beginning of b
+                                                               const T *const bEnd    //!< end of b
 ) {
   uint64_t count = 0;
   const T *ap = aBegin;
   const T *bp = bBegin;
 
-  if (ap < aEnd && bp < bEnd) {
+  bool loadA = true;
+  bool loadB = true;
 
-    bool loadA = false;
-    bool loadB = false;
-    T a = *ap;
-    T b = *bp;
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+  T a, b;
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-    while (ap < aEnd && bp < bEnd) {
+  while (ap < aEnd && bp < bEnd) {
 
-      if (loadA) {
-        a = *ap;
-        loadA = false;
-      }
-      if (loadB) {
-        b = *bp;
-        loadB = false;
-      }
+    if (loadA) {
+      a = *ap;
+      loadA = false;
+    }
+    if (loadB) {
+      b = *bp;
+      loadB = false;
+    }
 
-      if (a == b) {
-        ++count;
-        ++ap;
-        ++bp;
-        loadA = true;
-        loadB = true;
-      } else if (a < b) {
-        ++ap;
-        loadA = true;
-      } else {
-        ++bp;
-        loadB = true;
-      }
+    if (a == b) {
+      ++count;
+      ++ap;
+      ++bp;
+      loadA = true;
+      loadB = true;
+    } else if (a < b) {
+      ++ap;
+      loadA = true;
+    } else {
+      ++bp;
+      loadB = true;
     }
   }
   return count;
@@ -59,20 +62,23 @@ __device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!
 /*! \brief return the number of common elements between sorted lists A and B
  */
 template <typename T>
-__device__ static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
-                                                    const size_t aSz,
-                                                    const T *const B, //!< beginning of b
-                                                    const size_t bSz) {
+__host__ __device__ static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
+                                                             const size_t aSz,
+                                                             const T *const B, //!< beginning of b
+                                                             const size_t bSz) {
   return serial_sorted_count_linear(A, &A[aSz], B, &B[bSz]);
 }
 
 /*! \brief return 1 if search_val is in array between [left, right). return 0 otherwise
+
+  array must be sorted in increasing order between [left, right)
+  search method is binary search
  */
 template <typename T>
-__device__ static uint8_t serial_sorted_count_binary(const T *const array, //<! [in] array to search through
-                                                     size_t left,          //<! [in] lower bound of search
-                                                     size_t right,         //<! [in] upper bound of search
-                                                     const T search_val    //<! [in] value to search for
+__host__ __device__ static uint8_t serial_sorted_count_binary(const T *const array, //!< [in] array to search through
+                                                              size_t left,          //!< [in] lower bound of search
+                                                              size_t right,         //!< [in] upper bound of search
+                                                              const T search_val    //!< [in] value to search for
 ) {
   while (left < right) {
     size_t mid = (left + right) / 2;
@@ -82,6 +88,83 @@ __device__ static uint8_t serial_sorted_count_binary(const T *const array, //<! 
     } else if (val > search_val) {
       right = mid;
     } else { // val == search_val
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/*! \brief return the number of common elements between sorted lists A and B
+
+  the longer of A,B must be sorted in increasing order
+  search method is binary search
+ */
+template <typename T>
+static uint64_t serial_sorted_count_binary(const T *const A, //!< [in] beginning of a
+                                           const size_t aSz,
+                                           const T *const B, //!< [in] beginning of b
+                                           const size_t bSz) {
+
+  uint64_t count = 0;
+  const T *needles;
+  const T *haystack;
+  size_t needleSz;
+  size_t haystackSz;
+  // search from shorter into longer
+  if (aSz < bSz) {
+    needles = A;
+    haystack = B;
+    needleSz = aSz;
+    haystackSz = bSz;
+  } else {
+    needles = B;
+    haystack = A;
+    needleSz = bSz;
+    haystackSz = aSz;
+  }
+  for (size_t i = 0; i < needleSz; ++i) {
+    count += serial_sorted_count_binary(haystack, 0, haystackSz, needles[i]);
+  }
+  return count;
+}
+
+/*! \brief return 1 if search_val is between [begin, end). return 0 otherwise
+
+    array must be sorted in increasing order between [begin, end)
+    Search method is a linear scan through array
+ */
+template <typename T>
+__device__ static uint8_t
+serial_sorted_count_linear(const T *const begin, //!< [in] beginning of array to search through
+                           const T *const end,   //!< [in] end of array to search through
+                           const T searchVal     //!< [in] value to search for
+) {
+  for (T *p = begin; p < end; ++p) {
+    T checkVal = *p;
+    if (checkVal == searchVal) {
+      return 1;
+    }
+    // early exit if we've searched past searchVal
+    if (checkVal > searchVal) {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+/*! \brief return 1 if search_val is in array between [left, right). return 0 otherwise
+
+    array must be sorted in increasing order between [left, right)
+    Search method is a linear scan through array
+ */
+template <typename T>
+__device__ static uint8_t serial_sorted_count_linear(const T *const array, //!< [in] array to search through
+                                                     size_t left,          //!< [in] lower bound of search
+                                                     size_t right,         //!< [in] upper bound of search
+                                                     const T search_val    //!< [in] value to search for
+) {
+  for (size_t searchIdx = left; searchIdx < right; ++searchIdx) {
+    if (array[searchIdx] == search_val) {
       return 1;
     }
   }
@@ -126,18 +209,20 @@ __device__ void grid_sorted_count_binary(uint64_t *count, const T *const A, cons
 
     \tparam       C               coarsening factor: elements of A per thread
     \tparam       WARPS_PER_BLOCK the number of warps in the calling threadblock
+    \tparam       reduce          Reduce the result into lane 0
     \return                       The count found by the warp (in lane 0 only)
 
     The calling threadblock should be made up of a number of complete warps.
     Each thread searches for C elements of A in B.
     First, a binary search is used to find the lower bound of the chunk in B.
     Then, a sequential count of matching elements is used.
+    Lane 0 in the warp returns the complete value
 */
-template <size_t C, size_t WARPS_PER_BLOCK, typename T>
-__device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
-                                             const size_t aSz, //!< [in] the number of elements in A
-                                             const T *const B, //!< [in] array B
-                                             const size_t bSz  //!< [in] the number of elements in B
+template <size_t C, size_t WARPS_PER_BLOCK, typename T, bool reduce = true>
+__device__ __forceinline__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
+                                                             const size_t aSz, //!< [in] the number of elements in A
+                                                             const T *const B, //!< [in] array B
+                                                             const size_t bSz  //!< [in] the number of elements in B
 ) {
 
   static_assert(C != 0, "expect at least 1 element per thread");
@@ -173,11 +258,15 @@ __device__ uint64_t warp_sorted_count_binary(const T *const A, //!< [in] array A
     }
   }
 
-  // give lane 0 the total count discovered by the warp
-  typedef cub::WarpReduce<uint64_t> WarpReduce;
-  __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
-  uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
-  return aggregate;
+  if (reduce) {
+    // give lane 0 the total count discovered by the warp
+    typedef cub::WarpReduce<uint64_t> WarpReduce;
+    __shared__ typename WarpReduce::TempStorage tempStorage[WARPS_PER_BLOCK];
+    uint64_t aggregate = WarpReduce(tempStorage[warpIdx]).Sum(threadCount);
+    return aggregate;
+  } else {
+    return threadCount;
+  }
 }
 
 /*! \brief threadblock cooperative count of elements in A that appear in B

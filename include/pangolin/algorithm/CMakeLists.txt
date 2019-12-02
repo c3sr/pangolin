@@ -15,8 +15,8 @@ set(PANGOLIN_CU_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/search.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dyn.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh
-  ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_dynpar.cuh  
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_linear.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_edge_merge.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh

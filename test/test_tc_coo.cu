@@ -5,7 +5,7 @@
 #include "pangolin/generator/complete.hpp"
 #include "pangolin/init.hpp"
 #include "pangolin/logger.hpp"
-#include "pangolin/sparse/coo.hpp"
+#include "pangolin/sparse/csr_coo.hpp"
 
 using namespace pangolin;
 

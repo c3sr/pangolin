@@ -31,19 +31,48 @@ function(pangolin_add_gpu_test)
   set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu")
 endfunction()
 
+function(pangolin_add_mpi_gpu_test)
+  if (MPI_FOUND)
+  cmake_parse_arguments(
+    PARSED_ARGS # prefix of output variables
+    "" # list of names of boolean arguments
+    "NAME" # list of names of mono-valued arguments
+    "SRCS" # list of names of nuluti-valued arguments
+    ${ARGN} # arguments of the function to parse
+  )
+  pangolin_add_test(${ARGN})
+  set_tests_properties(${PARSED_ARGS_NAME} PROPERTIES LABELS "gpu;mpi")
+  endif()
+endfunction()
+
+pangolin_add_test(
+  NAME test_array_view
+  SRCS test_array_view.cu
+)
+
 pangolin_add_test(
   NAME test_binary_search
-  SRCS test_binary_search.cpp
+  SRCS test_binary_search.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_bmtx_stream
+  SRCS test_bmtx_stream.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_broadcast
+  SRCS test_broadcast.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_buffer
+  SRCS test_buffer.cu
 )
 
 pangolin_add_test(
   NAME test_complete
   SRCS test_complete.cu
-)
-
-pangolin_add_gpu_test(
-  NAME test_coo
-  SRCS test_coo.cu
 )
 
 pangolin_add_gpu_test(
@@ -54,6 +83,36 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_csr
   SRCS test_csr.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_val
+  SRCS test_csr_val.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_binned
+  SRCS test_csr_binned.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_csr_coo
+  SRCS test_csr_coo.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_device_buffer
+  SRCS test_device_buffer.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_device_vector
+  SRCS test_device_vector.cu
+)
+
+pangolin_add_test(
+  NAME test_double_buffer
+  SRCS test_double_buffer.cu
 )
 
 pangolin_add_test(
@@ -73,7 +132,7 @@ pangolin_add_gpu_test(
 
 pangolin_add_gpu_test(
   NAME test_logger
-  SRCS test_logger.cpp test_logger_helper.cpp
+  SRCS test_logger.cu test_logger_helper.cu
 )
 
 pangolin_add_gpu_test(
@@ -83,13 +142,34 @@ pangolin_add_gpu_test(
 
 pangolin_add_test(
   NAME test_merge_path
-  SRCS test_merge_path.cpp
+  SRCS test_merge_path.cu
+)
+
+pangolin_add_mpi_gpu_test(
+  NAME test-mpi
+  SRCS test_mpi.cu
 )
 
 pangolin_add_gpu_test(
   NAME test_numa
   SRCS test_numa.cu
 )
+
+pangolin_add_gpu_test(
+  NAME test_rc_stream
+  SRCS test_rc_stream.cu
+)
+
+pangolin_add_test(
+  NAME test_single_header
+  SRCS test_single_header.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_anjur_iyer
+  SRCS test_tc_anjur_iyer.cu
+)
+
 
 pangolin_add_gpu_test(
   NAME test_tc_edge_binary
@@ -107,6 +187,11 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
+  NAME test_tc_vertex_bitvector
+  SRCS test_tc_vertex_bitvector.cu
+)
+
+pangolin_add_gpu_test(
   NAME test_tc_vertex_block_binary
   SRCS test_tc_vertex_block_binary.cu
 )
@@ -119,6 +204,21 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_tc_vertex_blocks_cache_block_binary
   SRCS test_tc_vertex_blocks_cache_block_binary.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_vertex_dyn
+  SRCS test_tc_vertex_dyn.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_edge_warp_dyn
+  SRCS test_tc_edge_warp_dyn.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_tc_edge_warp_dysel
+  SRCS test_tc_edge_warp_dysel.cu
 )
 
 pangolin_add_gpu_test(

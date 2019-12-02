@@ -4,7 +4,7 @@
 #include <numeric>
 
 #include "pangolin/algorithm/load_balance.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "pangolin/init.hpp"
 
 using namespace pangolin;

@@ -7,7 +7,7 @@
 #include "pangolin/algorithm/axpy.cuh"
 #include "pangolin/algorithm/load_balance.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 
 /*! Determine how many tileSize tiles are needed to cover each row of adj
 
@@ -15,12 +15,12 @@
  */
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X) tile_rows_kernel(
-    typename CsrView::index_type *counts,         //<! [out] the number of tiles each row (size = numRows)
-    typename CsrView::index_type *numWorkItems,   //<! [out] the total number of tiles across all rows.  caller should 0
-    const size_t tileSize,                        //<! [in] the number of non-zeros in each tile
-    const CsrView adj,                            //<! [in] the adjancency matrix whos rows we will tile
-    const typename CsrView::index_type rowOffset, //<! [in] the row to start tiling at
-    const typename CsrView::index_type numRows    //<! [in] the number of rows to tile
+    typename CsrView::index_type *counts,         //!< [out] the number of tiles each row (size = numRows)
+    typename CsrView::index_type *numWorkItems,   //!< [out] the total number of tiles across all rows.  caller should 0
+    const size_t tileSize,                        //!< [in] the number of non-zeros in each tile
+    const CsrView adj,                            //!< [in] the adjancency matrix whos rows we will tile
+    const typename CsrView::index_type rowOffset, //!< [in] the row to start tiling at
+    const typename CsrView::index_type numRows    //!< [in] the number of rows to tile
 ) {
 
   typedef typename CsrView::index_type Index;
@@ -68,11 +68,11 @@ Each thread block can look up which row and rank (slice within the row) it is.
 */
 template <size_t BLOCK_DIM_X, typename OI, typename WI, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
-    row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                     const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                     const OI *workItemRow,  //<! [in] the row associated with this work item
-                     const OI *workItemRank, //<! [in] the rank within the row for this work item
-                     const WI numWorkItems   //<! [in] the total number of work items
+    row_block_kernel(uint64_t *count,        //!< [out] the count will be accumulated into here
+                     const CsrView adj,      //!< [in] the CSR adjacency matrix to operate on
+                     const OI *workItemRow,  //!< [in] the row associated with this work item
+                     const OI *workItemRank, //!< [in] the rank within the row for this work item
+                     const WI numWorkItems   //!< [in] the total number of work items
     ) {
   typedef typename CsrView::index_type Index;
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
@@ -157,11 +157,11 @@ namespace pangolin {
  */
 class VertexBlocksBinaryTC {
 private:
-  int dev_;             //<! the CUDA device used by this counter
-  cudaStream_t stream_; //<! a stream used by this counter
-  uint64_t *count_;     //<! the triangle count
-  dim3 maxGridSize_;    //<! the maximum grid size allowed by this device
-  size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
+  int dev_;             //!< the CUDA device used by this counter
+  cudaStream_t stream_; //!< a stream used by this counter
+  uint64_t *count_;     //!< the triangle count
+  dim3 maxGridSize_;    //!< the maximum grid size allowed by this device
+  size_t rowCacheSize_; //!< the size of the kernel's shared memory row cache
 
 public:
   VertexBlocksBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
@@ -186,8 +186,8 @@ public:
       May return before count is complete.
    */
   template <typename CsrView>
-  void count_async(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
-                   const size_t rowOffset, //<! [in] the first row to count
+  void count_async(const CsrView &adj,     //!< [in] a CSR adjacency matrix to count
+                   const size_t rowOffset, //!< [in] the first row to count
                    const size_t numRows    //!< [in] the number of rows to count
   ) {
 
@@ -244,9 +244,9 @@ public:
       Counts triangles for rows [rowOffset, rowOffset + numRows)
   */
   template <typename CsrView>
-  uint64_t count_sync(const CsrView &adj,     //<! [in] a CSR adjacency matrix to count
-                      const size_t rowOffset, //<! [in] the first row to count
-                      const size_t numRows    //<! [in] the number of rows to count
+  uint64_t count_sync(const CsrView &adj,     //!< [in] a CSR adjacency matrix to count
+                      const size_t rowOffset, //!< [in] the first row to count
+                      const size_t numRows    //!< [in] the number of rows to count
   ) {
     count_async(adj, rowOffset, numRows);
     sync();

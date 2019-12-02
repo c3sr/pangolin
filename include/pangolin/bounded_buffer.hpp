@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <deque>
 
 #include "logger.hpp"
@@ -17,14 +18,14 @@ template <typename T, size_t N = 512> struct BoundedBuffer {
   typedef T value_type;
 
 private:
-  size_t head_;
-  size_t tail_;
-  size_t count_;
+  std::atomic<size_t> head_;
+  std::atomic<size_t> tail_;
+  std::atomic<size_t> count_;
   std::mutex mtx_;
   std::condition_variable notFull;  //!< block pushers until queue is not full
   std::condition_variable notEmpty; //!< block poppers until queue is not empty
   std::array<T, N> buffer_;
-  bool close_; //!< true if new values will never be added to the queue
+  std::atomic<bool> close_; //!< true if new values will never be added to the queue
 
 public:
   BoundedBuffer() : close_(false), head_(0), tail_(0), count_(0) {}
@@ -32,7 +33,7 @@ public:
   /*! move ctor
    */
   BoundedBuffer(BoundedBuffer &&other)
-      : close_(other.close_), head_(other.head_), tail_(other.tail_), count_(other.count_) {
+      : close_(other.close_.load()), head_(other.head_.load()), tail_(other.tail_.load()), count_(other.count_.load()) {
     buffer_ = std::move(other.buffer_);
     other.close_ = true;
     other.head_ = 0;
@@ -116,6 +117,61 @@ public:
     close_ = true;
     // wake up everyone who might be trying to pop from the queue
     notEmpty.notify_all();
+  }
+
+  /*! get a single value from the queue
+
+    return true if a value is removed. false otherwise.
+   */
+  T pop(bool &popped) {
+    T val;
+    std::unique_lock<std::mutex> lock(mtx_);
+
+    // wait until the buffer is not empty or it is closed
+    notEmpty.wait(lock, [this]() { return (!empty()) || close_; });
+
+    if (empty()) {
+      popped = false;
+    } else {
+      val = std::move(buffer_[tail_]);
+      advance_tail();
+      popped = true;
+    }
+
+    lock.unlock();
+
+    if (popped) {
+      // wake anyone waiting on the buffer to not be full
+      notFull.notify_all();
+    }
+
+    return val;
+  }
+
+  /*! get a single value from the queue
+
+    return true if a value is removed. false otherwise.
+   */
+  void push(T &&val) {
+    assert(!closed());
+    std::unique_lock<std::mutex> lock(mtx_);
+
+    // wait for the buffer to not be full
+    notFull.wait(lock, [this]() { return !full(); });
+
+    assert(!full());
+    assert(!closed());
+
+    buffer_[head_] = std::move(val);
+    advance_head();
+
+    lock.unlock();
+
+    // release anyone waiting on the buffer to not be empty
+    notEmpty.notify_all();
+
+    // SPDLOG_DEBUG(pangolin::logger::console, "pushed {}", numToAdd);
+    return;
   }
 
   bool empty() const { return count_ == 0; }
