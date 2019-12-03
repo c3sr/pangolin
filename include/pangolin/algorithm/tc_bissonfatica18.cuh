@@ -17,48 +17,9 @@
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/logger.hpp"
 #include "search.cuh"
+#include "pangolin/sparse/bitmap.cuh"
 
-template <typename T, typename Index> __device__ __forceinline__ void bitmap_set_atomic(T *bitmap, Index i) {
-  Index field = i / (sizeof(T) * CHAR_BIT);
-  Index bit = i % (sizeof(T) * CHAR_BIT);
-  T bits = T(1) << bit;
-  atomicOr(&bitmap[field], bits);
-}
 
-template <typename T, typename Index> __device__ __forceinline__ bool bitmap_get(T *bitmap, Index i) {
-  Index fieldIdx = i / Index(sizeof(T) * CHAR_BIT);
-  Index bitIdx = i % Index(sizeof(T) * CHAR_BIT);
-  T bits = bitmap[fieldIdx];
-  return (bits >> bitIdx) & T(1);
-}
-
-// clear all bits between [first, second]
-// may reset more bits than that
-template <typename T, typename Index> __device__ void block_bitmap_clear(T *bitmap, Index first, Index second) {
-  const Index firstIdx = first / Index(sizeof(T) * CHAR_BIT);
-  const Index secondIdx = second / Index(sizeof(T) * CHAR_BIT);
-  for (Index i = firstIdx + threadIdx.x; i <= secondIdx; i += blockDim.x) {
-    bitmap[i] = 0;
-  }
-}
-
-// clear all bits between [first, second]
-// may reset more bits than that
-template <typename T, typename Index>
-__device__ void warp_bitmap_clear(T *bitmap, Index first, Index second, const size_t lx) {
-  const Index firstIdx = first / Index(sizeof(T) * CHAR_BIT);
-  const Index secondIdx = second / Index(sizeof(T) * CHAR_BIT);
-  for (Index i = firstIdx + lx; i <= secondIdx; i += 32) {
-    bitmap[i] = 0;
-  }
-}
-
-// clear bit i
-// may clear more bits than that
-template <typename T, typename Index> __device__ __forceinline__ void bitmap_clear(T *bitmap, Index i) {
-  Index fieldIdx = i / Index(sizeof(T) * CHAR_BIT);
-  bitmap[fieldIdx] = 0;
-}
 
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
@@ -110,7 +71,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         }
         const Index c = regRow[i];
         if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
-          printf("compare row %u (from reg %lu)\n", c, i);
+          printf("  compare with row %u (from reg %lu)\n", c, i);
         }
         const Index jo_s = adj.rowPtr_[c];
         const Index jo_e = adj.rowPtr_[c + 1];
@@ -118,6 +79,10 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
         // count number of intersections between row j and regRow
         // expect regRow[i] to be a register
         Index jo = jo_s;
+        int64_t k;
+        if (jo < jo_e) {
+          k = adj.colInd_[jo];
+        }
 #pragma unroll(REG_SZ)
         for (size_t i = 0; i < REG_SZ; ++i) {
           if (jo >= jo_e) { // outside of j
@@ -127,27 +92,34 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
             break;
           }
 
-          // FIXME: don't need to reload k every time
-          int64_t k = adj.colInd_[jo];
-          if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
-            printf("compare %u (reg %lu) with %lu (%u)\n", regRow[i], i, k, jo);
+          int64_t c = regRow[i];
+
+          // go to next c
+          if (c < k) {
+            continue; // next c
           }
 
-          if (regRow[i] < k) {
-            continue;
-          }
-
-          while (regRow[i] > k) {
+          // go through k until it reaches c
+          while (c > k) {
             ++jo;
-            k = adj.colInd_[jo];
+            if (jo < jo_e) {
+              k = adj.colInd_[jo];
+            } else {
+              goto done; // triangle counting done
+            }
           }
 
-          if (regRow[i] == k) {
+          if (c == k) {
             ++threadCount;
-            ++jo;
-            continue;
+            k = adj.colInd_[++jo];
+            continue; // next c
           }
         }
+        done:
+      }
+
+      if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
+        printf("count %lu\n", threadCount);
       }
 
     } else { // otherwise, don't load row into registers
