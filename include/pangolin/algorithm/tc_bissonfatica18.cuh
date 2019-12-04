@@ -16,10 +16,16 @@
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/logger.hpp"
-#include "search.cuh"
 #include "pangolin/sparse/bitmap.cuh"
+#include "search.cuh"
 
-
+/*
+Max registers
+        th   bl   div
+3.5+:  255   64k  256
+7.0:   255   64k  256
+7.5:   255   64k  256
+*/
 
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void __launch_bounds__(BLOCK_DIM_X)
@@ -31,7 +37,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   typedef typename CsrView::index_type Index;
 
   // per-thread row
-  constexpr size_t REG_SZ = 34;
+  constexpr size_t REG_SZ = 32;
   Index regRow[REG_SZ];
 
   uint64_t threadCount = 0;
@@ -41,10 +47,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     const Index io_s = adj.rowPtr_[ti];
     const Index io_e = adj.rowPtr_[ti + 1];
 
-    if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
-      printf("row %u: [%u %u)\n", ti, io_s, io_e);
-    }
-
     // this row is empty, skip
     if (io_s == io_e) {
       continue;
@@ -53,11 +55,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     // if the row is short enough, copy to register file
     if (io_e - io_s < REG_SZ) {
 
-// copy row to local memory
-// expect regRow[i] to be a register access
+      // copy row to local memory
+      asm("/*load regs*/");
 #pragma unroll(REG_SZ)
       for (size_t i = 0; i < REG_SZ; ++i) {
         if (i < io_e - io_s) {
+
           regRow[i] = adj.colInd_[i + io_s];
         } else {
           break;
@@ -65,14 +68,12 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
       }
 
       // search through row
-      for (size_t i = 0; i < REG_SZ; ++i) {
-        if (io_s + i >= io_e) {
-          break;
-        }
-        const Index c = regRow[i];
-        if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
-          printf("  compare with row %u (from reg %lu)\n", c, i);
-        }
+      // could unroll this and c = regRow[i] instead
+      for (size_t i = io_s; i < io_e; ++i) {
+        // if (io_s + i >= io_e) {
+        //   break;
+        // }
+        const Index c = adj.colInd_[i];
         const Index jo_s = adj.rowPtr_[c];
         const Index jo_e = adj.rowPtr_[c + 1];
 
@@ -115,11 +116,8 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
             continue; // next c
           }
         }
-        done:
-      }
-
-      if (threadIdx.x + blockDim.x * blockIdx.x == 0) {
-        printf("count %lu\n", threadCount);
+      done:
+        asm("/*done*/");
       }
 
     } else { // otherwise, don't load row into registers
@@ -135,11 +133,13 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   }
 
   // Block-wide reduction of threadCount
+  asm("/*cub_reduction*/");
   typedef cub::BlockReduce<uint64_t, BLOCK_DIM_X> BlockReduce;
   __shared__ typename BlockReduce::TempStorage tempStorage;
   uint64_t aggregate = BlockReduce(tempStorage).Sum(threadCount);
 
   // Add to total count
+  asm("/*atomic_add*/");
   if (0 == threadIdx.x) {
     atomicAdd(count, aggregate);
   }
@@ -186,7 +186,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
   uint64_t threadCount = 0;
 
   // one warp per row
-  for (Index wi = wx; wi < adj.num_rows(); wi += WARPS_PER_BLOCK * gridDim.x) {
+  for (Index wi = wx + blockIdx.x * WARPS_PER_BLOCK; wi < adj.num_rows(); wi += WARPS_PER_BLOCK * gridDim.x) {
     const Index io_s = adj.rowPtr_[wi];
     const Index io_e = adj.rowPtr_[wi + 1];
 
@@ -196,7 +196,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
     }
 
     // if the row is short enough, copy to shared buffer
-    if (io_e - io_s < WARP_SHMEM_SZ) {
+    if (0 && io_e - io_s < WARP_SHMEM_SZ) {
 
       for (size_t i = lx; i < io_e - io_s; i += 32) {
         sharedRow[wx][i] = adj.colInd_[i + io_s];
@@ -205,7 +205,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
 
       // warp collaboratively searches each neighbord adj list in sharedRow
       for (size_t i = 0; i < io_e - io_s; i += 32) {
-        const Index c = sharedRow[wx][i + io_s];
+        const Index c = sharedRow[wx][i];
         const Index jo_s = adj.rowPtr_[c];
         const Index jo_e = adj.rowPtr_[c + 1];
         for (Index jo = jo_s + lx; jo < jo_e; jo += 32) {
@@ -227,6 +227,10 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
 
     } else { // otherwise, use bitmap
 
+      if (lx == 0 && wx + blockIdx.x * WARPS_PER_BLOCK == 0) {
+        printf("row %u %u %u\n", wi, io_s, io_e);
+      }
+
       // want all threads active for clearing bitmaps later
       // ceil (io_e / 32)
       Index warpBound = (io_e + 32 - 1) / 32 * 32;
@@ -236,6 +240,9 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
         const int64_t c = (io + lx < io_e) ? adj.colInd_[io + lx] : -1;
         if (c > -1) {
           bitmap_set_atomic(bitmap, c);
+          if (wx + blockIdx.x * WARPS_PER_BLOCK == 0) {
+            printf("  set %lu\n", c);
+          }
         }
         PANGOLIN_SYNC_WARP();
         for (short t = 0; t < 32; t++) {
@@ -247,22 +254,28 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
           const Index jo_e = adj.rowPtr_[j + 1];
           for (Index jo = jo_s + lx; jo < jo_e; jo += 32) {
             const int64_t k = adj.colInd_[jo];
-            threadCount += bitmap_get(bitmap, k);
+            bool get = bitmap_get(bitmap, k);
+            if (wx + blockIdx.x * WARPS_PER_BLOCK == 0 && get) {
+              printf("  found %lu\n", k);
+            }
+            threadCount += get;
           }
         }
       }
       PANGOLIN_SYNC_WARP();
-      if (io_s != io_e) {
-        const Index first = adj.colInd_[io_s];
-        const Index second = adj.colInd_[io_e - 1];
-        const size_t numEntries = io_e - io_s;                           // the number of set bits
-        const size_t numFields = (second - first) / sizeof(bitmap_type); // the range of fields that could be set
-        if (numFields < numEntries) {
-          warp_bitmap_clear(bitmap, first, second, lx);
-        } else {
-          for (Index i = io_s + lx; i < io_e; i += 32) {
-            bitmap_clear(bitmap, adj.colInd_[i]);
-          }
+      const Index first = adj.colInd_[io_s];
+      const Index second = adj.colInd_[io_e - 1];
+      const size_t numEntries = io_e - io_s; // the number of set bits
+      const size_t numFields =
+          (second - first + 1 + sizeof(bitmap_type) - 1) / sizeof(bitmap_type); // the range of fields that could be set
+      // if (lx == 0) {
+      //   printf("first = %u second = %u numFields = %lu numEntries = %lu\n", first, second, numFields, numEntries);
+      // }
+      if (numFields < numEntries) {
+        warp_bitmap_clear(bitmap, first, second, lx);
+      } else {
+        for (Index i = io_s + lx; i < io_e; i += 32) {
+          bitmap_clear(bitmap, adj.colInd_[i]);
         }
       }
 
@@ -461,16 +474,24 @@ private:
   cudaEvent_t kernelStop_;
   float time;
 
+  // device properties for computing kernel dimensions
+  int multiProcessorCount_;
+
 public:
   BissonFaticaTC(int dev, cudaStream_t stream = 0) : dev_(dev), stream_(stream), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     SPDLOG_TRACE(logger::console(), "mallocManaged");
     CUDA_RUNTIME(cudaMallocManaged(&count_, sizeof(*count_)));
-    zero_async<1>(count_, dev_, cudaStream_t(stream_)); // zero on the device that will do the counting
+    zero_async<1>(count_, dev_, stream_); // zero on the device that will do the counting
 
     CUDA_RUNTIME(cudaEventCreate(&kernelStart_));
     CUDA_RUNTIME(cudaEventCreate(&kernelStop_));
+
+    cudaDeviceProp props;
+    CUDA_RUNTIME(cudaGetDeviceProperties(&props, dev_));
+    multiProcessorCount_ = props.multiProcessorCount;
+    LOG(debug, "dev {} sm count {}", dev_, multiProcessorCount_);
   }
 
   BissonFaticaTC() : BissonFaticaTC(0) {}
@@ -496,7 +517,7 @@ public:
   template <typename Csr> void count_async(const Csr &adj, const size_t dimBlock = 256) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
-    zero_async<1>(count_, dev_, cudaStream_t(stream_));
+    zero_async<1>(count_, dev_, stream_);
     CUDA_RUNTIME(cudaGetLastError());
 
     // compute the average nnz per row
@@ -504,12 +525,15 @@ public:
     LOG(debug, "{} nnz per row", nnzPerRow);
 
     if (nnzPerRow < 3.5) { // thread_kernel
-      LOG(debug, "selected thread approach", nnzPerRow);
-
-      const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
-      thread_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj);
-      CUDA_RUNTIME(cudaGetLastError());
+      int maxActiveBlocks;
+      CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxActiveBlocks, thread_kernel<const_dimBlock, Csr>,
+                                                                 const_dimBlock, 0));
+      const int dimGrid = maxActiveBlocks * multiProcessorCount_;
+      LOG(debug, "thread_kernel: max blocks = {} grid = {}", maxActiveBlocks, dimGrid);
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));
+      thread_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj);
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
 
     } else if (nnzPerRow < 38) { // warp_kernel
       LOG(debug, "selected warp approach", nnzPerRow);
@@ -521,18 +545,20 @@ public:
       const size_t bitmapSz = bitmapSzPerWarp * numWarps;
       bitmaps_.resize(bitmapSz);
       zero_async(bitmaps_.data(), bitmaps_.size(), 0, cudaStream_t(stream_));
-
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
       warp_kernel<const_dimBlock>
           <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
-      CUDA_RUNTIME(cudaGetLastError());
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
 
     } else if (adj.num_rows() < 65536) { // block_shared_kernel
       LOG(debug, "selected block-shared approach", nnzPerRow);
       // determine the bitmap size
-      const size_t dimGrid = 10;
+
+      const int dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
       block_shared_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj);
-      CUDA_RUNTIME(cudaGetLastError());
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
 
     } else { // block_global_kernel
       LOG(debug, "selected block-global approach", nnzPerRow);
@@ -543,9 +569,10 @@ public:
       const size_t bitmapSz = bitmapSzPerBlock * dimGrid;
       bitmaps_.resize(bitmapSz);
       zero_async(bitmaps_.data(), bitmaps_.size(), 0, cudaStream_t(stream_));
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
       block_global_kernel<const_dimBlock>
           <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
-      CUDA_RUNTIME(cudaGetLastError());
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
     }
 
     /*
@@ -600,6 +627,8 @@ public:
     CUDA_RUNTIME(cudaEventElapsedTime(&millis, kernelStart_, kernelStop_));
     return millis / 1e3;
   }
+
+  double bitmap_time() const {}
 };
 
 } // namespace pangolin
