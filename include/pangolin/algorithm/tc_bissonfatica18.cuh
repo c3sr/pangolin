@@ -182,12 +182,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
   constexpr size_t SHMEM_SZ = SHMEM_KB * 1024 / sizeof(Index);
   constexpr size_t WARP_SHMEM_SZ = SHMEM_SZ / WARPS_PER_BLOCK;
   __shared__ Index sharedRow[WARPS_PER_BLOCK][WARP_SHMEM_SZ];
-
-  // zero shared memory
-  for (size_t i = lx; i < WARP_SHMEM_SZ; i += 32) {
-    sharedRow[wx][i] = 0;
-  }
-  PANGOLIN_SYNC_WARP();
+  static_assert(WARP_SHMEM_SZ > 0);
 
   uint64_t threadCount = 0;
 
@@ -199,32 +194,31 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
     // this row is empty, skip
     if (io_s == io_e) {
       continue;
-    }
-
-    // if the row is short enough, copy to shared buffer
-    if (1 || (io_e - io_s < WARP_SHMEM_SZ)) {
+    } else if (io_e - io_s < WARP_SHMEM_SZ) { // use shared memory if row is small enough
 
       for (size_t i = lx; i < io_e - io_s; i += 32) {
         sharedRow[wx][i] = adj.colInd_[i + io_s];
       }
       PANGOLIN_SYNC_WARP();
 
-      // warp collaboratively searches each neighbord adj list in sharedRow
-      for (size_t i = 0; i < io_e - io_s; i += 32) {
+      // warp collaboratively searches each neighbor adj list in sharedRow
+      for (size_t i = 0; i < io_e - io_s; ++i) {
         const Index c = sharedRow[wx][i];
         const Index jo_s = adj.rowPtr_[c];
         const Index jo_e = adj.rowPtr_[c + 1];
+
         for (Index jo = jo_s + lx; jo < jo_e; jo += 32) {
-          const int64_t k = adj.colInd_[jo];
-          // scan sharedRow from i (the index of c) backward to the first element smaller than k (the searched value)
-          for (int64_t si = i; si >= 0; --si) {
+          const Index k = adj.colInd_[jo];
+
+          // the neighboring row will have only numbers smaller than c
+          // so, only need to compare before sharedRow[i] == c
+          // furthermore, stop comparison once we run into a value smaller than k
+          for (int32_t si = i; si >= 0; --si) {
             if (sharedRow[wx][si] == k) {
               ++threadCount;
               break;
             } else if (sharedRow[wx][si] < k) {
               break;
-            } else {
-              assert(0 && "how did we get here");
             }
           }
         }
