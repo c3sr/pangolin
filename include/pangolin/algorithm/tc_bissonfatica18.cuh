@@ -535,17 +535,22 @@ public:
     } else if (selection == Kernel::warp || selection == Kernel::heuristic && nnzPerRow < 38) { // warp_kernel
       LOG(debug, "selected warp approach", nnzPerRow);
       // determine the bitmap size
-      const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
+
+      int maxActiveBlocks;
+      CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+          &maxActiveBlocks, warp_kernel<const_dimBlock, Csr, bitmap_type>, const_dimBlock, 0));
+      const int dimGrid = maxActiveBlocks * multiProcessorCount_;
+      LOG(debug, "warp_kernel: max blocks = {} grid = {}", maxActiveBlocks, dimGrid);
       const size_t numWarps = dimGrid * const_dimBlock / 32;
       const size_t bitmapSzPerWarp = (adj.num_rows() + sizeof(bitmap_type) - 1) / sizeof(bitmap_type);
       const size_t bitmapSz = bitmapSzPerWarp * numWarps;
       bitmaps_.resize(bitmapSz);
-      zero_async(bitmaps_.data(), bitmaps_.size(), 0, cudaStream_t(stream_));
-      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
+      zero_async(bitmaps_.data(), bitmaps_.size(), 0, stream_);
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));
       warp_kernel<const_dimBlock>
-          <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
-      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
+          <<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
 
     } else if (selection == Kernel::blockShared ||
                selection == Kernel::heuristic && adj.num_rows() < 65536) { // block_shared_kernel
