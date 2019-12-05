@@ -17,6 +17,7 @@
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/logger.hpp"
 #include "pangolin/sparse/bitmap.cuh"
+#include "reduction.cuh"
 #include "search.cuh"
 
 /*
@@ -145,7 +146,11 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   }
 }
 
-#define PANGOLIN_SYNC_WARP() __syncthreads()
+#if __CUDACC_VER_MAJOR__ >= 9
+#define PANGOLIN_SYNC_WARP() __syncwarp()
+#else
+#define PANGOLIN_SYNC_WARP()
+#endif
 
 template <size_t BLOCK_DIM_X, typename CsrView, typename bitmap_type>
 __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
@@ -160,8 +165,9 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
   // compute warp index
   constexpr size_t WARPS_PER_BLOCK = BLOCK_DIM_X / 32;
   static_assert(BLOCK_DIM_X % 32 == 0, "expect block size multiple of 32");
-  const size_t lx = threadIdx.x % 32; // lane idx
-  const size_t wx = threadIdx.x / 32; // warp idx
+  const int lx = threadIdx.x % 32; // lane idx
+  const int wx = threadIdx.x / 32; // warp idx
+  const size_t gwx = wx + WARPS_PER_BLOCK * blockIdx.x;
   const size_t warpsPerGrid = WARPS_PER_BLOCK * gridDim.x;
 
   // align global memory bitmaps to 512 bytes for each warp
@@ -186,7 +192,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
   uint64_t threadCount = 0;
 
   // one warp per row
-  for (Index wi = wx + blockIdx.x * WARPS_PER_BLOCK; wi < adj.num_rows(); wi += WARPS_PER_BLOCK * gridDim.x) {
+  for (Index wi = gwx; wi < adj.num_rows(); wi += warpsPerGrid) {
     const Index io_s = adj.rowPtr_[wi];
     const Index io_e = adj.rowPtr_[wi + 1];
 
@@ -196,7 +202,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
     }
 
     // if the row is short enough, copy to shared buffer
-    if (0 && io_e - io_s < WARP_SHMEM_SZ) {
+    if (1 || (io_e - io_s < WARP_SHMEM_SZ)) {
 
       for (size_t i = lx; i < io_e - io_s; i += 32) {
         sharedRow[wx][i] = adj.colInd_[i + io_s];
@@ -227,22 +233,15 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
 
     } else { // otherwise, use bitmap
 
-      if (lx == 0 && wx + blockIdx.x * WARPS_PER_BLOCK == 0) {
-        printf("row %u %u %u\n", wi, io_s, io_e);
-      }
-
       // want all threads active for clearing bitmaps later
-      // ceil (io_e / 32)
-      Index warpBound = (io_e + 32 - 1) / 32 * 32;
+      // ceil (io_e / 32) * 32
+      Index warpBound = ((io_e + 32 - 1) / 32) * 32;
 
       // warp collaboratively sets bits for row
       for (Index io = io_s; io < warpBound; io += 32) {
         const int64_t c = (io + lx < io_e) ? adj.colInd_[io + lx] : -1;
         if (c > -1) {
           bitmap_set_atomic(bitmap, c);
-          if (wx + blockIdx.x * WARPS_PER_BLOCK == 0) {
-            printf("  set %lu\n", c);
-          }
         }
         PANGOLIN_SYNC_WARP();
         for (short t = 0; t < 32; t++) {
@@ -255,9 +254,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
           for (Index jo = jo_s + lx; jo < jo_e; jo += 32) {
             const int64_t k = adj.colInd_[jo];
             bool get = bitmap_get(bitmap, k);
-            if (wx + blockIdx.x * WARPS_PER_BLOCK == 0 && get) {
-              printf("  found %lu\n", k);
-            }
             threadCount += get;
           }
         }
@@ -268,9 +264,6 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
       const size_t numEntries = io_e - io_s; // the number of set bits
       const size_t numFields =
           (second - first + 1 + sizeof(bitmap_type) - 1) / sizeof(bitmap_type); // the range of fields that could be set
-      // if (lx == 0) {
-      //   printf("first = %u second = %u numFields = %lu numEntries = %lu\n", first, second, numFields, numEntries);
-      // }
       if (numFields < numEntries) {
         warp_bitmap_clear(bitmap, first, second, lx);
       } else {
@@ -281,6 +274,13 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
 
       PANGOLIN_SYNC_WARP();
     }
+
+    // FIXME: debugging only
+    // uint64_t warpCount = pangolin::warp_sum(threadCount);
+    // if (lx == 0) {
+    // printf("%u\t%llu\n", wi, warpCount);
+    // }
+    // threadCount = 0;
   }
 
   // Block-wide reduction of threadCount
@@ -478,6 +478,8 @@ private:
   int multiProcessorCount_;
 
 public:
+  enum class Kernel { thread, warp, blockGlobal, blockShared, heuristic };
+
   BissonFaticaTC(int dev, cudaStream_t stream = 0) : dev_(dev), stream_(stream), count_(nullptr) {
     SPDLOG_TRACE(logger::console(), "set dev {}", dev_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
@@ -514,7 +516,8 @@ public:
     }
   }
 
-  template <typename Csr> void count_async(const Csr &adj, const size_t dimBlock = 256) {
+  template <typename Csr>
+  void count_async(const Csr &adj, const size_t dimBlock = 256, const Kernel selection = Kernel::heuristic) {
     assert(count_);
     CUDA_RUNTIME(cudaSetDevice(dev_));
     zero_async<1>(count_, dev_, stream_);
@@ -524,7 +527,7 @@ public:
     double nnzPerRow = double(adj.nnz()) / double(adj.num_rows());
     LOG(debug, "{} nnz per row", nnzPerRow);
 
-    if (nnzPerRow < 3.5) { // thread_kernel
+    if (selection == Kernel::thread || selection == Kernel::heuristic && nnzPerRow < 3.5) { // thread_kernel
       constexpr size_t const_dimBlock = 256;
       int maxActiveBlocks;
       CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxActiveBlocks, thread_kernel<const_dimBlock, Csr>,
@@ -535,7 +538,7 @@ public:
       thread_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj);
       CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
 
-    } else if (nnzPerRow < 38) { // warp_kernel
+    } else if (selection == Kernel::warp || selection == Kernel::heuristic && nnzPerRow < 38) { // warp_kernel
       LOG(debug, "selected warp approach", nnzPerRow);
       // determine the bitmap size
       const size_t dimGrid = 10;
@@ -550,7 +553,8 @@ public:
           <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
       CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
 
-    } else if (adj.num_rows() < 65536) { // block_shared_kernel
+    } else if (selection == Kernel::blockShared ||
+               selection == Kernel::heuristic && adj.num_rows() < 65536) { // block_shared_kernel
       LOG(debug, "selected block-shared approach", nnzPerRow);
       // determine the bitmap size
 
@@ -560,7 +564,7 @@ public:
       block_shared_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj);
       CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
 
-    } else { // block_global_kernel
+    } else if (selection == Kernel::blockGlobal || selection == Kernel::heuristic) { // block_global_kernel
       LOG(debug, "selected block-global approach", nnzPerRow);
       // determine the bitmap size
       const size_t dimGrid = 10;
@@ -573,6 +577,8 @@ public:
       block_global_kernel<const_dimBlock>
           <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
       CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
+    } else {
+      assert(0);
     }
 
     /*
