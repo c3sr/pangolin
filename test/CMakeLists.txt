@@ -242,13 +242,8 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
-  NAME test_tc_vertex_blocks_dyn
-  SRCS test_tc_vertex_blocks_dyn.cu
-)
-
-pangolin_add_gpu_test(
-  NAME test_tc_vertex_blocks_dyn_low_tri
-  SRCS test_tc_vertex_blocks_dyn_low_tri.cu
+  NAME test_tc_bissonfatica18
+  SRCS test_tc_bissonfatica18.cu
 )
 
 # pangolin_add_test(
