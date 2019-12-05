@@ -299,8 +299,9 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
   typedef uint32_t bitmap_type;
 
   // set up shared bitmap
-  constexpr size_t BITMAP_KB = 8;
+  constexpr size_t BITMAP_KB = 16;
   constexpr size_t BITMAP_MAX_FIELD = BITMAP_KB * 1024 / sizeof(bitmap_type);
+  constexpr size_t BITMAP_MAX_BIT = BITMAP_KB * 1024;
   __shared__ bitmap_type bitmap[BITMAP_MAX_FIELD];
   for (size_t i = threadIdx.x; i < BITMAP_MAX_FIELD; i += blockDim.x) {
     bitmap[i] = 0;
@@ -319,13 +320,17 @@ __global__ void __launch_bounds__(BLOCK_DIM_X)
     }
 
     // want all threads active for clearing bitmaps later
-    // ceil (io_e / BLOCK_DIM_X)
+    // ceil (io_e / BLOCK_DIM_X) * BLOCK_DIM_X
     Index blkBound = (io_e + BLOCK_DIM_X - 1) / BLOCK_DIM_X * BLOCK_DIM_X;
 
     // whole block collaboartively sets bits for parts of a row
     for (Index io = io_s; io < blkBound; io += blockDim.x) {
       const int64_t c = (io + threadIdx.x < io_e) ? adj.colInd_[io + threadIdx.x] : -1;
       if (c > -1) {
+        if (c >= BITMAP_MAX_BIT) {
+          printf("try to set %ld but %llu\n", c, BITMAP_MAX_BIT);
+        }
+        assert(c < BITMAP_MAX_BIT);
         bitmap_set_atomic(bitmap, c);
       }
       __syncthreads();
@@ -553,29 +558,35 @@ public:
       CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
 
     } else if (selection == Kernel::blockShared ||
-               selection == Kernel::heuristic && adj.num_rows() < 65536) { // block_shared_kernel
+               selection == Kernel::heuristic && adj.num_rows() < 16384) { // block_shared_kernel
       LOG(debug, "selected block-shared approach", nnzPerRow);
-      // determine the bitmap size
-
-      const int dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
-      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
-      block_shared_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj);
-      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
+      int maxActiveBlocks;
+      CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+          &maxActiveBlocks, block_shared_kernel<const_dimBlock, Csr>, const_dimBlock, 0));
+      const int dimGrid = maxActiveBlocks * multiProcessorCount_;
+      LOG(debug, "block_shared_kernel: max blocks = {} grid = {}", maxActiveBlocks, dimGrid);
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));
+      block_shared_kernel<const_dimBlock><<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj);
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
 
     } else if (selection == Kernel::blockGlobal || selection == Kernel::heuristic) { // block_global_kernel
       LOG(debug, "selected block-global approach", nnzPerRow);
-      // determine the bitmap size
-      const size_t dimGrid = 10;
       constexpr size_t const_dimBlock = 256;
+      int maxActiveBlocks;
+      CUDA_RUNTIME(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+          &maxActiveBlocks, block_global_kernel<const_dimBlock, Csr, bitmap_type>, const_dimBlock, 0));
+      const int dimGrid = maxActiveBlocks * multiProcessorCount_;
+      LOG(debug, "block_global_kernel: max blocks = {} grid = {}", maxActiveBlocks, dimGrid);
+      // determine the bitmap size
       const size_t bitmapSzPerBlock = (adj.num_rows() + sizeof(bitmap_type) - 1) / sizeof(bitmap_type);
       const size_t bitmapSz = bitmapSzPerBlock * dimGrid;
       bitmaps_.resize(bitmapSz);
-      zero_async(bitmaps_.data(), bitmaps_.size(), 0, cudaStream_t(stream_));
-      CUDA_RUNTIME(cudaEventRecord(kernelStart_, cudaStream_t(stream_)));
+      zero_async(bitmaps_.data(), bitmaps_.size(), 0, stream_);
+      CUDA_RUNTIME(cudaEventRecord(kernelStart_, stream_));
       block_global_kernel<const_dimBlock>
-          <<<dimGrid, const_dimBlock, 0, cudaStream_t(stream_)>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
-      CUDA_RUNTIME(cudaEventRecord(kernelStop_, cudaStream_t(stream_)));
+          <<<dimGrid, const_dimBlock, 0, stream_>>>(count_, adj, bitmaps_.data(), bitmaps_.size());
+      CUDA_RUNTIME(cudaEventRecord(kernelStop_, stream_));
     } else {
       assert(0);
     }
