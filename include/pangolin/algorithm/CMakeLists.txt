@@ -22,5 +22,6 @@ set(PANGOLIN_CU_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_block_binary.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_binary.cuh
   ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_cache_block_binary.cuh
+  ${CMAKE_CURRENT_SOURCE_DIR}/tc_vertex_blocks_dyn_low_tri.cuh
   PARENT_SCOPE
 )
