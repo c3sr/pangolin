@@ -13,7 +13,7 @@ static int64_t bitsAsInt(double d) {
   return i;
 }
 
-TEST_CASE("0") {
+TEST_CASE("BmtxStream") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::TRACE);
 

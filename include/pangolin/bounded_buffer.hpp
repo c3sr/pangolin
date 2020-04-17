@@ -44,14 +44,19 @@ public:
   /*! \brief Add as many values as possible from the front of vals to the buffer and return
 
     Will block until at least one element is added.
+
+    Return the number of added elements
    */
-  void push_some(std::deque<T> &vals //!< [inout] the source of values to add to
+  size_t push_some(std::deque<T> &vals //!< [inout] the source of values to add to
                                      //!< the BoundedBuffer
   ) {
     assert(!closed());
     std::unique_lock<std::mutex> lock(mtx_);
 
-    // wait for the buffer to not be full
+    /* 
+    wait until we are notified that there are open spots in the buffer.
+    This does not mean the buffer has space - there could have been multiple producers waiting, so someone else might fill up the buffer
+    */
     notFull.wait(lock, [this]() { return !full(); });
 
     assert(!full());
@@ -76,7 +81,7 @@ public:
     }
 
     // SPDLOG_DEBUG(pangolin::logger::console, "pushed {}", numToAdd);
-    return;
+    return numToAdd;
   }
 
   /*! \brief remove as many values from the BoundedBuffer as possible and return
@@ -91,10 +96,10 @@ public:
     // elements from the buffer
     vals.reserve(N);
 
+    /* block 
+    */
     std::unique_lock<std::mutex> lock(mtx_);
-
-    // wait until the buffer is not empty or it is closed
-    notEmpty.wait(lock, [this]() { return (!empty()) || close_; });
+    notEmpty.wait(lock, [this]() { return (!empty()) || closed(); });
 
     // if the buffer is closed, this could add no elements to vals
     while (!empty()) {
@@ -115,7 +120,7 @@ public:
   */
   void close() {
     close_ = true;
-    // wake up everyone who might be trying to pop from the queue
+    // wake up everyone trying to pop from the queue
     notEmpty.notify_all();
   }
 
@@ -128,7 +133,7 @@ public:
     std::unique_lock<std::mutex> lock(mtx_);
 
     // wait until the buffer is not empty or it is closed
-    notEmpty.wait(lock, [this]() { return (!empty()) || close_; });
+    notEmpty.wait(lock, [this]() { return (!empty()) || closed(); });
 
     if (empty()) {
       popped = false;
@@ -174,17 +179,27 @@ public:
     return;
   }
 
+  /* buffer is empty
+  */
   bool empty() const { return count_ == 0; }
+
+  /* buffer is full
+  */
   bool full() const { return count_ >= N; }
   size_t count() const { return count_; }
   bool closed() const { return close_; }
 
 private:
+
+/* update head_ 
+*/
   void advance_head() {
+    assert(count_ < N);
     head_ = (head_ + 1) % N;
     ++count_;
   }
   void advance_tail() {
+    assert(count_ > 0);
     tail_ = (tail_ + 1) % N;
     --count_;
   }

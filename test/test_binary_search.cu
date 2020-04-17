@@ -15,13 +15,13 @@ template <typename T> size_t ub(T searchVal, std::initializer_list<T> a) {
   return binary_search<Bounds::UPPER>(A.data(), A.size(), searchVal);
 }
 
-TEST_CASE("0") {
+TEST_CASE("binary_0") {
   pangolin::init();
   REQUIRE(0 == lb(0, {}));
   REQUIRE(0 == ub(0, {}));
 }
 
-TEST_CASE("1") {
+TEST_CASE("binary_1") {
   pangolin::init();
   REQUIRE(0 == lb(0, {0}));
   REQUIRE(1 == ub(0, {0}));
@@ -35,7 +35,7 @@ TEST_CASE("1") {
   REQUIRE(1 == ub(2, {1}));
 }
 
-TEST_CASE("2") {
+TEST_CASE("binary_2") {
   pangolin::init();
   REQUIRE(0 == lb(0, {0, 0}));
   REQUIRE(2 == ub(0, {0, 0}));
@@ -47,7 +47,7 @@ TEST_CASE("2") {
   REQUIRE(2 == ub(2, {0, 1}));
 }
 
-TEST_CASE("3") {
+TEST_CASE("binary_3") {
   pangolin::init();
   REQUIRE(1 == lb(1, {0, 1, 2}));
   REQUIRE(2 == ub(1, {0, 1, 2}));

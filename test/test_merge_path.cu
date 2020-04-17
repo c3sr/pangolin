@@ -13,7 +13,7 @@ template <typename T> size_t mp_ub(T diag, std::vector<T> A, std::vector<T> B) {
   return merge_path<Bounds::UPPER>(A.data(), A.size(), B.data(), B.size(), diag);
 }
 
-TEST_CASE("0") {
+TEST_CASE("merge_0") {
   pangolin::init();
 
   /*
@@ -49,7 +49,7 @@ TEST_CASE("0") {
   REQUIRE(4 == mp_ub(8u, a, b));
 }
 
-TEST_CASE("1") {
+TEST_CASE("merge_1") {
   pangolin::init();
 
   /*
@@ -92,7 +92,7 @@ TEST_CASE("1") {
   REQUIRE(4 == mp_ub(8u, a, b));
 }
 
-TEST_CASE("2") {
+TEST_CASE("merge_2") {
   pangolin::init();
 
   /*
