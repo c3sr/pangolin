@@ -84,7 +84,6 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/dense/cuda_zero_copy_vector.hpp
     include/pangolin/file/edge_list_file.hpp
     include/pangolin/generator/complete.hpp
-    include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
     include/pangolin/sparse/gpu_csr-impl.hpp
     include/pangolin/sparse/csr_coo.hpp
