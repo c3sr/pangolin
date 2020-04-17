@@ -9,14 +9,7 @@
 
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -135,5 +128,3 @@ PANGOLIN_HOST_DEVICE inline typename DeviceBuffer<T>::const_reference DeviceBuff
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST

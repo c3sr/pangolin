@@ -4,14 +4,7 @@
 
 #include "csr_coo.hpp"
 #include "pangolin/logger.hpp"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST __host__
-#define DEVICE __device__
-#else
-#define PANGOLIN_HOST
-#define DEVICE
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -160,5 +153,3 @@ template <typename Index, typename Vector> void CSRCOO<Index, Vector>::finish_ed
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST
-#undef DEVICE

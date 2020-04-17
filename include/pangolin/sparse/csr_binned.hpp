@@ -5,16 +5,8 @@
 #include "pangolin/dense/array_view.hpp"
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/logger.hpp"
-
 #include "pangolin/edge.hpp"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST __host__
-#define PANGOLIN_DEVICE __device__
-#else
-#define PANGOLIN_HOST
-#define PANGOLIN_DEVICE
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -44,9 +36,9 @@ public:
   const EdgeIndex *partitionStop_;  //!< offset in colInd_ where the partition ends
   const NodeIndex *colInd_;         //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return numRows_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_nodes() const noexcept { return numRows_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return numRows_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t num_nodes() const noexcept { return numRows_; }
 
   PANGOLIN_HOST EdgeIndex part_nnz() const noexcept {
     EdgeIndex nnz = 0;
@@ -58,7 +50,7 @@ public:
 
   /*! Return an ArrayView of row i of the CSR
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row(NodeIndex i) const noexcept {
+  PANGOLIN_HOST_DEVICE __forceinline__ const ArrayView<NodeIndex> row(NodeIndex i) const noexcept {
     const NodeIndex rowStart = rowStart_[i];
     const NodeIndex rowStop = rowStop_[i];
     return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
@@ -66,7 +58,7 @@ public:
 
   /*! Return an ArrayView of partition p of row i of the CSR
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ const ArrayView<NodeIndex> row_part(NodeIndex i) const noexcept {
+  PANGOLIN_HOST_DEVICE __forceinline__ const ArrayView<NodeIndex> row_part(NodeIndex i) const noexcept {
     const NodeIndex rowStart = partitionStart_[i];
     const NodeIndex rowStop = partitionStop_[i];
     return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
@@ -98,13 +90,13 @@ public:
   const EdgeIndex *kStopPtrs_;  //!< offsets in colInd_ where the partition ends
   NodeIndex *colInd_;           //!< non-zero column indices
 
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t partition_size() const noexcept { return partitionSize_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return numRows_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t partition_size() const noexcept { return partitionSize_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t nnz() const noexcept { return nnz_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t num_rows() const noexcept { return numRows_; }
 
   /*! Return an ArrayView of partition p of row i of the CSR
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ ArrayView<NodeIndex> row_j(NodeIndex i) const noexcept {
+  PANGOLIN_HOST_DEVICE __forceinline__ ArrayView<NodeIndex> row_j(NodeIndex i) const noexcept {
     assert(i < num_rows());
     const NodeIndex rowStart = jStartPtrs_[i];
     const NodeIndex rowStop = jStopPtrs_[i];
@@ -112,7 +104,7 @@ public:
     return ArrayView<NodeIndex>(&colInd_[rowStart], size_t(rowStop - rowStart));
   }
 
-  PANGOLIN_HOST PANGOLIN_DEVICE __forceinline__ ArrayView<NodeIndex> row_k(NodeIndex i) const noexcept {
+  PANGOLIN_HOST_DEVICE __forceinline__ ArrayView<NodeIndex> row_k(NodeIndex i) const noexcept {
     assert(i < num_rows());
     const NodeIndex rowStart = kStartPtrs_[i];
     const NodeIndex rowStop = kStopPtrs_[i];
@@ -390,7 +382,7 @@ public:
 
   /*! The total capacity of the underlying containers in bytes
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t capacity_bytes() const noexcept {
+  PANGOLIN_HOST_DEVICE uint64_t capacity_bytes() const noexcept {
     uint64_t cap = 0;
     for (const auto &rowPtr : rowPtrs_) {
       cap += rowPtr.capacity() * sizeof(typename decltype(rowPtr)::value_type);
@@ -401,7 +393,7 @@ public:
 
   /*! The total size of the underlying containers in bytes
    */
-  PANGOLIN_HOST PANGOLIN_DEVICE uint64_t size_bytes() const noexcept {
+  PANGOLIN_HOST_DEVICE uint64_t size_bytes() const noexcept {
     uint64_t sz = 0;
     for (const auto &rowPtr : rowPtrs_) {
       sz += rowPtr.size() * sizeof(typename decltype(rowPtr)::value_type);
@@ -413,5 +405,3 @@ public:
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST
-#undef PANGOLIN_DEVICE

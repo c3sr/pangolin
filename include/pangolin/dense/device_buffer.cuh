@@ -1,14 +1,8 @@
 #pragma once
 
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
-
 #include <cstdlib>
+
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -88,8 +82,5 @@ public:
 };
 
 } // namespace pangolin
-
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST
 
 #include "device_buffer-impl.cuh"

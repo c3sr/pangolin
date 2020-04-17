@@ -124,7 +124,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) tc_vertex_bitvector_kernel(
 
     } else { // use another approach
       if (0 == threadIdx.x) {
-        printf("AHH Block %u row %d wont fit, needs %lu\n", blockIdx.x, blockRow, rowSz);
+        printf("AHH Block %d row %lu wont fit, needs %lu\n", blockIdx.x, uint64_t(blockRow), uint64_t(rowSz));
       }
     }
   }

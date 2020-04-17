@@ -5,14 +5,8 @@
 #include "cmm/cmm.hpp"
 
 #include "pangolin/logger.hpp"
+#include "pangolin/macro.h"
 
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
 
 namespace pangolin {
 template <typename T, typename Allocator = cmm::Managed<T>> class Vector {
@@ -223,5 +217,3 @@ public:
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST

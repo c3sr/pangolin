@@ -4,14 +4,7 @@
 
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/edge.hpp"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST __host__
-#define PANGOLIN_DEVICE __device__
-#else
-#define PANGOLIN_HOST
-#define PANGOLIN_DEVICE
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -200,5 +193,3 @@ public:
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST
-#undef PANGOLIN_DEVICE

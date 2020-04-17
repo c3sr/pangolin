@@ -3,18 +3,8 @@
 #include <functional>
 
 #include "pangolin/dense/vector.cuh"
-
 #include "pangolin/edge_list.hpp"
-
-#ifdef __CUDACC__
-#define HOST __host__
-#define DEVICE __device__
-#define INLINE __forceinline__
-#else
-#define HOST
-#define DEVICE
-#define INLINE
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -39,15 +29,15 @@ public:
   const Index *rowInd_; //!< non-zero row indices
   const Index *colInd_; //!< non-zero column indices
 
-  HOST DEVICE INLINE uint64_t nnz() const { return nnz_; }
-  HOST DEVICE INLINE uint64_t num_rows() const { return num_rows_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t nnz() const { return nnz_; }
+  PANGOLIN_HOST_DEVICE __forceinline__ uint64_t num_rows() const { return num_rows_; }
 
-  INLINE const Index *row_ptr() const { return rowPtr_; }                    //!< row offset array
-  INLINE const Index *col_ind() const { return colInd_; }                    //!< column index array
-  INLINE const Index *row_ind() const { return rowInd_; }                    //!< row index array
-  HOST DEVICE INLINE const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
-  HOST DEVICE INLINE const Index *device_col_ind() const { return colInd_; } //!< column index array
-  HOST DEVICE INLINE const Index *device_row_ind() const { return rowInd_; } //!< row index array
+  __forceinline__ const Index *row_ptr() const { return rowPtr_; }                    //!< row offset array
+  __forceinline__ const Index *col_ind() const { return colInd_; }                    //!< column index array
+  __forceinline__ const Index *row_ind() const { return rowInd_; }                    //!< row index array
+  PANGOLIN_HOST_DEVICE __forceinline__ const Index *device_row_ptr() const { return rowPtr_; } //!< row offset array
+  PANGOLIN_HOST_DEVICE __forceinline__ const Index *device_col_ind() const { return colInd_; } //!< column index array
+  PANGOLIN_HOST_DEVICE __forceinline__ const Index *device_row_ind() const { return rowInd_; } //!< row index array
 };
 
 /*! \brief A hybrid CSRCOO matrix
@@ -69,7 +59,7 @@ public:
   Vector rowPtr_; //!< offset in colInd_/rowInd_ that each row starts at
   Vector colInd_; //!< non-zero column indices
   Vector rowInd_; //!< non-zero row indices
-  HOST DEVICE uint64_t nnz() const {
+  PANGOLIN_HOST_DEVICE uint64_t nnz() const {
     assert(colInd_.size() == rowInd_.size());
     return colInd_.size();
   }                           //!< number of non-zeros
@@ -79,7 +69,7 @@ public:
 
   0 if rowPtr_.size() is 0, otherwise rowPtr_.size() - 1
    */
-  HOST DEVICE uint64_t num_rows() const {
+  PANGOLIN_HOST_DEVICE uint64_t num_rows() const {
     if (rowPtr_.size() == 0) {
       return 0;
     } else {
@@ -132,7 +122,7 @@ public:
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on all data
    */
-  HOST void read_mostly() {
+  PANGOLIN_HOST void read_mostly() {
     rowPtr_.read_mostly();
     rowInd_.read_mostly();
     colInd_.read_mostly();
@@ -140,7 +130,7 @@ public:
 
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on all data
    */
-  HOST void accessed_by(const int dev) {
+  PANGOLIN_HOST void accessed_by(const int dev) {
     rowPtr_.accessed_by(dev);
     rowInd_.accessed_by(dev);
     colInd_.accessed_by(dev);
@@ -148,7 +138,7 @@ public:
 
   /*! call cudaMemPrefetchAsync(..., dev) on all data
    */
-  HOST void prefetch_async(const int dev, cudaStream_t stream = 0) {
+  PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0) {
     rowPtr_.prefetch_async(dev, stream);
     rowInd_.prefetch_async(dev, stream);
     colInd_.prefetch_async(dev, stream);
@@ -156,7 +146,7 @@ public:
 
   /*! Call shrink_to_fit on the underlying containers
    */
-  HOST void shrink_to_fit() {
+  PANGOLIN_HOST void shrink_to_fit() {
     rowPtr_.shrink_to_fit();
     rowInd_.shrink_to_fit();
     colInd_.shrink_to_fit();
@@ -164,14 +154,14 @@ public:
 
   /*! The total capacity of the underlying containers in bytes
    */
-  HOST uint64_t capacity_bytes() const noexcept {
+  PANGOLIN_HOST uint64_t capacity_bytes() const noexcept {
     return rowPtr_.capacity() * sizeof(typename decltype(rowPtr_)::value_type) +
            rowInd_.capacity() * sizeof(typename decltype(rowInd_)::value_type) +
            colInd_.capacity() * sizeof(typename decltype(colInd_)::value_type);
   }
   /*! The total size of the underlying containers in bytes
    */
-  HOST uint64_t size_bytes() const noexcept {
+  PANGOLIN_HOST uint64_t size_bytes() const noexcept {
     return rowPtr_.size() * sizeof(typename decltype(rowPtr_)::value_type) +
            rowInd_.size() * sizeof(typename decltype(rowInd_)::value_type) +
            colInd_.size() * sizeof(typename decltype(colInd_)::value_type);
@@ -181,15 +171,12 @@ public:
   const Index *col_ind() const { return colInd_.data(); } //!< column index array
   const Index *row_ind() const { return rowInd_.data(); } //!< row index array
 
-  HOST DEVICE const Index *device_row_ptr() const { return rowPtr_.data(); } //!< row offset array
-  HOST DEVICE const Index *device_col_ind() const { return colInd_.data(); } //!< column index array
-  HOST DEVICE const Index *device_row_ind() const { return rowInd_.data(); } //!< row index array
+  PANGOLIN_HOST_DEVICE const Index *device_row_ptr() const { return rowPtr_.data(); } //!< row offset array
+  PANGOLIN_HOST_DEVICE const Index *device_col_ind() const { return colInd_.data(); } //!< column index array
+  PANGOLIN_HOST_DEVICE const Index *device_row_ind() const { return rowInd_.data(); } //!< row index array
 };
 
 } // namespace pangolin
 
-#undef HOST
-#undef DEVICE
-#undef INLINE
 
 #include "csr_coo-impl.hpp"

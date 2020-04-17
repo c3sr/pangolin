@@ -4,14 +4,7 @@
 
 #include "pangolin/utilities.hpp"
 #include "vector.cuh"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -64,8 +57,5 @@ public:
 
   PANGOLIN_HOST void sync() { CUDA_RUNTIME(cudaStreamSynchronize(stream_)); }
 };
-
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST
 
 } // namespace pangolin

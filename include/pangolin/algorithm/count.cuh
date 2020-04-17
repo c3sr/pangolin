@@ -5,13 +5,14 @@
 #include "binary_search.cuh"
 #include "pangolin/atomic_add.cuh"
 #include "search.cuh"
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
 /*! \brief return the number of common elements between sorted lists a and b
  */
 template <typename T>
-__host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
+PANGOLIN_HOST_DEVICE static uint64_t serial_sorted_count_linear(const T *const aBegin, //!< beginning of a
                                                                const T *const aEnd,   //!< end of a
                                                                const T *const bBegin, //!< beginning of b
                                                                const T *const bEnd    //!< end of b
@@ -62,7 +63,7 @@ __host__ __device__ static uint64_t serial_sorted_count_linear(const T *const aB
 /*! \brief return the number of common elements between sorted lists A and B
  */
 template <typename T>
-__host__ __device__ static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
+PANGOLIN_HOST_DEVICE static size_t serial_sorted_count_linear(const T *const A, //!< beginning of a
                                                              const size_t aSz,
                                                              const T *const B, //!< beginning of b
                                                              const size_t bSz) {
@@ -75,7 +76,7 @@ __host__ __device__ static size_t serial_sorted_count_linear(const T *const A, /
   search method is binary search
  */
 template <typename T>
-__host__ __device__ static uint8_t serial_sorted_count_binary(const T *const array, //!< [in] array to search through
+PANGOLIN_HOST_DEVICE static uint8_t serial_sorted_count_binary(const T *const array, //!< [in] array to search through
                                                               size_t left,          //!< [in] lower bound of search
                                                               size_t right,         //!< [in] upper bound of search
                                                               const T search_val    //!< [in] value to search for
