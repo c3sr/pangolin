@@ -241,11 +241,12 @@ configure_file (
 #   $<INSTALL_INTERFACE:include>
 # )
 target_include_directories(pangolin INTERFACE
-  $<BUILD_INTERFACE:
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
-  > 
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include> 
   $<INSTALL_INTERFACE:include>
+)
+target_include_directories(pangolin INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/thirdparty> 
+  $<INSTALL_INTERFACE:thirdparty>
 )
 
 include(CMakePackageConfigHelpers)
