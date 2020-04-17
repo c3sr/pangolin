@@ -4,7 +4,7 @@ namespace pangolin {
 
 /*! Broadcast value from threadIdx.x root to all threads in the warp
  */
-template <size_t WARPS_PER_BLOCK, typename T> __device__ __forceinline__ T warp_broadcast(const T val, const int root) {
+template <typename T> __device__ __forceinline__ T warp_broadcast(const T val, const int root) {
 
   static_assert(sizeof(T) % sizeof(int) == 0, "need to zero out some bytes of ints");
 

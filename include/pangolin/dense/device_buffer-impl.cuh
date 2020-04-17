@@ -115,10 +115,9 @@ template <typename T> PANGOLIN_HOST void DeviceBuffer<T>::resize(size_t n) {
     CUDA_RUNTIME(cudaFree(data_));
     data_ = nullptr;
     if (n > 0) {
-      set_device();
       CUDA_RUNTIME(cudaMalloc(&data_, n * sizeof(value_type)));
-      capacity_ = n;
     }
+    capacity_ = n;
   }
 }
 
