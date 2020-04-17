@@ -18,7 +18,7 @@ namespace pangolin {
 template <typename Index, typename Vector> uint64_t CSRCOO<Index, Vector>::num_nodes() const { return num_rows(); }
 
 template <typename Index, typename Vector>
-CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &)) {
+CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edgelist(const edge_list_type &es, bool (*edgeFilter)(const edge_type &)) {
   CSRCOO csr;
 
   if (es.size() == 0) {
@@ -28,8 +28,8 @@ CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edgelist(const EdgeList &es, b
 
   for (const auto &edge : es) {
 
-    const Index src = static_cast<Index>(edge.first);
-    const Index dst = static_cast<Index>(edge.second);
+    const Index src = static_cast<Index>(edge.src);
+    const Index dst = static_cast<Index>(edge.dst);
 
     // edge has a new src and should be in a new row
     // even if the edge is filtered out, we need to add empty rows
@@ -63,7 +63,7 @@ CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edgelist(const EdgeList &es, b
 */
 template <typename Index, typename Vector>
 template <typename EdgeIter>
-CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(EdgeTy<Index>)> f) {
+CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(DiEdge<Index>)> f) {
   CSRCOO<Index, Vector> coo;
 
   if (begin == end) {
@@ -78,11 +78,11 @@ CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter
   size_t acceptedEdges = 0;
 
   for (auto ei = begin; ei != end; ++ei) {
-    EdgeTy<Index> edge = *ei;
-    const Index src = edge.first;
-    const Index dst = edge.second;
+    DiEdge<Index> edge = *ei;
+    const Index src = edge.src;
+    const Index dst = edge.dst;
 
-    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.src, edge.dst);
 
     if (f(edge)) {
       ++acceptedEdges;
@@ -92,7 +92,7 @@ CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter
         // expecting inputs to be sorted by src, so it should be at least
         // as big as the current largest row we have recored
         assert(src >= coo.rowPtr_.size() && "are edges not sorted by source?");
-        SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, coo.rowPtr_.size());
+        SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.src, coo.rowPtr_.size());
         coo.rowPtr_.push_back(coo.colInd_.size());
       }
 
@@ -126,9 +126,9 @@ CSRCOO<Index, Vector> CSRCOO<Index, Vector>::from_edges(EdgeIter begin, EdgeIter
   return coo;
 }
 
-template <typename Index, typename Vector> void CSRCOO<Index, Vector>::add_next_edge(const EdgeTy<Index> &e) {
-  const Index src = e.first;
-  const Index dst = e.second;
+template <typename Index, typename Vector> void CSRCOO<Index, Vector>::add_next_edge(const DiEdge<Index> &e) {
+  const Index src = e.src;
+  const Index dst = e.dst;
   SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
 
   // edge has a new src and should be in a new row

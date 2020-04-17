@@ -71,6 +71,7 @@ int node_of_cpu(const int cpu) {
     return -1;
   }
 #endif // USE_NUMA
+  (void) cpu;
   return 0;
 }
 
@@ -161,8 +162,8 @@ inline void bind(const int node //!< NUMA node to bind to
     LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
   }
 #else  // USE_NUMA == 1
+  (void) node;
   LOG(debug, "USE_NUMA not defined");
-  (void) bind;
 #endif // USE_NUMA == 1
 }
 

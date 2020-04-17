@@ -72,13 +72,11 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/cusparse.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
     include/pangolin/edge.hpp
-    include/pangolin/edge_list.hpp
     include/pangolin/init.hpp
     include/pangolin/logger.hpp
     include/pangolin/numa.hpp
     include/pangolin/pangolin.hpp
     include/pangolin/par_graph.hpp
-    include/pangolin/types.hpp
     include/pangolin/utilities.hpp
     include/pangolin/allocator/cuda_managed.hpp
     include/pangolin/allocator/cuda_zero_copy.hpp

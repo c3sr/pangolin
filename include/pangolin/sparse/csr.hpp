@@ -3,8 +3,7 @@
 #include <functional>
 
 #include "pangolin/dense/vector.cuh"
-#include "pangolin/edge_list.hpp"
-#include "pangolin/types.hpp"
+#include "pangolin/edge.hpp"
 
 #ifdef __CUDACC__
 #define PANGOLIN_HOST __host__
@@ -76,12 +75,12 @@ public:
   */
   template <typename EdgeIter>
   static CSR<Index> from_edges(EdgeIter begin, EdgeIter end,
-                               std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) {
+                               std::function<bool(DiEdge<Index>)> f = [](DiEdge<Index> e) {
                                  (void)e;
                                  return true;
                                });
 
-  void add_next_edge(const EdgeTy<Index> &e);
+  void add_next_edge(const DiEdge<Index> &e);
   void finish_edges();
 
   CSRView<Index> view() const; //!< create a CSRView for this CSR

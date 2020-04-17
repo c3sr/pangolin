@@ -21,12 +21,12 @@ void count(uint64_t expected, const std::string &graphFile, VertexBlocksCacheBlo
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<uint64_t>> edges;
-      std::vector<EdgeTy<uint64_t>> fileEdges;
+      std::vector<DiEdge<NodeTy>> edges;
+      std::vector<DiEdge<NodeTy>> fileEdges;
       while (file.get_edges(fileEdges, 10)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+      auto upperTriangularFilter = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
       auto csr = CSR<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csr.view()));
@@ -46,7 +46,7 @@ TEST_CASE("ctor", "[gpu]") {
     // complete graph with 3 nodes
     generator::Complete<NodeTy> g(3);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(csr.nnz() == 3);
@@ -60,7 +60,7 @@ TEST_CASE("ctor", "[gpu]") {
     // complete graph with 4 nodes
     generator::Complete<NodeTy> g(4);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(csr.nnz() == 6);
@@ -75,7 +75,7 @@ TEST_CASE("ctor", "[gpu]") {
     generator::HubSpoke<NodeTy> g(3);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -91,7 +91,7 @@ TEST_CASE("ctor", "[gpu]") {
 
     generator::Complete<NodeTy> g(4);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
     REQUIRE(csr.nnz() == 6);
 
@@ -107,7 +107,7 @@ TEST_CASE("ctor", "[gpu]") {
     generator::HubSpoke<NodeTy> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -123,7 +123,7 @@ TEST_CASE("ctor", "[gpu]") {
 
     generator::Complete<NodeTy> g(539);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csr.view(), 0, 270);   // first 270 rows
@@ -140,7 +140,7 @@ TEST_CASE("ctor", "[gpu]") {
 
     generator::Complete<NodeTy> g(539);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csr.view(), 0, 270);   // first 270 rows

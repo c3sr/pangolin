@@ -3,8 +3,8 @@
 #include <cassert>
 #include <string>
 
-#include "pangolin/edge_list.hpp"
 #include "pangolin/logger.hpp"
+#include "pangolin/edge.hpp"
 
 namespace pangolin {
 
@@ -38,7 +38,7 @@ private:
     \return the number of edges read
   */
   template <typename T>
-  size_t read_bel(EdgeTy<T> *ptr, //!< buffer for edges (allocated by caller)
+  size_t read_bel(DiEdge<T> *ptr, //!< buffer for edges (allocated by caller)
                   const size_t n  //!< number of edges to read
   ) {
     if (fp_ == nullptr) {
@@ -73,16 +73,16 @@ private:
       uint64_t src, dst;
       std::memcpy(&src, &belBuf_[i * 24 + 8], 8);
       std::memcpy(&dst, &belBuf_[i * 24 + 0], 8);
-      ptr[i].first = src;
-      ptr[i].second = dst;
-      SPDLOG_TRACE(logger::console(), "read {} -> {}", ptr[i].first, ptr[i].second);
+      ptr[i].src = src;
+      ptr[i].dst = dst;
+      SPDLOG_TRACE(logger::console(), "read {} -> {}", ptr[i].src, ptr[i].dst);
     }
 
     // no characters extracted or parsing error
     return numRead;
   }
 
-  template <typename T> size_t read_tsv(EdgeTy<T> *ptr, const size_t n) {
+  template <typename T> size_t read_tsv(DiEdge<T> *ptr, const size_t n) {
 
     assert(ptr != nullptr);
     assert(fp_ != nullptr);
@@ -102,8 +102,8 @@ private:
           exit(-1);
         }
       }
-      ptr[i].first = static_cast<T>(src);
-      ptr[i].second = static_cast<T>(dst);
+      ptr[i].src = static_cast<T>(src);
+      ptr[i].dst = static_cast<T>(dst);
     }
     return i;
   }
@@ -147,7 +147,7 @@ public:
   */
   template <typename T>
   size_t
-  get_edges(std::vector<EdgeTy<T>> &edges, //!< [out] the read edges. Resized to the number of successfully read edges
+  get_edges(std::vector<DiEdge<T>> &edges, //!< [out] the read edges. Resized to the number of successfully read edges
             const size_t n                 //!< [in] the number of edges to try to read
   ) {
     SPDLOG_TRACE(logger::console(), "requested {} edges", n);

@@ -4,9 +4,9 @@
 
 #include "pangolin/dense/array_view.hpp"
 #include "pangolin/dense/vector.cuh"
-#include "pangolin/edge_list.hpp"
 #include "pangolin/logger.hpp"
-#include "pangolin/types.hpp"
+
+#include "pangolin/edge.hpp"
 
 #ifdef __CUDACC__
 #define PANGOLIN_HOST __host__
@@ -31,7 +31,7 @@ template <typename NodeIndex, typename EdgeIndex> class CSRBinnedView {
 public:
   typedef EdgeIndex edge_index_type;
   typedef NodeIndex node_index_type;
-  typedef EdgeTy<NodeIndex> edge_type;
+  typedef DiEdge<NodeIndex> edge_type;
 
 private:
   uint64_t nnz_;     //!< number of non-zeros
@@ -84,7 +84,7 @@ template <typename NodeIndex, typename EdgeIndex> class TwoColView {
 public:
   typedef EdgeIndex edge_index_type;
   typedef NodeIndex node_index_type;
-  typedef EdgeTy<NodeIndex> edge_type;
+  typedef DiEdge<NodeIndex> edge_type;
 
 private:
   uint64_t nnz_;
@@ -141,7 +141,7 @@ private:
 public:
   typedef EdgeIndex edge_index_type;
   typedef NodeIndex node_index_type;
-  typedef EdgeTy<NodeIndex> edge_type;
+  typedef DiEdge<NodeIndex> edge_type;
 
   std::vector<Vector<EdgeIndex>>
       rowPtrs_; //!< NUM_PARTS+1 offsets in colInd where each partition starts at. Final array is where row ends
@@ -182,11 +182,11 @@ public:
 
   /*!
    */
-  void add_next_edge(const Edge &edge) {
+  void add_next_edge(const edge_type &edge) {
 
-    const NodeIndex src = edge.first;
-    const NodeIndex dst = edge.second;
-    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.first, edge.second);
+    const NodeIndex src = edge.src;
+    const NodeIndex dst = edge.dst;
+    SPDLOG_TRACE(logger::console(), "handling edge {}->{}", edge.src, edge.dst);
 
     // for an edge with src 0, we should have no more than 1 row
     assert(src + 1 >= num_rows() && "edges must be sorted by src");
@@ -195,7 +195,7 @@ public:
     while (num_rows() <= src) {
       // expecting inputs to be sorted by src, so it should be at least
       // as big as the current largest row we have recored
-      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.first, num_rows());
+      SPDLOG_TRACE(logger::console(), "node {} edges start at {}", edge.src, num_rows());
 
       // every partition starts at the beginning of the new row
       for (auto &rowPtr : rowPtrs_) {
@@ -207,8 +207,8 @@ public:
 
     // every partition after the one this edge is in starts after this edge
     size_t edgePartIdx = min(dst / partitionSize_, numParts_ - 1); // cap in case the estimated max node is wrong
-    SPDLOG_TRACE(logger::console(), "edge {}->{} in partition {}", edge.first, edge.second, edgePartIdx);
-    // LOG(debug, "edge {}->{} in partition {}", edge.first, edge.second, edgePartIdx);
+    SPDLOG_TRACE(logger::console(), "edge {}->{} in partition {}", edge.src, edge.dst, edgePartIdx);
+    // LOG(debug, "edge {}->{} in partition {}", edge.src, edge.dst, edgePartIdx);
     for (size_t incPartIdx = edgePartIdx + 1; incPartIdx < rowPtrs_.size(); ++incPartIdx) {
       auto &rowPtr = rowPtrs_[incPartIdx];
       assert(!rowPtr.empty() && "expecting there to be at least one row");
@@ -243,7 +243,7 @@ public:
   from_edges(EdgeIter begin, EdgeIter end,
              const NodeIndex numNodes,   //!< estimate of the maximum node that will be seen
              const EdgeIndex numEntries, //!< estimate of the number of edges
-             std::function<bool(EdgeTy<NodeIndex>)> f = [](EdgeTy<NodeIndex> e) {
+             std::function<bool(DiEdge<NodeIndex>)> f = [](DiEdge<NodeIndex> e) {
                (void)e;
                return true;
              }) {
@@ -256,8 +256,8 @@ public:
 
     for (auto ei = begin; ei != end; ++ei) {
       auto edge = *ei;
-      const NodeIndex src = edge.first;
-      const NodeIndex dst = edge.second;
+      const NodeIndex src = edge.src;
+      const NodeIndex dst = edge.dst;
       if (f(edge)) {
         csr.add_next_edge(edge);
       }

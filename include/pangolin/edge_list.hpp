@@ -2,9 +2,11 @@
 
 #include <vector>
 
-#include "pangolin/edge.hpp"
-#include "pangolin/namespace.hpp"
-
+#include "edge.hpp"
 namespace pangolin {
-typedef std::vector<Edge> EdgeList;
+
+
+template <typename T>
+using DiEdgeList = std::vector<DiEdge<T>>;
+
 } // namespace pangolin

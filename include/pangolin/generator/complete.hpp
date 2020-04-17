@@ -49,9 +49,9 @@ public:
     }
 
   public:
-    const EdgeTy<Node> operator*() const {
+    const DiEdge<Node> operator*() const {
       assert(!done());
-      return EdgeTy<Node>(get_src(), get_dst());
+      return DiEdge<Node>(get_src(), get_dst());
     }
 
     iterator &operator++() // ++prefix

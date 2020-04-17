@@ -4,6 +4,7 @@
 
 #include "csr.hpp"
 #include "pangolin/logger.hpp"
+#include "pangolin/edge.hpp"
 
 namespace pangolin {
 
@@ -34,7 +35,7 @@ template <typename Index> uint64_t CSR<Index>::num_nodes() const {
 
 template <typename Index>
 template <typename EdgeIter>
-CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(EdgeTy<Index>)> f) {
+CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bool(DiEdge<Index>)> f) {
   CSR<Index> csr;
 
   if (begin == end) {
@@ -45,7 +46,7 @@ CSR<Index> CSR<Index>::from_edges(EdgeIter begin, EdgeIter end, std::function<bo
   bool acceptedEdges = false;
 
   for (auto ei = begin; ei != end; ++ei) {
-    EdgeTy<Index> edge = *ei;
+    DiEdge<Index> edge = *ei;
     if (f(edge)) {
       acceptedEdges = true;
       csr.add_next_edge(edge);
@@ -83,9 +84,9 @@ template <typename Index> PANGOLIN_HOST void CSR<Index>::prefetch_async(const in
   colInd_.prefetch_async(dev, stream);
 }
 
-template <typename Index> void CSR<Index>::add_next_edge(const EdgeTy<Index> &e) {
-  const Index src = e.first;
-  const Index dst = e.second;
+template <typename Index> void CSR<Index>::add_next_edge(const DiEdge<Index> &e) {
+  const Index src = e.src;
+  const Index dst = e.dst;
 
   SPDLOG_TRACE(logger::console(), "handling edge {}->{}", src, dst);
 

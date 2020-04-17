@@ -3,8 +3,8 @@
 #include <functional>
 
 #include "pangolin/dense/vector.cuh"
+
 #include "pangolin/edge_list.hpp"
-#include "pangolin/types.hpp"
 
 #ifdef __CUDACC__
 #define HOST __host__
@@ -34,7 +34,7 @@ private:
 
 public:
   typedef Index index_type;
-  typedef EdgeTy<Index> edge_type;
+  typedef DiEdge<Index> edge_type;
   const Index *rowPtr_; //!< offset in col_ that each row starts at
   const Index *rowInd_; //!< non-zero row indices
   const Index *colInd_; //!< non-zero column indices
@@ -62,7 +62,9 @@ template <typename Index, typename Vector = Vector<Index>> class CSRCOO {
 
 public:
   typedef Index index_type;
-  typedef EdgeTy<Index> edge_type;
+  typedef DiEdge<Index> edge_type;
+  typedef DiEdgeList<Index> edge_list_type;
+
   CSRCOO() {}     //!< empty matrix
   Vector rowPtr_; //!< offset in colInd_/rowInd_ that each row starts at
   Vector colInd_; //!< non-zero column indices
@@ -89,7 +91,7 @@ public:
 
   Do not include edges where edgeFilter(edge) returns true
   */
-  static CSRCOO<Index, Vector> from_edgelist(const EdgeList &es, bool (*edgeFilter)(const Edge &) = nullptr);
+  static CSRCOO<Index, Vector> from_edgelist(const edge_list_type &es, bool (*edgeFilter)(const edge_type &) = nullptr);
 
   /*! Build a CSRCOO from a sequence of edges
 
@@ -98,7 +100,7 @@ public:
   */
   template <typename EdgeIter>
   static CSRCOO<Index, Vector> from_edges(EdgeIter begin, EdgeIter end,
-                                          std::function<bool(EdgeTy<Index>)> f = [](EdgeTy<Index> e) { return true; });
+                                          std::function<bool(edge_type)> f = [](edge_type e) { return true; });
 
   /*! Add a single edge to the CSRCOO.
 
@@ -107,7 +109,7 @@ public:
     be in the current row and have a NZ column index larger than the previous one in the row
 
   */
-  void add_next_edge(const EdgeTy<Index> &e);
+  void add_next_edge(const edge_type &e);
 
   /*!
     Should be called after all calls to add_next_edge

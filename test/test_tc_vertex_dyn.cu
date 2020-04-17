@@ -21,12 +21,12 @@ void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c, cons
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<NodeIndex>> edges;
-      std::vector<EdgeTy<NodeIndex>> fileEdges;
+      std::vector<DiEdge<NodeIndex>> edges;
+      std::vector<DiEdge<NodeIndex>> fileEdges;
       while (file.get_edges(fileEdges, 100)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<NodeIndex> e) { return e.first < e.second; };
+      auto upperTriangularFilter = [](DiEdge<NodeIndex> e) { return e.src < e.dst; };
       auto csr = CSRBinned<NodeIndex, EdgeIndex>::from_edges(edges.begin(), edges.end(), maxExpectedNode,
                                                              upperTriangularFilter);
 
@@ -64,12 +64,12 @@ TEST_CASE("single counter", "[gpu]") {
   SECTION("hub-spoke 3 ut", "[gpu]") {
     typedef uint32_t NodeIndex;
     typedef uint64_t EdgeIndex;
-    typedef EdgeTy<NodeIndex> Edge;
+    typedef DiEdge<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     // hub is node with highest index
     generator::HubSpoke<NodeIndex> g(3);
-    auto ut = [](Edge e) { return e.first < e.second; };
+    auto ut = [](Edge e) { return e.src < e.dst; };
     std::vector<Edge> edges;
     for (auto edge : g) {
       if (ut(edge)) {
@@ -92,12 +92,12 @@ TEST_CASE("single counter", "[gpu]") {
   SECTION("hub-spoke 3 lt", "[gpu]") {
     typedef uint32_t NodeIndex;
     typedef uint64_t EdgeIndex;
-    typedef EdgeTy<NodeIndex> Edge;
+    typedef DiEdge<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     // hub is node with highest index
     generator::HubSpoke<NodeIndex> g(3);
-    auto keep = [](Edge e) { return e.first > e.second; };
+    auto keep = [](Edge e) { return e.src > e.dst; };
     std::vector<Edge> edges;
     for (auto edge : g) {
       if (keep(edge)) {
@@ -121,13 +121,13 @@ TEST_CASE("single counter", "[gpu]") {
     LOG(debug, "starting hub-spoke 539 lt");
     typedef uint32_t NodeIndex;
     typedef uint64_t EdgeIndex;
-    typedef EdgeTy<NodeIndex> Edge;
+    typedef DiEdge<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     // highest index node is the hub
     generator::HubSpoke<NodeIndex> g(539);
 
-    auto keep = [](Edge e) { return e.first > e.second; };
+    auto keep = [](Edge e) { return e.src > e.dst; };
     std::vector<Edge> edges;
     for (auto edge : g) {
       if (keep(edge)) {
@@ -149,13 +149,13 @@ TEST_CASE("single counter", "[gpu]") {
   SECTION("hub-spoke 539 ut", "[gpu]") {
     typedef uint32_t NodeIndex;
     typedef uint64_t EdgeIndex;
-    typedef EdgeTy<NodeIndex> Edge;
+    typedef DiEdge<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
     generator::HubSpoke<NodeIndex> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](Edge e) { return e.first < e.second; };
+    auto keep = [](Edge e) { return e.src < e.dst; };
     std::vector<Edge> edges;
     for (auto edge : g) {
       if (keep(edge)) {

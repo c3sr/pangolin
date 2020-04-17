@@ -3,7 +3,6 @@
 #include <cuda_runtime.h>
 
 #include "pangolin/dense/cuda_managed_vector.hpp"
-#include "pangolin/edge_list.hpp"
 #include "pangolin/sparse/abstract_csr.hpp"
 
 namespace pangolin {

@@ -3,8 +3,7 @@
 #include <functional>
 
 #include "pangolin/dense/vector.cuh"
-#include "pangolin/edge_list.hpp"
-#include "pangolin/types.hpp"
+#include "pangolin/edge.hpp"
 
 #ifdef __CUDACC__
 #define PANGOLIN_HOST __host__

@@ -24,7 +24,7 @@ TEST_CASE("complete(3)", "[gpu]") {
   // complete graph with 3 nodes
   generator::Complete<NodeTy> g(3);
 
-  auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+  auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
   auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
   REQUIRE(csr.nnz() == 3);
@@ -42,7 +42,7 @@ TEST_CASE("complete(4)", "[gpu]") {
   // complete graph with 4 nodes
   generator::Complete<NodeTy> g(4);
 
-  auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+  auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
   auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
   REQUIRE(csr.nnz() == 6);

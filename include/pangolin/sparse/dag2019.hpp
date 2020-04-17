@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "pangolin/edge_list.hpp"
 #include "pangolin/logger.hpp"
 
 namespace pangolin {

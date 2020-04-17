@@ -19,12 +19,12 @@ template <typename NodeTy> void count(uint64_t expected, const std::string &grap
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<uint64_t>> edges;
-      std::vector<EdgeTy<uint64_t>> fileEdges;
+      std::vector<DiEdge<NodeTy>> edges;
+      std::vector<DiEdge<NodeTy>> fileEdges;
       while (file.get_edges(fileEdges, 10)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+      auto upperTriangularFilter = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
       auto csrcoo = CSRCOO<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csrcoo.view()));
@@ -55,7 +55,7 @@ TEST_CASE("single counter", "[gpu]") {
     generator::HubSpoke<NodeTy> g(3);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -68,7 +68,7 @@ TEST_CASE("single counter", "[gpu]") {
     generator::HubSpoke<NodeTy> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);

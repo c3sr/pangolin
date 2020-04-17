@@ -30,9 +30,9 @@ TEMPLATE_TEST_CASE("complete graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 1);
-      REQUIRE(e.second < 1);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 1);
+      REQUIRE(e.dst < 1);
     }
 
     // expected number of edges
@@ -49,9 +49,9 @@ TEMPLATE_TEST_CASE("complete graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 2);
-      REQUIRE(e.second < 2);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 2);
+      REQUIRE(e.dst < 2);
     }
 
     // expected number of edges
@@ -68,9 +68,9 @@ TEMPLATE_TEST_CASE("complete graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c3) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 3);
-      REQUIRE(e.second < 3);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 3);
+      REQUIRE(e.dst < 3);
     }
 
     // expected number of edges

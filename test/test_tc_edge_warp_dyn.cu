@@ -13,20 +13,22 @@
 
 using namespace pangolin;
 
-template <typename NodeTy> void count(uint64_t expected, const std::string &graphFile, EdgeWarpDynTC &c) {
+typedef EdgeWarpDynTC Counter;
+
+template <typename Node> void count(uint64_t expected, const std::string &graphFile, Counter &c) {
   char *graphDir = std::getenv("PANGOLIN_GRAPH_DIR");
   if (nullptr != graphDir) {
     std::string graphDirPath(graphDir);
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<uint64_t>> edges;
-      std::vector<EdgeTy<uint64_t>> fileEdges;
+      std::vector<DiEdge<Node>> edges;
+      std::vector<DiEdge<Node>> fileEdges;
       while (file.get_edges(fileEdges, 10)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
-      auto csrcoo = CSRCOO<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
+      auto upperTriangularFilter = [](DiEdge<Node> e) { return e.src < e.dst; };
+      auto csrcoo = CSRCOO<Node>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csrcoo.view()));
     }
@@ -35,19 +37,19 @@ template <typename NodeTy> void count(uint64_t expected, const std::string &grap
 
 TEST_CASE("ctor") {
   pangolin::init();
-  EdgeWarpDynTC c;
+  Counter c;
   REQUIRE(c.count() == 0);
 }
 
 TEST_CASE("vector") {
   pangolin::init();
-  std::vector<EdgeWarpDynTC> v;
+  std::vector<Counter> v;
 }
 
 TEST_CASE("single counter", "[gpu]") {
   pangolin::init();
   logger::set_level(logger::Level::DEBUG);
-  EdgeWarpDynTC c;
+  Counter c;
   REQUIRE(c.count() == 0);
 
   SECTION("hub-spoke 3", "[gpu]") {
@@ -56,7 +58,7 @@ TEST_CASE("single counter", "[gpu]") {
     generator::HubSpoke<NodeTy> g(3);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -68,7 +70,7 @@ TEST_CASE("single counter", "[gpu]") {
     generator::HubSpoke<NodeTy> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -89,7 +91,7 @@ TEST_CASE("single counter", "[gpu]") {
 TEST_CASE("two counters", "[gpu]") {
   pangolin::init();
   logger::set_level(logger::Level::DEBUG);
-  EdgeWarpDynTC cs[2];
+  Counter cs[2];
   REQUIRE(cs[0].count() == 0);
   REQUIRE(cs[1].count() == 0);
 
@@ -98,7 +100,7 @@ TEST_CASE("two counters", "[gpu]") {
 
     generator::Complete<NodeTy> g(539);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csrcoo.view(), 0, csrcoo.nnz()/2);   // first half of edges

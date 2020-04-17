@@ -19,12 +19,12 @@ template <typename NodeTy> void count(uint64_t expected, const std::string &grap
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<NodeTy>> edges;
-      std::vector<EdgeTy<NodeTy>> fileEdges;
+      std::vector<DiEdge<NodeTy>> edges;
+      std::vector<DiEdge<NodeTy>> fileEdges;
       while (file.get_edges(fileEdges, 100)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto lowerTriangularFilter = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+      auto lowerTriangularFilter = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
       auto csr = CSR<NodeTy>::from_edges(edges.begin(), edges.end(), lowerTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csr.view()));
@@ -56,7 +56,7 @@ TEST_CASE("single counter", "[gpu]") {
 
     // lower-tri
     generator::HubSpoke<NodeTy> g(3);
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(csr.nnz() == 5);
@@ -71,7 +71,7 @@ TEST_CASE("single counter", "[gpu]") {
     generator::HubSpoke<NodeTy> g(539);
 
     // lower-tri
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);

@@ -15,7 +15,7 @@ TEST_CASE("count complete graph 3") {
   using NodeTy = int;
 
   generator::Complete<NodeTy> c(3);
-  auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+  auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
   COO<NodeTy> coo = COO<NodeTy>::from_edges(c.begin(), c.end(), keep);
 
   REQUIRE(coo.nnz() == 3);
@@ -29,7 +29,7 @@ TEST_CASE("count complete graph 4") {
   using NodeTy = int;
 
   generator::Complete<NodeTy> c(4);
-  auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+  auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
   COO<NodeTy> coo = COO<NodeTy>::from_edges(c.begin(), c.end(), keep);
 
   REQUIRE(coo.nnz() == 6);
