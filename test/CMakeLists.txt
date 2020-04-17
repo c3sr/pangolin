@@ -135,11 +135,6 @@ pangolin_add_gpu_test(
   SRCS test_logger.cu test_logger_helper.cu
 )
 
-pangolin_add_gpu_test(
-  NAME test_managed_allocator
-  SRCS test_managed_allocator.cu
-)
-
 pangolin_add_test(
   NAME test_merge_path
   SRCS test_merge_path.cu
@@ -148,11 +143,6 @@ pangolin_add_test(
 pangolin_add_mpi_gpu_test(
   NAME test-mpi
   SRCS test_mpi.cu
-)
-
-pangolin_add_gpu_test(
-  NAME test_numa
-  SRCS test_numa.cu
 )
 
 pangolin_add_gpu_test(
@@ -222,11 +212,6 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
-  NAME test_topology
-  SRCS test_topology.cu
-)
-
-pangolin_add_gpu_test(
   NAME test_vector
   SRCS test_vector.cu
 )
@@ -237,13 +222,18 @@ pangolin_add_gpu_test(
 )
 
 pangolin_add_gpu_test(
-  NAME test_zero_copy_allocator
-  SRCS test_zero_copy_allocator.cu
+  NAME test_tc_bissonfatica18
+  SRCS test_tc_bissonfatica18.cu
 )
 
 pangolin_add_gpu_test(
-  NAME test_tc_bissonfatica18
-  SRCS test_tc_bissonfatica18.cu
+  NAME test_topology
+  SRCS test_topology.cu
+)
+
+pangolin_add_gpu_test(
+  NAME test_numa
+  SRCS test_numa.cu
 )
 
 # pangolin_add_test(
@@ -251,12 +241,3 @@ pangolin_add_gpu_test(
 #   SRCS test_tc_vertex_linear.cu
 # )
 
-# pangolin_add_test(
-#   NAME test_flow
-#   SRCS test_flow.cu
-# )
-
-# pangolin_add_test(
-#   NAME test_map
-#   SRCS test_map.cu
-# )

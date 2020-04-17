@@ -45,10 +45,6 @@ option(USE_CUSPARSE "compile with CUSparse" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-find_package(MPI)
-
-
-
 if(USE_HUNTER)
   hunter_add_package(fmt)
 endif()
@@ -208,32 +204,6 @@ if(OPENMP_FOUND)
   )
 endif()
 
-if (NUMA_FOUND)
-  target_link_libraries(pangolin INTERFACE NUMA::NUMA)
-  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=1)
-  message(STATUS "NUMA found, compiling with USE_NUMA=1")
-else()
-  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=0)
-  message(STATUS "NUMA not found, compiling with USE_NUMA=0")
-endif()
-
-## just using target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
-## causes device linking with -pthread, even as of 3.15.0-rc1
-## https://gitlab.kitware.com/cmake/cmake/issues/18897
-## Add MPI flags
-if(MPI_FOUND)
-  target_include_directories(pangolin SYSTEM INTERFACE ${MPI_CXX_INCLUDE_DIRS})
-  message(STATUS ${MPI_CXX_LIBRARIES})
-  target_link_libraries(pangolin INTERFACE ${MPI_CXX_LIBRARIES})
-  # target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
-  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=1)
-  message(STATUS "compiling with PANGOLIN_USE_MPI=1")
-else()
-  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=0)
-  message(STATUS "compiling with PANGOLIN_USE_MPI=0")
-endif()
-
-
 #include(GenerateExportHeader)
 #generate_export_header(pangolin)
 
@@ -271,7 +241,10 @@ configure_file (
 #   $<INSTALL_INTERFACE:include>
 # )
 target_include_directories(pangolin INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> 
+  $<BUILD_INTERFACE:
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
+  > 
   $<INSTALL_INTERFACE:include>
 )
 
@@ -304,12 +277,6 @@ install(
 install(
     FILES "${project_config}" "${version_config}"
     DESTINATION "${config_install_dir}"
-)
-
-# install FindNUMA.cmake
-install(
-  FILES "cmake/FindNUMA.cmake"
-  DESTINATION "${config_install_dir}"
 )
 
 # install libraries

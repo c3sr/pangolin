@@ -1,6 +1,9 @@
 #pragma once
 
-#include "pangolin/allocator/cuda_managed.hpp"
+#include <cstdlib>
+
+#include "cmm/cmm.hpp"
+
 #include "pangolin/logger.hpp"
 
 #ifdef __CUDACC__
@@ -11,10 +14,8 @@
 #define PANGOLIN_HOST
 #endif
 
-#include <cstdlib>
-
 namespace pangolin {
-template <typename T, typename Allocator = allocator::CUDAManaged<T>> class Vector {
+template <typename T, typename Allocator = cmm::Managed<T>> class Vector {
 public:
   typedef T value_type;
   typedef value_type &reference;
@@ -189,7 +190,7 @@ public:
   /*! call cudaMemAdvise(..., cudaMemAdviseSetReadMostly, 0) on Vector data
    */
   PANGOLIN_HOST void read_mostly() {
-    constexpr bool pred = std::is_same<Allocator, allocator::CUDAManaged<value_type>>::value;
+    constexpr bool pred = std::is_same<Allocator, cmm::Managed<value_type>>::value;
     if (pred) {
       // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
       SPDLOG_TRACE(logger::console(), "cudaMemAdviseSetReadMostly {}B on device", size() * sizeof(T));
@@ -200,7 +201,7 @@ public:
   /*! call cudaMemAdvise(..., cudaMemAdviseSetAccessedBy, dev) on Vector data
    */
   PANGOLIN_HOST void accessed_by(const int dev) {
-    constexpr bool pred = std::is_same<Allocator, allocator::CUDAManaged<value_type>>::value;
+    constexpr bool pred = std::is_same<Allocator, cmm::Managed<value_type>>::value;
     if (pred) {
       // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge37112fc1ac88d0f6bab7a945e48760a
       CUDA_RUNTIME(cudaMemAdvise(data_, size() * sizeof(T), cudaMemAdviseSetAccessedBy, dev));
@@ -210,7 +211,7 @@ public:
   /*! call cudaMemPrefetchAsync(..., dev, stream) on Vector data
    */
   PANGOLIN_HOST void prefetch_async(const int dev, cudaStream_t stream = 0) {
-    constexpr bool pred = std::is_same<Allocator, allocator::CUDAManaged<value_type>>::value;
+    constexpr bool pred = std::is_same<Allocator, cmm::Managed<value_type>>::value;
     if (pred) {
       // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1ge8dc9199943d421bc8bc7f473df12e42
       SPDLOG_TRACE(logger::console(), "cudaMemPrefetchAsync {}B to device {} stream {}", size() * sizeof(T), dev,

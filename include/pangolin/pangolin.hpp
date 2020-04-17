@@ -1,8 +1,7 @@
 #pragma once
 
-#include "allocator/cuda_malloc.hpp"
-#include "allocator/cuda_managed.hpp"
-#include "allocator/cuda_zero_copy.hpp"
+#include "cmm/cmm.hpp"
+
 #include "bounded_buffer.hpp"
 #include "configure.hpp"
 #include "dense/vector.cuh"

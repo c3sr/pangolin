@@ -1,6 +1,7 @@
 #pragma once
 
-#include "pangolin/allocator/cuda_malloc.hpp"
+#include "cmm/cmm.hpp"
+
 #include "pangolin/utilities.hpp"
 #include "vector.cuh"
 
@@ -14,9 +15,9 @@
 
 namespace pangolin {
 
-template <typename T> class DeviceVector : public Vector<T, allocator::CUDAMalloc<T>> {
+template <typename T> class DeviceVector : public Vector<T, cmm::Malloc<T>> {
 private:
-  typedef Vector<T, allocator::CUDAMalloc<T>> Parent;
+  typedef Vector<T, cmm::Malloc<T>> Parent;
   using Parent::capacity_;
   using Parent::data_;
   using Parent::reserve;
@@ -41,14 +42,14 @@ public:
     return this;
   }
 
-/*! Conversion to std::vector<T>
- */
-explicit operator std::vector<T>() const {
+  /*! Conversion to std::vector<T>
+   */
+  explicit operator std::vector<T>() const {
     std::vector<T> ret;
     ret.resize(size_);
     CUDA_RUNTIME(cudaMemcpyAsync(ret.data(), data_, size_ * sizeof(T), cudaMemcpyDeviceToHost));
     return ret;
-}
+  }
 
   PANGOLIN_HOST void resize(size_t n) {
     if (n < size_) {
@@ -66,7 +67,5 @@ explicit operator std::vector<T>() const {
 
 #undef PANGOLIN_HOST_DEVICE
 #undef PANGOLIN_HOST
-
-
 
 } // namespace pangolin

@@ -10,5 +10,4 @@ typedef int32_t Int;
 typedef unsigned int Uint; // for CUDA atomicAdd
 #endif
 
-static_assert(sizeof(Uint) == sizeof(Int),
-              "expecting Uint to be same size as Int");
+static_assert(sizeof(Uint) == sizeof(Int), "expecting Uint to be same size as Int");

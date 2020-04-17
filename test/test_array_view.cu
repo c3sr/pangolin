@@ -4,6 +4,8 @@
 #include "pangolin/dense/array_view.hpp"
 #include "pangolin/init.hpp"
 
+#include "pangolin/logger.hpp"
+
 using namespace pangolin;
 
 TEMPLATE_TEST_CASE("array_view basics", "", int, uint64_t) {

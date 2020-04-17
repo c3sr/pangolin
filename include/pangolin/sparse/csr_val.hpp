@@ -24,8 +24,8 @@ namespace pangolin {
   \tparam NodeA type of allocator for colInd_
   \tparam ValA type of allocator for vals_
 */
-template <typename NodeI, typename EdgeI, typename ValT, typename NodeA = allocator::CUDAManaged<NodeI>,
-          typename EdgeA = allocator::CUDAManaged<EdgeI>, typename ValA = allocator::CUDAManaged<ValT>>
+template <typename NodeI, typename EdgeI, typename ValT, typename NodeA = cmm::Managed<NodeI>,
+          typename EdgeA = cmm::Managed<EdgeI>, typename ValA = cmm::Managed<ValT>>
 class CSR;
 
 /*! \brief

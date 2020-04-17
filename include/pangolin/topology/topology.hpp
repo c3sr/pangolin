@@ -1,10 +1,10 @@
 #pragma once
 
 #include <climits>
+#include <cstdio>
 #include <map>
 #include <set>
 #include <thread>
-#include <cstdio>
 
 #include <nvml.h>
 
@@ -198,7 +198,7 @@ Topology &get() {
 
   // only build topology structure once
   static bool init = false;
-  
+
   static Topology topology;
 
   if (!init) {
