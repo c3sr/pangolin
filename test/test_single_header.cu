@@ -1,7 +1,6 @@
 /*! Test that the single header include works
 */
 
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
 #include "pangolin/pangolin.hpp"

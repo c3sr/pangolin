@@ -46,18 +46,18 @@ function(pangolin_add_mpi_gpu_test)
 endfunction()
 
 pangolin_add_test(
-  NAME test_array_view
-  SRCS test_array_view.cu
-)
-
-pangolin_add_test(
-  NAME test_binary_search
-  SRCS test_binary_search.cu
-)
-
-pangolin_add_gpu_test(
-  NAME test_bmtx_stream
-  SRCS test_bmtx_stream.cu
+  NAME test_main
+  SRCS 
+  test_main.cu
+  test_array_view.cu
+  test_binary_search.cu
+  test_bmtx_stream.cu
+  test_complete.cu
+  test_double_buffer.cu
+  test_generator_hubspoke.cu
+  test_merge_path.cu
+  test_numa.cu
+  test_single_header.cu
 )
 
 pangolin_add_gpu_test(
@@ -68,11 +68,6 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_buffer
   SRCS test_buffer.cu
-)
-
-pangolin_add_test(
-  NAME test_complete
-  SRCS test_complete.cu
 )
 
 pangolin_add_gpu_test(
@@ -110,16 +105,6 @@ pangolin_add_gpu_test(
   SRCS test_device_vector.cu
 )
 
-pangolin_add_test(
-  NAME test_double_buffer
-  SRCS test_double_buffer.cu
-)
-
-pangolin_add_test(
-  NAME test_generator_hubspoke
-  SRCS test_generator_hubspoke.cu
-)
-
 pangolin_add_gpu_test(
   NAME test_load_balance
   SRCS test_load_balance.cu
@@ -135,11 +120,6 @@ pangolin_add_gpu_test(
   SRCS test_logger.cu test_logger_helper.cu
 )
 
-pangolin_add_test(
-  NAME test_merge_path
-  SRCS test_merge_path.cu
-)
-
 pangolin_add_mpi_gpu_test(
   NAME test-mpi
   SRCS test_mpi.cu
@@ -148,11 +128,6 @@ pangolin_add_mpi_gpu_test(
 pangolin_add_gpu_test(
   NAME test_rc_stream
   SRCS test_rc_stream.cu
-)
-
-pangolin_add_test(
-  NAME test_single_header
-  SRCS test_single_header.cu
 )
 
 pangolin_add_gpu_test(
@@ -229,11 +204,6 @@ pangolin_add_gpu_test(
 pangolin_add_gpu_test(
   NAME test_topology
   SRCS test_topology.cu
-)
-
-pangolin_add_gpu_test(
-  NAME test_numa
-  SRCS test_numa.cu
 )
 
 # pangolin_add_test(

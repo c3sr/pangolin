@@ -55,7 +55,7 @@ namespace detail {
 
 /*! call nvmlInit if it has not been called yet
  */
-void init_nvml() {
+inline void init_nvml() {
   static bool init = false;
   if (!init) {
     NVML(nvmlInit());
@@ -194,7 +194,7 @@ struct Topology {
 
 /*! Lazily build and return the system Topology
  */
-Topology &get() {
+inline Topology &get() {
 
   // only build topology structure once
   static bool init = false;

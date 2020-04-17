@@ -9,7 +9,7 @@
 namespace pangolin {
 /*! initialize pangolin
  */
-void init() {
+inline void init() {
   static bool init_ = false;
   if (init_) {
     fprintf(stderr, "WARN: init called more than once\n");

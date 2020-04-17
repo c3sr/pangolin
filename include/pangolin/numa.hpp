@@ -63,7 +63,7 @@ inline int num_configured_cpus() {
     returns -1 if it cannot be determined
     return 0 if numa is not enabled
 */
-int node_of_cpu(const int cpu) {
+inline int node_of_cpu(const int cpu) {
 #if USE_NUMA == 1
   if (available()) {
     return ::numa_node_of_cpu(cpu);
@@ -79,7 +79,7 @@ int node_of_cpu(const int cpu) {
   If it cannot be determined, return -1
   If numa not enabled, return 0
   */
-int node_of_addr(void *ptr, size_t pageSize) {
+inline int node_of_addr(void *ptr, size_t pageSize) {
 
   assert(pageSize);
 
