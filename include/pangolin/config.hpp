@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "namespace.hpp"
 
 namespace pangolin {
 

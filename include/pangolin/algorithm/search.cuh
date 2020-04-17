@@ -2,7 +2,6 @@
 
 #include "bounds.hpp"
 #include "pangolin/macro.h"
-#include "pangolin/namespace.hpp"
 
 namespace pangolin {
 

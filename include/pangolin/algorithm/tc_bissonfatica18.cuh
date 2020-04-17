@@ -16,7 +16,7 @@
 #include "pangolin/dense/device_buffer.cuh"
 #include "pangolin/dense/vector.cuh"
 #include "pangolin/logger.hpp"
-#include "pangolin/sparse/bitmap.cuh"
+#include "pangolin/algorithm/bitmap.cuh"
 #include "reduction.cuh"
 #include "search.cuh"
 

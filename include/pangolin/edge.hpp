@@ -2,8 +2,6 @@
 
 #include <utility>
 
-#include "namespace.hpp"
-
 namespace pangolin {
 
 /*! A directed, weighted edge
