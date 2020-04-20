@@ -4,8 +4,7 @@
 
 | Branch | Status |
 |-|-|
-| master  | [![Build Status](https://dev.azure.com/c3srdev/github/_apis/build/status/c3sr.pangolin?branchName=master)](https://dev.azure.com/c3srdev/github/_build/latest?definitionId=1&branchName=master)|
-| develop | [![Build Status](https://dev.azure.com/c3srdev/github/_apis/build/status/c3sr.pangolin?branchName=develop)](https://dev.azure.com/c3srdev/github/_build/latest?definitionId=1&branchName=develop) |
+| master  | [![Build Status](https://travis-ci.com/c3sr/pangolin.svg?token=oXpZxp44qzps6HC63xis&branch=master)](https://travis-ci.com/c3sr/pangolin)|
 
 A header-only C++/CUDA library for GPU graph operations
 
