@@ -28,7 +28,6 @@ int main(int argc, char **argv) {
     pangolin::init();
     // your code here.
 }
-
 ```
 
 ## Testing
@@ -99,9 +98,8 @@ CSR and CSR+COO sparse matrices backed by `pangolin::Vector`
 Get started at [include/pangolin/sparse].
 
 ### Buffers and Queues
-* Double Buffer: `/double_buffer.hpp` a fixed-size single-producer/single-consumer double buffer
+* Double Buffer: `double_buffer.hpp` a fixed-size single-producer/single-consumer double buffer
 * Bounded BUffer: `bounded_buffer.hpp` a fixed-size blocking multi-producer multi-consumer ring buffer
-
 
 ### System Topology Exploration
 Built on top of `numa` and `nvidia-ml`, query the system topology to discover which GPUs, CPUs, and NUMA regions are associated.
@@ -353,3 +351,40 @@ Generate a profile using something like `/usr/local/cuda/NsightCompute-1.0/nv-ns
 ## Other
 
 See [references](references) for some notes on references.
+
+## Publications
+
+```bibtex
+@INPROCEEDINGS{8916285,
+author={M. {Almasri} and O. {Anjum} and C. {Pearson} and Z. {Qureshi} and V. S. {Mailthody} and R. {Nagi} and J. {Xiong} and W. {Hwu}},
+booktitle={2019 IEEE High Performance Extreme Computing Conference (HPEC)},
+title={Update on k-truss Decomposition on GPU},
+year={2019},
+volume={},
+number={},
+pages={1-7},
+}
+```
+
+```bibtex
+@INPROCEEDINGS{8916547,
+ author={C. {Pearson} and M. {Almasri} and O. {Anjum} and V. S. {Mailthody} and Z. {Qureshi} and R. {Nagi} and J. {Xiong} and W. {Hwu}},
+ booktitle={2019 IEEE High Performance Extreme Computing Conference (HPEC)},
+ title={Update on Triangle Counting on GPU},
+ year={2019},
+ volume={},
+ number={},
+ pages={1-7},
+ } 
+```
+
+```bibtex
+@INPROCEEDINGS{8547517,
+author={V. S. {Mailthody} and K. {Date} and Z. {Qureshi} and C. {Pearson} and R. {Nagi} and J. {Xiong} and W. {Hwu}}, booktitle={2018 IEEE High Performance extreme Computing Conference (HPEC)},
+title={Collaborative (CPU + GPU) Algorithms for Triangle Counting and Truss Decomposition},
+year={2018},
+volume={},
+number={},
+pages={1-7},
+
+```
