@@ -6,7 +6,15 @@ function(pangolin_add_test)
     "SRCS" # list of names of nuluti-valued arguments
     ${ARGN} # arguments of the function to parse
   )
+
+  # only add tests as targets if we're in the "pangolin" project
+  # if we're included in some other project, don't build tests
+if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
+ else()
+   add_executable(${PARSED_ARGS_NAME} EXCLUDE_FROM_ALL ${PARSED_ARGS_SRCS})
+ endif()
+
   set_target_properties(${PARSED_ARGS_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin::pangolin)
 
