@@ -14,10 +14,6 @@ A header-only C++/CUDA library for GPU graph operations
 
 Most of pangolin only works with `nvcc`.
 
-### Install MPI (optional)
-
-`sudo apt install libopenmpi-dev openmpi-bin`
-
 ### Install NUMA (optional)
 
 `sudo apt install libnuma-dev`
@@ -35,12 +31,57 @@ int main(int argc, char **argv) {
 
 ```
 
+## Testing
 
+```
+mkdir -p build && cd build
+make
+make test
+```
 
 ## Library Features
 
-### RcStream
+### GPU Graph Algorithms
+* Triangle Counting
+  * Anjur-Iyer: triangle counting algorithm created by Anjur and Iyer in ECE 508.
+  * ~~Bisson-Fatica 2019: triangle counting algorithm from Bisson & Fatica~~
+  * Edge-Binary: Edge-oriented count with binary search intersection
+  * Edge-Dyn: Edge-oriented count with warp-granularity dynamic load balancing and cost-based binary/sequential search selection
+  * ~~Edge-dynpar: Edge-oriented binary search count with dynamic parallelism~~
+  * Edge-Dysel: Edge-oriented count with empirical-performance measurement and algorithm selection
+  * Edge-Linear: Edge-oriented count with linear-search intersection
+  * ~~Edge-Merge: Edge-oriented count with merge-path search~~
+  * ~~Task-GPU: 2D decomposition count~~
+  * Vertex-Bitvector: vertex-oriented bitvector search in shared memory
+  * Vertex-Block-Binary: vertex-oriented binary intersection threadblock-per-row 
+  * Vertex-Blocks-Binary: vertex-oriented binary intersection threadblocks-per-row 
+    * ~~Vertex-Blocks-Cache-Block-Binary:~~
+  * Vertex-CPU: CPU counters
+  * Vertex-Dyn: Like Edge-Dyn but vertex-oriented
+  * Vertex-Warp-Bitvector: vertex oriented count with warp-collaborative bit vectors
+* K-truss
+* broadcast: `include/pangolin/algorithm/broadcast.cuh`
+  * shared memory and shuffle instructions
+  * warp-collaborative and block-collaborative
+  * non-primitive types
+* elementwise: `include/pangolin/algorithm/elementwise.cuh`
+  * Element-wise CSR matrix multiplication
+* Grid-collaborative Fill: `include/pangolin/algorithm/fill.cuh`
+* Load-Balance:
+  * For a set of objects creating work-items, determine which object created each work item
+* Merge-Path:
+  * single-thread compute location where merge-path crosses diagonal
+* Reduction: `include/pangolin/algorithm/search.cuh`
+  * warp-collective sum/min/max with shuffle instructions
+* Search: `include/pangolin/algorithm/search.cuh`
+  * single-thread binary search `__device__` function: `serial_sorted_search_binary`
+    * upper and lower bound
+  * single-thread pointer-chasing linear search `__device__` function: `serial_sorted_search_linear`
 
+
+Get started at [include/pangolin/algorithm].
+
+### RcStream
 A reference-counted `cudaStream_t`.
 Automatically create, share, and destroy a single cudaStream_t, analogous to a `std::shared_ptr`.
 Get started at [include/pangolin/cuda_cxx/rc_stream.hpp].
@@ -50,27 +91,19 @@ C++ stdlib allocators for CUDA device memory, CUDA host memory, and CUDA managed
 Get started at [include/pangolin/allocator].
 
 ### Dense containers
-`Vector`s and `Buffer`s backed by any `pangolin::Allocator`
+`Vector`s and `Buffer`s backed by C++ allocator
 Get started at [include/pangolin/dense].
 
 ### Sparse containers
 CSR and CSR+COO sparse matrices backed by `pangolin::Vector`
 Get started at [include/pangolin/sparse].
 
-### Algorithms
-* Triangle Counting
-    * binary
-    * sequentia
-* K-truss
-* Fill
-* broadcast
-    * warp-collaborative
-    * block-collaborative
+### Buffers and Queues
+* Double Buffer: `/double_buffer.hpp` a fixed-size single-producer/single-consumer double buffer
+* Bounded BUffer: `bounded_buffer.hpp` a fixed-size blocking multi-producer multi-consumer ring buffer
 
-Get started at [include/pangolin/algorithm].
 
 ### System Topology Exploration
-
 Built on top of `numa` and `nvidia-ml`, query the system topology to discover which GPUs, CPUs, and NUMA regions are associated.
 Get started at [include/pangolin/topology].
 
