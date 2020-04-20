@@ -755,10 +755,10 @@ public:
   }
 
 
-
+  //With hard stream compaction (physically remove edges from the graph)
   void findKtrussBinary_hsc_async(int kmin, int kmax, UT *rowPtr, UT *rowInd, UT *colInd,
 	  const size_t numNodes, UT numEdges, const size_t nodeOffset=0, const size_t edgeOffset=0) 
-{
+	{
 	  CUDA_RUNTIME(cudaSetDevice(dev_));
 	  constexpr int dimBlock = 32; //For edges and nodes
 
