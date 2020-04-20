@@ -14,10 +14,10 @@ It should otherwise be consistent with libnuma.
 #include <cassert>
 #include <set>
 
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
 #include <numa.h>
 #include <numaif.h>
-#endif // USE_NUMA == 1
+#endif // PANGOLIN_USE_NUMA == 1
 
 #include <errno.h>
 
@@ -32,12 +32,12 @@ namespace numa {
     \return true if numa is available and pangolin is compiled with NUMA support. False otherwise
 */
 inline bool available() {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   return -1 == ::numa_available() ? false : true;
-#else  // USE_NUMA == 1
-  SPDLOG_TRACE(logger::console(), "USE_NUMA not defined. numa_available() = false");
+#else  // PANGOLIN_USE_NUMA == 1
+  SPDLOG_TRACE(logger::console(), "PANGOLIN_USE_NUMA not defined. numa_available() = false");
   return false;
-#endif // USE_NUMA == 1
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! call numa_num_configured_cpus()
@@ -45,7 +45,7 @@ inline bool available() {
     return 1 if NUMA is not available
 */
 inline int num_configured_cpus() {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     return ::numa_num_configured_cpus();
   } else {
@@ -53,7 +53,7 @@ inline int num_configured_cpus() {
     return 0;
   }
 #else
-  LOG(warn, "USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
+  LOG(warn, "PANGOLIN_USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
   return 1;
 #endif
 }
@@ -64,13 +64,13 @@ inline int num_configured_cpus() {
     return 0 if numa is not enabled
 */
 inline int node_of_cpu(const int cpu) {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     return ::numa_node_of_cpu(cpu);
   } else {
     return -1;
   }
-#endif // USE_NUMA
+#endif // PANGOLIN_USE_NUMA
   (void) cpu;
   return 0;
 }
@@ -83,7 +83,7 @@ inline int node_of_addr(void *ptr, size_t pageSize) {
 
   assert(pageSize);
 
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   // round down to pageSize
   void *alignedPtr = reinterpret_cast<void *>((uintptr_t(ptr) / pageSize) * pageSize);
   int status[1];
@@ -107,11 +107,11 @@ inline int node_of_addr(void *ptr, size_t pageSize) {
       return *status;
     }
   }
-#else  // USE_NUMA == 1
+#else  // PANGOLIN_USE_NUMA == 1
 (void)ptr;
 (void)pageSize;
   return 0;
-#endif // USE_NUMA == 1
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! \brief cause errors if NUMA is not able to follow instructions
@@ -120,7 +120,7 @@ inline int node_of_addr(void *ptr, size_t pageSize) {
     calls numa_set_strict(1), numa_set_bind_policy(1), numa_exit_on_warn=1 ,numa_exit_on_error=1
 */
 inline void set_strict() {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     numa_set_strict(1);
     LOG(debug, "set numa_set_strict(1)");
@@ -134,9 +134,9 @@ inline void set_strict() {
   } else {
     LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
   }
-#else  // USE_NUMA == 1
-  LOG(debug, "USE_NUMA not defined");
-#endif // USE_NUMA == 1
+#else  // PANGOLIN_USE_NUMA == 1
+  LOG(debug, "PANGOLIN_USE_NUMA not defined");
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! \brief bind execution and allocation to node
@@ -146,7 +146,7 @@ inline void set_strict() {
 */
 inline void bind(const int node //!< NUMA node to bind to
 ) {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     if (-1 == node) {
       numa_bind(numa_all_nodes_ptr);
@@ -161,17 +161,17 @@ inline void bind(const int node //!< NUMA node to bind to
   } else {
     LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
   }
-#else  // USE_NUMA == 1
+#else  // PANGOLIN_USE_NUMA == 1
   (void) node;
-  LOG(debug, "USE_NUMA not defined");
-#endif // USE_NUMA == 1
+  LOG(debug, "PANGOLIN_USE_NUMA not defined");
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! Bind future allocation to a numa node
  */
 inline void membind(const int node //!< NUMA node to bind to
 ) {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     if (-1 == node) {
       numa_set_membind(numa_all_nodes_ptr);
@@ -184,10 +184,10 @@ inline void membind(const int node //!< NUMA node to bind to
       LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
     }
   }
-#else  // USE_NUMA == 1
+#else  // PANGOLIN_USE_NUMA == 1
   (void)node;
-  LOG(debug, "USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
-#endif // USE_NUMA == 1
+  LOG(debug, "PANGOLIN_USE_NUMA not defined in {}", __PRETTY_FUNCTION__);
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! \brief bind execution and allocation to all nodes
@@ -196,15 +196,15 @@ inline void membind(const int node //!< NUMA node to bind to
     Uses numa_bind(numa_all_nodes_ptr)
 */
 inline void unbind() {
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     numa_bind(numa_all_nodes_ptr);
   } else {
     LOG(error, "numa not available in {}", __PRETTY_FUNCTION__);
   }
-#else  // USE_NUMA == 1
-  LOG(debug, "USE_NUMA not defined");
-#endif // USE_NUMA == 1
+#else  // PANGOLIN_USE_NUMA == 1
+  LOG(debug, "PANGOLIN_USE_NUMA not defined");
+#endif // PANGOLIN_USE_NUMA == 1
 }
 
 /*! all nodes on which the calling task may allocate memory.
@@ -213,7 +213,7 @@ inline void unbind() {
  */
 inline std::set<int> all_nodes() {
   std::set<int> numas;
-#if USE_NUMA == 1
+#ifdef PANGOLIN_USE_NUMA
   if (available()) {
     for (int i = 0; i < ::numa_num_possible_nodes(); ++i) {
       if (::numa_bitmask_isbitset(numa_all_nodes_ptr, i)) {

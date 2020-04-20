@@ -201,6 +201,13 @@ if(OPENMP_FOUND)
   )
 endif()
 
+## Add NUMA Flags
+if(NUMA_FOUND)
+  message(STATUS "NUMA found, compiling with -DPANGOLIN_USE_NUMA")
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_NUMA)
+  target_link_libraries(pangolin INTERFACE NUMA::NUMA)
+endif()
+
 #include(GenerateExportHeader)
 #generate_export_header(pangolin)
 
