@@ -2,7 +2,7 @@
 
 #include <cub/cub.cuh>
 
-#include "binary_search.cuh"
+#include "search.cuh"
 #include "pangolin/utilities.hpp"
 
 namespace pangolin {
