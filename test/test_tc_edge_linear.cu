@@ -1,3 +1,4 @@
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
@@ -44,6 +45,7 @@ TEST_CASE("vector") {
 }
 
 TEST_CASE("single counter", "[gpu]") {
+
   pangolin::init();
   logger::set_level(logger::Level::DEBUG);
   LinearTC c;
@@ -51,26 +53,26 @@ TEST_CASE("single counter", "[gpu]") {
 
   SECTION("hub-spoke 3", "[gpu]") {
     using NodeTy = int;
-
+    
     generator::HubSpoke<NodeTy> g(3);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(2 == c.count_sync(csrcoo.view()));
   }
 
   SECTION("hub-spoke 539", "[gpu]") {
     using NodeTy = int;
-
+    
     generator::HubSpoke<NodeTy> g(539);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csrcoo.view()));
   }
@@ -85,3 +87,5 @@ TEST_CASE("single counter", "[gpu]") {
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
+
+#pragma GCC diagnostic pop

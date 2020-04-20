@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -33,6 +33,7 @@ void count(uint64_t expected, const std::string &graphFile, VertexBlocksCacheBlo
     }
   }
 }
+
 
 TEST_CASE("ctor", "[gpu]") {
   pangolin::init();
@@ -83,6 +84,7 @@ TEST_CASE("ctor", "[gpu]") {
   }
 
   SECTION("complete(4) row partition", "[gpu]") {
+
     using NodeTy = int;
 
     VertexBlocksCacheBlockBinary cs[2];
@@ -102,6 +104,7 @@ TEST_CASE("ctor", "[gpu]") {
 
   SECTION("hub-spoke 539", "[gpu]") {
     LOG(debug, "hub-spoke 539");
+
     using NodeTy = int;
 
     generator::HubSpoke<NodeTy> g(539);
@@ -115,6 +118,7 @@ TEST_CASE("ctor", "[gpu]") {
   }
 
   SECTION("complete(539) row partition ut", "[gpu]") {
+
     using NodeTy = int;
 
     VertexBlocksCacheBlockBinary cs[2];
@@ -132,6 +136,7 @@ TEST_CASE("ctor", "[gpu]") {
   }
 
   SECTION("complete(539) row partition lt", "[gpu]") {
+
     using NodeTy = int;
 
     VertexBlocksCacheBlockBinary cs[2];
@@ -158,3 +163,4 @@ TEST_CASE("ctor", "[gpu]") {
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
+#pragma GCC diagnostic pop

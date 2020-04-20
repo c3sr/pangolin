@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -43,13 +43,13 @@ TEST_CASE("ctor", "[gpu]") {
 
   SECTION("complete(3)", "[gpu]") {
     using NodeTy = int;
-
+    
     // complete graph with 3 nodes
     generator::Complete<NodeTy> g(3);
-
+    
     auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(csr.nnz() == 3);
     REQUIRE(c.count() == 0);
     REQUIRE(1 == c.count_sync(csr.view()));
@@ -186,3 +186,4 @@ TEST_CASE("ctor", "[gpu]") {
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
+#pragma GCC diagnostic pop

@@ -30,5 +30,7 @@ TEST_CASE("BmtxStream") {
   REQUIRE(bmtx.readEdge(edge));
   REQUIRE(edge.src == 0);
   REQUIRE(edge.dst == 6);
-  REQUIRE(edge.val == 0.0);
+  // workaround comparing float with ==
+  REQUIRE(edge.val <= 0.0);
+  REQUIRE(edge.val >= 0.0);
 }

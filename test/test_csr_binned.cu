@@ -10,6 +10,7 @@ using namespace pangolin;
 typedef uint32_t NodeIndex;
 typedef uint64_t EdgeIndex;
 
+typedef DiEdge<NodeIndex> Edge;
 typedef DiEdgeList<NodeIndex> EdgeList;
 typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
 
@@ -53,8 +54,6 @@ TEST_CASE("from_edgelist") {
 TEST_CASE("CSR<int>::from_edges upper triangular") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
-  typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  typedef DiEdge<NodeIndex> Edge;
   std::vector<Edge> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                           {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
@@ -85,8 +84,7 @@ TEST_CASE("CSR<int>::from_edges upper triangular") {
 TEST_CASE("CSR<int>::from_edges lower triangular") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
-  typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  typedef DiEdge<NodeIndex> Edge;
+
   std::vector<Edge> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                           {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
@@ -106,8 +104,6 @@ TEST_CASE("CSR<int>::from_edges lower triangular") {
 TEST_CASE("edge 2->100 ut") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::DEBUG);
-  typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  typedef DiEdge<NodeIndex> Edge;
   std::vector<Edge> el = {{2, 100}};
 
   auto keep = [](Edge e) { return e.src < e.dst; };
@@ -133,8 +129,6 @@ TEST_CASE("edge 2->100 ut") {
 TEST_CASE("edge 2->100 lt") {
   pangolin::init();
   pangolin::logger::set_level(pangolin::logger::Level::TRACE);
-  typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-  typedef DiEdge<NodeIndex> Edge;
   std::vector<Edge> el = {{2, 100}};
 
   auto keep = [](Edge e) { return e.src > e.dst; };

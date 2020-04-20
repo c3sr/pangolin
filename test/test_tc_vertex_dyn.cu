@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -12,6 +12,7 @@
 
 using namespace pangolin;
 
+#warning "test disabled"
 #if 0
 template <typename NodeIndex, typename EdgeIndex>
 void count(uint64_t expected, const std::string &graphFile, VertexDynTC &c, const uint64_t maxExpectedNode) {
@@ -151,9 +152,9 @@ TEST_CASE("single counter", "[gpu]") {
     typedef uint64_t EdgeIndex;
     typedef DiEdge<NodeIndex> Edge;
     typedef CSRBinned<NodeIndex, EdgeIndex> CSR;
-
+    
     generator::HubSpoke<NodeIndex> g(539);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](Edge e) { return e.src < e.dst; };
     std::vector<Edge> edges;
@@ -167,11 +168,12 @@ TEST_CASE("single counter", "[gpu]") {
       csr.add_next_edge(edge);
     }
     csr.finish_edges();
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
 
+  #warning "test disabled"
 #if 0
   SECTION("as20000102_adj.bel", "[gpu]") {
     using NodeIndex = uint32_t;
@@ -186,3 +188,4 @@ TEST_CASE("single counter", "[gpu]") {
   }
 #endif
 }
+#pragma GCC diagnostic pop

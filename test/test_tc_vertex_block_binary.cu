@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -15,34 +15,35 @@ TEST_CASE("ctor", "[gpu]") {
   logger::set_level(logger::Level::INFO);
   VertexBlockBinaryTC c;
   REQUIRE(c.count() == 0);
-
+  
   SECTION("complete(3)", "[gpu]") {
     logger::set_level(logger::Level::TRACE);
     using NodeTy = int;
-
+    
     // complete graph with 3 nodes
     generator::Complete<NodeTy> g(3);
-
+    
     auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(csr.nnz() == 3);
     REQUIRE(c.count() == 0);
     REQUIRE(1 == c.count_sync(csr.view()));
   }
-
+  
   SECTION("complete(4)", "[gpu]") {
     logger::set_level(logger::Level::TRACE);
     using NodeTy = int;
-
+    
     // complete graph with 4 nodes
     generator::Complete<NodeTy> g(4);
-
+    
     auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(csr.nnz() == 6);
     REQUIRE(c.count() == 0);
     REQUIRE(4 == c.count_sync(csr.view()));
   }
 }
+#pragma GCC diagnostic pop

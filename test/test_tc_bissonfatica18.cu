@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -88,3 +88,4 @@ TEST_CASE("single counter", "[gpu]") {
     count<NodeTy>(717719, "amazon0302_adj.bel", c);
   }
 }
+#pragma GCC diagnostic pop

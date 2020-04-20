@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -50,42 +50,43 @@ TEST_CASE("single counter", "[gpu]") {
   logger::set_level(logger::Level::DEBUG);
   VertexBitvectorTC c;
   REQUIRE(c.count() == 0);
-
+  
   SECTION("hub-spoke 3", "[gpu]") {
     using NodeTy = int;
-
+    
     // highest index node is the hub, so keep those for high out-degree
     generator::HubSpoke<NodeTy> g(3);
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(csr.nnz() == 5);
     REQUIRE(csr.num_rows() == 4);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(2 == c.count_sync(csr.view()));
   }
-
+  
   SECTION("hub-spoke 539", "[gpu]") {
     using NodeTy = int;
-
+    
     generator::HubSpoke<NodeTy> g(539);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csr.view()));
   }
-
+  
   SECTION("as20000102_adj.bel", "[gpu]") {
     using NodeTy = int;
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
-
+  
   SECTION("amazon0302_adj.bel", "[gpu]") {
     using NodeTy = int;
     count<NodeTy>(717719, "amazon0302_adj.bel", c);
   }
 }
+#pragma GCC diagnostic pop

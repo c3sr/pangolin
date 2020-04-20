@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -108,3 +108,4 @@ TEST_CASE("two counters", "[gpu]") {
     REQUIRE(g.num_triangles() == a + b);
   }
 }
+#pragma GCC diagnostic pop

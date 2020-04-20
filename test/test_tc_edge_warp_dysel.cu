@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -46,47 +46,49 @@ TEST_CASE("vector") {
   std::vector<EdgeWarpDyselTC> v;
 }
 
+
 TEST_CASE("single counter", "[gpu]") {
   pangolin::init();
   logger::set_level(logger::Level::DEBUG);
   EdgeWarpDyselTC c;
   REQUIRE(c.count() == 0);
-
+  
   SECTION("hub-spoke 3", "[gpu]") {
     using NodeTy = int;
-
+    
     generator::HubSpoke<NodeTy> g(3);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(2 == c.count_sync(csrcoo.view()));
   }
   SECTION("hub-spoke 539", "[gpu]") {
     using NodeTy = int;
-
+    
     generator::HubSpoke<NodeTy> g(539);
-
+    
     // highest index node is the hub, so keep those for high out-degree
     auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csrcoo = CSRCOO<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(c.count() == 0);
     REQUIRE(538 == c.count_sync(csrcoo.view()));
   }
-
+  
   SECTION("amazon0302_adj.bel", "[gpu]") {
     using NodeTy = int;
     count<NodeTy>(717719, "amazon0302_adj.bel", c);
   }
-
+  
   SECTION("as20000102_adj.bel", "[gpu]") {
     using NodeTy = int;
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
+
 
 TEST_CASE("two counters", "[gpu]") {
   pangolin::init();
@@ -108,3 +110,5 @@ TEST_CASE("two counters", "[gpu]") {
     REQUIRE(g.num_triangles() == a + b);
   }
 }
+
+#pragma GCC diagnostic pop
