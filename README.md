@@ -6,7 +6,7 @@
 |-|-|
 | master  | [![Build Status](https://travis-ci.com/c3sr/pangolin.svg?token=oXpZxp44qzps6HC63xis&branch=master)](https://travis-ci.com/c3sr/pangolin)|
 
-A header-only C++/CUDA library for GPU graph operations
+A header-only C++/CUDA library for GPU graph operations. [C++ API Documentation](https://pangolin-docs.netlify.app/).
 
 ## Getting Started
 
