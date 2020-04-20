@@ -27,11 +27,11 @@ sudo apt-get install -y --no-install-recommends \
 ## install CUDA
 sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
 
-if [[ $TRAVIS_CPU_ARCH == "ppc64le" && $CUDA_VERSION == "102" && TRAVIS_DIST == "bionic" ]]; then
+if [[ $TRAVIS_CPU_ARCH == "ppc64le" && $CUDA_VERSION == "102" && $TRAVIS_DIST == "bionic" ]]; then
     CUDA_URL="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/ppc64el/cuda-repo-ubuntu1804_10.2.89-1_ppc64el.deb"
-elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && TRAVIS_DIST == "bionic" ]]; then
+elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && $TRAVIS_DIST == "bionic" ]]; then
     CUDA_URL="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-repo-ubuntu1804_10.2.89-1_amd64.deb"
-elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && TRAVIS_DIST == "trusty" ]]; then
+elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && $TRAVIS_DIST == "trusty" ]]; then
     CUDA_URL="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_10.2.89-1_amd64.deb"
 fi
 
