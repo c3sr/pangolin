@@ -2,30 +2,41 @@ language: minimal
 
 jobs:
   include:
-    # 18.04 amd64 cuda-10-2 RELEASE
+    # 18.04/amd64/cuda-10-2, NUMA Release
   - dist: bionic
     arch: amd64
     env:
       - CUDA_VERSION=102
       - BUILD_TYPE=Release
-    # 18.04 amd64 cuda-10-2 DEBUG
+      - USE_NUMA=1
+    # 18.04 amd64 cuda-10-2, NUMA Debug
   - dist: bionic
     arch: amd64
     env:
       - CUDA_VERSION=102
       - BUILD_TYPE=Debug
-    # 18.04 ppc64le cuda-10-2 RELEASE
+      - USE_NUMA=1
+    # 18.04 amd64 cuda-10-2, no NUMA, Release
+  - dist: bionic
+    arch: amd64
+    env:
+      - CUDA_VERSION=102
+      - BUILD_TYPE=Debug
+      - USE_NUMA=0
+    # 18.04 ppc64le cuda-10-2 Release
   - dist: bionic
     arch: ppc64le
     env:
       - CUDA_VERSION=102
       - BUILD_TYPE=Release
-    # 16.04 ppc64le cuda-10-2 RELEASE
+      - USE_NUMA=1
+    # 16.04 ppc64le cuda-10-2 Release
   - dist: trusty
     arch: amd64
     env:
       - CUDA_VERSION=102
       - BUILD_TYPE=Release
+      - USE_NUMA=1
 
 cache:
   directories:
