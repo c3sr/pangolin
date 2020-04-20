@@ -39,6 +39,11 @@ elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && $TRAVIS_DIST ==
 fi
 
 wget -SL $CUDA_URL -O cuda.deb
+
+if [[ $TRAVIS_DIST == "trusty" ]]; then
+sudo apt-get install -y dpkg
+fi
+
 sudo dpkg -i cuda.deb
 sudo apt-get update 
 sudo apt-get install -y --no-install-recommends \
