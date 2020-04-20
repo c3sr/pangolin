@@ -1,7 +1,6 @@
 #pragma once
 
 #include "axpy.cuh"
-#include "binary_search.cuh"
 #include "broadcast.cuh"
 #include "count.cuh"
 #include "cross_decomp.cuh"

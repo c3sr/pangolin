@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 
-#include "pangolin/algorithm/binary_search.cuh"
+#include "pangolin/algorithm/search.cuh"
 #include "pangolin/init.hpp"
 
 using namespace pangolin;

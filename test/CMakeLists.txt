@@ -55,7 +55,7 @@ pangolin_add_test(
   SRCS 
   test_main.cu
   test_array_view.cu
-  test_binary_search.cu
+  test_search.cu
   test_bmtx_stream.cu
   test_complete.cu
   test_double_buffer.cu
