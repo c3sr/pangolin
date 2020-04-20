@@ -59,6 +59,10 @@ make test
   * Vertex-Dyn: Like Edge-Dyn but vertex-oriented
   * Vertex-Warp-Bitvector: vertex oriented count with warp-collaborative bit vectors
 * K-truss
+  Note: all benchmark files that use these algorithms are found in graph challenge project.
+  * K-truss Incremental <ktruss_serial.cuh> , single GPU, starts from k=3 until max k is found. Physically removes edges from the graph.
+  * K-truss Binary <ktruss_binary_HSC.cuh>, single GPU, searches for max k using binary steps. Physically removes edges from the graph. HSC stands for hard stream compaction.
+  * K-truss Incremental Multi GPU <ktruss_incremental_multiGPU>, multi GPU, has only support functions, the real implementation is included in the graph challenge project.
 * broadcast: `include/pangolin/algorithm/broadcast.cuh`
   * shared memory and shuffle instructions
   * warp-collaborative and block-collaborative
