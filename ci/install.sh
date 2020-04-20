@@ -22,6 +22,14 @@ cd $HOME
 
 sudo apt-get update 
 
+# On trusty, dpkg has a bug, so update to a newer version. Fixes the following:
+# Unpacking cuda-nsight-10-2 (10.2.89-1) ...
+# dpkg-deb: error: archive '/var/cache/apt/archives/nsight-compute-2019.5.0_2019.5.0.14-1_amd64.deb' has premature member 'control.tar.xz' before 'control.tar.gz', giving up
+# dpkg: error processing archive /var/cache/apt/archives/nsight-compute-2019.5.0_2019.5.0.14-1_amd64.deb (--unpack): subprocess dpkg-deb --control returned error exit status 2
+if [[ $TRAVIS_DIST == "trusty" ]]; then
+sudo apt-get install -y dpkg
+fi
+
 if [[ $USE_NUMA == "1" ]]; then
 sudo apt-get install -y --no-install-recommends \
   libnuma-dev
@@ -39,10 +47,6 @@ elif [[ $TRAVIS_CPU_ARCH == "amd64" && $CUDA_VERSION == "102" && $TRAVIS_DIST ==
 fi
 
 wget -SL $CUDA_URL -O cuda.deb
-
-if [[ $TRAVIS_DIST == "trusty" ]]; then
-sudo apt-get install -y dpkg
-fi
 
 sudo dpkg -i cuda.deb
 sudo apt-get update 
