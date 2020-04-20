@@ -182,7 +182,7 @@ __global__ void __launch_bounds__(BLOCK_DIM_X) warp_kernel(
   constexpr size_t SHMEM_SZ = SHMEM_KB * 1024 / sizeof(Index);
   constexpr size_t WARP_SHMEM_SZ = SHMEM_SZ / WARPS_PER_BLOCK;
   __shared__ Index sharedRow[WARPS_PER_BLOCK][WARP_SHMEM_SZ];
-  static_assert(WARP_SHMEM_SZ > 0);
+  static_assert(WARP_SHMEM_SZ > 0, "needs more KB of shared memory");
 
   uint64_t threadCount = 0;
 
