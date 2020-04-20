@@ -1,6 +1,3 @@
-hunter_add_package(Catch)
-find_package(Catch2 CONFIG REQUIRED)
-
 function(pangolin_add_test)
   cmake_parse_arguments(
     PARSED_ARGS # prefix of output variables
@@ -12,7 +9,7 @@ function(pangolin_add_test)
   add_executable(${PARSED_ARGS_NAME} ${PARSED_ARGS_SRCS})
   set_target_properties(${PARSED_ARGS_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${PARSED_ARGS_NAME} PUBLIC pangolin::pangolin)
-  target_link_libraries(${PARSED_ARGS_NAME} PUBLIC Catch2::Catch2)
+
   # On the NCSA P9 system, CMake won't link C++ targets against CUDA's link directories
   # maybe the header-only target needs to have the CUDA link language 
   target_link_directories(${PARSED_ARGS_NAME} PUBLIC "${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}")
