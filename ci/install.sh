@@ -24,7 +24,7 @@ sudo apt-get update
 
 if [[ $USE_NUMA == "1" ]]; then
 sudo apt-get install -y --no-install-recommends \
-  libnuma-dev \
+  libnuma-dev
 fi
 
 ## install CUDA
