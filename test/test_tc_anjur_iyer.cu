@@ -1,4 +1,4 @@
-
+#pragma GCC diagnostic push "-Wno-unused-local-typedefs"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
@@ -13,19 +13,21 @@
 
 using namespace pangolin;
 
-template <typename NodeTy> void count(uint64_t expected, const std::string &graphFile, AnjurIyer &c) {
+typedef AnjurIyer Counter;
+
+template <typename NodeTy> void count(uint64_t expected, const std::string &graphFile, Counter &c) {
   char *graphDir = std::getenv("PANGOLIN_GRAPH_DIR");
   if (nullptr != graphDir) {
     std::string graphDirPath(graphDir);
     graphDirPath += "/" + graphFile;
     if (filesystem::is_file(graphDirPath)) {
       EdgeListFile file(graphDirPath);
-      std::vector<EdgeTy<uint64_t>> edges;
-      std::vector<EdgeTy<uint64_t>> fileEdges;
+      std::vector<DiEdge<NodeTy>> edges;
+      std::vector<DiEdge<NodeTy>> fileEdges;
       while (file.get_edges(fileEdges, 10)) {
         edges.insert(edges.end(), fileEdges.begin(), fileEdges.end());
       }
-      auto upperTriangularFilter = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+      auto upperTriangularFilter = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
       auto csr = CSR<NodeTy>::from_edges(edges.begin(), edges.end(), upperTriangularFilter);
 
       REQUIRE(expected == c.count_sync(csr.view()));
@@ -36,18 +38,18 @@ template <typename NodeTy> void count(uint64_t expected, const std::string &grap
 TEST_CASE("ctor", "[gpu]") {
   pangolin::init();
   logger::set_level(logger::Level::DEBUG);
-  AnjurIyer c;
+  Counter c;
   REQUIRE(c.count() == 0);
 
   SECTION("complete(3)", "[gpu]") {
     using NodeTy = int;
-
+    
     // complete graph with 3 nodes
     generator::Complete<NodeTy> g(3);
-
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
-
+    
     REQUIRE(csr.nnz() == 3);
     REQUIRE(c.count() == 0);
     REQUIRE(1 == c.count_sync(csr.view()));
@@ -59,7 +61,7 @@ TEST_CASE("ctor", "[gpu]") {
     // complete graph with 4 nodes
     generator::Complete<NodeTy> g(4);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(csr.nnz() == 6);
@@ -74,7 +76,7 @@ TEST_CASE("ctor", "[gpu]") {
     generator::HubSpoke<NodeTy> g(3);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -84,13 +86,13 @@ TEST_CASE("ctor", "[gpu]") {
   SECTION("complete(4) row partition", "[gpu]") {
     using NodeTy = int;
 
-    AnjurIyer cs[2];
+    Counter cs[2];
     REQUIRE(cs[0].count() == 0);
     REQUIRE(cs[1].count() == 0);
 
     generator::Complete<NodeTy> g(4);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
     REQUIRE(csr.nnz() == 6);
 
@@ -106,7 +108,7 @@ TEST_CASE("ctor", "[gpu]") {
     generator::HubSpoke<NodeTy> g(539);
 
     // highest index node is the hub, so keep those for high out-degree
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -119,7 +121,7 @@ TEST_CASE("ctor", "[gpu]") {
 
     generator::Complete<NodeTy> g(67);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -132,7 +134,7 @@ TEST_CASE("ctor", "[gpu]") {
 
     generator::Complete<NodeTy> g(67);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     REQUIRE(c.count() == 0);
@@ -143,13 +145,13 @@ TEST_CASE("ctor", "[gpu]") {
     LOG(debug, "complete 67 ut row partition");
     using NodeTy = int;
 
-    AnjurIyer cs[2];
+    Counter cs[2];
     REQUIRE(cs[0].count() == 0);
     REQUIRE(cs[1].count() == 0);
 
     generator::Complete<NodeTy> g(67);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first < e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src < e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csr.view(), 0, 34);  // first 270 rows
@@ -160,13 +162,13 @@ TEST_CASE("ctor", "[gpu]") {
   SECTION("complete(539) row partition lt", "[gpu]") {
     using NodeTy = int;
 
-    AnjurIyer cs[2];
+    Counter cs[2];
     REQUIRE(cs[0].count() == 0);
     REQUIRE(cs[1].count() == 0);
 
     generator::Complete<NodeTy> g(539);
 
-    auto keep = [](EdgeTy<NodeTy> e) { return e.first > e.second; };
+    auto keep = [](DiEdge<NodeTy> e) { return e.src > e.dst; };
     auto csr = CSR<NodeTy>::from_edges(g.begin(), g.end(), keep);
 
     uint64_t a = cs[0].count_sync(csr.view(), 0, 270);   // first 270 rows
@@ -184,3 +186,4 @@ TEST_CASE("ctor", "[gpu]") {
     count<NodeTy>(6584, "as20000102_adj.bel", c);
   }
 }
+#pragma GCC diagnostic pop

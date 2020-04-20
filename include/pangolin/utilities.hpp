@@ -1,9 +1,5 @@
 #pragma once
 
-#include <cstdio>
-#include <cstdlib>
-
-#include <cuda_runtime.h>
 #include <nvgraph.h>
 #include <nvml.h>
 
@@ -18,16 +14,14 @@ inline void checkNvml(nvmlReturn_t result, const char *file, const int line) {
 
 inline void checkCuda(cudaError_t result, const char *file, const int line) {
   if (result != cudaSuccess) {
-    LOG(critical, "{}@{}: CUDA Runtime Error: {}\n", file, line,
-        cudaGetErrorString(result));
+    LOG(critical, "{}@{}: CUDA Runtime Error: {}\n", file, line, cudaGetErrorString(result));
     exit(-1);
   }
 }
 
 inline void checkNvgraph(nvgraphStatus_t result, const char *file, const int line) {
   if (result != NVGRAPH_STATUS_SUCCESS) {
-    printf("nvgraph Error: %s in %s : %d\n", nvgraphStatusGetString(result),
-           file, line);
+    LOG(critical, "{}@{}: nvgraph error: {}", file, line, nvgraphStatusGetString(result));
     exit(-1);
   }
 }

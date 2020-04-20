@@ -4,8 +4,13 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "search.cuh"
+
+#include "ktruss_binary_HSC.cuh"
+
+#define BCTYPE bool
+#define UT uint32_t
 
 //Normal Initialization
 template <size_t BLOCK_DIM_X, typename CsrCooView>
@@ -325,3 +330,6 @@ public:
 };
 
 } // namespace pangolin
+
+#undef BCTYPE
+#undef UT

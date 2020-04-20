@@ -12,19 +12,27 @@ stages:
         Debug_NUMA_OPENMPI:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: True    
-          INSTALL_OPENMPI: True      
-        DebugNUMA:
+          INSTALL_OPENMPI: True
+        Debug_OPENMPI:
+          CMAKE_BUILD_TYPE: 'Debug'
+          INSTALL_NUMA: False  
+          INSTALL_OPENMPI: True    
+        Debug_NUMA:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: True
-        DebugNoNUMA:
+          INSTALL_OPENMPI: False
+        Debug:
           CMAKE_BUILD_TYPE: 'Debug'
           INSTALL_NUMA: False
-        ReleaseNUMA:
+          INSTALL_OPENMPI: False
+        Release_NUMA:
           CMAKE_BUILD_TYPE: 'Release'
           INSTALL_NUMA: True
-        ReleaseNoNUMA:
+          INSTALL_OPENMPI: False
+        Release:
           CMAKE_BUILD_TYPE: 'Release'
           INSTALL_NUMA: False
+          INSTALL_OPENMPI: False
     pool: 'amd64-ubuntu1604-cuda100'
     steps:
     - script: |
@@ -93,8 +101,17 @@ stages:
         set -x
         env | grep PANGOLIN_GRAPH_DIR
         cd build
-        ctest --output-on-failure --timeout 300 -T Test
+        ctest --output-on-failure --timeout 300 -T Test -LE mpi
       displayName: 'test'
+      condition: eq(variables['INSTALL_OPENMPI'], 'False')
+
+    - script: |
+        set -x
+        env | grep PANGOLIN_GRAPH_DIR
+        cd build
+        ctest --output-on-failure --timeout 300 -T Test
+      displayName: 'test (MPI)'
+      condition: eq(variables['INSTALL_OPENMPI'], 'True')
 
     # Publish Test Results
     # Publish Test Results to Azure Pipelines/TFS

@@ -9,14 +9,7 @@
 
 #include "pangolin/logger.hpp"
 #include "pangolin/utilities.hpp"
-
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -38,7 +31,6 @@ template <typename T> PANGOLIN_HOST Buffer<T>::Buffer(const Buffer &other) : cap
   SPDLOG_TRACE(logger::console(), "copy ctor");
   resize(other.capacity_);
   std::memcpy(data_, other.data_, other.capacity_ * sizeof(value_type));
-  capacity_ = other.capacity_;
 }
 
 /*! move constructor
@@ -157,5 +149,3 @@ PANGOLIN_HOST_DEVICE inline typename Buffer<T>::const_reference Buffer<T>::opera
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST

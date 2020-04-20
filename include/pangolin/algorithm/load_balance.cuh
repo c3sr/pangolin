@@ -17,10 +17,10 @@ namespace pangolin {
 
 */
 template <typename OI, typename WI>
-inline void load_balance(OI *indices,           //<! [out] the object index that produced each work item
-                         const WI numWorkItems, //<! [in] the total number of work items
-                         const WI *counts,      //<! [in] the number of work items produced by each object
-                         const OI numObjects    //<! [in] the number of objects
+inline void load_balance(OI *indices,           //!< [out] the object index that produced each work item
+                         const WI numWorkItems, //!< [in] the total number of work items
+                         const WI *counts,      //!< [in] the number of work items produced by each object
+                         const OI numObjects    //!< [in] the number of objects
 
 ) {
   WI wi = 0;
@@ -53,10 +53,10 @@ inline void load_balance(OI *indices,           //<! [out] the object index that
 */
 template <typename OI, typename WI>
 __global__ void grid_load_balance_kernel(
-    OI *indices,              //<! [out] the object index that produced each work item
-    const WI numWorkItems,    //<! [in] the total number of work items
-    const WI *exclScanCounts, //<! [in] exclusive scan of the number of work items produced by each object
-    const OI numObjects       //<! [in] the number of objects
+    OI *indices,              //!< [out] the object index that produced each work item
+    const WI numWorkItems,    //!< [in] the total number of work items
+    const WI *exclScanCounts, //!< [in] exclusive scan of the number of work items produced by each object
+    const OI numObjects       //!< [in] the number of objects
 
 ) {
   for (WI wi = blockDim.x * blockIdx.x + threadIdx.x; wi < numWorkItems; wi += gridDim.x * blockDim.x) {
@@ -67,10 +67,10 @@ __global__ void grid_load_balance_kernel(
 /*! ranks[i] = i - exclScanCounts[indices[i]]
  */
 template <typename T, typename U, typename V>
-__global__ void ranks_kernel(T *__restrict__ ranks,    //<! [out]  data array
-                             const U *indices,         //<! [in]
-                             const V *exclScanCounts,  //<! [in]
-                             const size_t numWorkItems //<! [in] size of ranks, indices
+__global__ void ranks_kernel(T *__restrict__ ranks,    //!< [out]  data array
+                             const U *indices,         //!< [in]
+                             const V *exclScanCounts,  //!< [in]
+                             const size_t numWorkItems //!< [in] size of ranks, indices
 
 ) {
   for (size_t i = blockDim.x * blockIdx.x + threadIdx.x; i < numWorkItems; i += gridDim.x * blockDim.x) {
@@ -89,12 +89,12 @@ __global__ void ranks_kernel(T *__restrict__ ranks,    //<! [out]  data array
   if ranks is not NULL, also return the rank of each work-item within the producing object
 */
 template <typename OI, typename WI>
-void device_load_balance(OI *indices, //<! [out] the object index that produced each work item (size=numWorkItems)
-                         OI *ranks,   //<! [out] rank of the work item within each object (size=numWorkItems)
-                         const WI numWorkItems, //<! [in] the total number of work items
-                         const WI *counts, //<! [in] the number of work items produced by each object (size=numObjects)
-                         const OI numObjects,    //<! [in] the number of objects
-                         cudaStream_t stream = 0 //<! [in] the stream to execute in (default 0)
+void device_load_balance(OI *indices, //!< [out] the object index that produced each work item (size=numWorkItems)
+                         OI *ranks,   //!< [out] rank of the work item within each object (size=numWorkItems)
+                         const WI numWorkItems, //!< [in] the total number of work items
+                         const WI *counts, //!< [in] the number of work items produced by each object (size=numObjects)
+                         const OI numObjects,    //!< [in] the number of objects
+                         cudaStream_t stream = 0 //!< [in] the stream to execute in (default 0)
 
 ) {
 

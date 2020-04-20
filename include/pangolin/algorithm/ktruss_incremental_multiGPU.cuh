@@ -4,10 +4,12 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "search.cuh"
+#include "ktruss_binary_multiGPU.cuh"
 
-
+#define UT uint32_t
+#define BCTYPE bool
 
 template <size_t BLOCK_DIM_X>
 __global__ void InitializeWorkSpace(UT numEdges, BCTYPE *keep,  bool *affected)
@@ -233,3 +235,6 @@ public:
 };
 
 } // namespace pangolin
+
+#undef BCTYPE
+#undef UT

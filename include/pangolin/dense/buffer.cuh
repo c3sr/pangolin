@@ -1,14 +1,8 @@
 #pragma once
 
-#ifdef __CUDACC__
-#define PANGOLIN_HOST_DEVICE __host__ __device__
-#define PANGOLIN_HOST __host__
-#else
-#define PANGOLIN_HOST_DEVICE
-#define PANGOLIN_HOST
-#endif
-
 #include <cstdlib>
+
+#include "pangolin/macro.h"
 
 namespace pangolin {
 
@@ -21,8 +15,8 @@ public:
   typedef const value_type &const_reference;
 
 private:
-  size_t capacity_;  //<! the number of elements the underlying allocation can hold
-  value_type *data_; //<! the underlying allocation
+  size_t capacity_;  //!< the number of elements the underlying allocation can hold
+  value_type *data_; //!< the underlying allocation
 
 public:
   PANGOLIN_HOST explicit Buffer(void);
@@ -65,8 +59,8 @@ public:
   typedef const value_type &const_reference;
 
 private:
-  size_t capacity_;  //<! the number of elements the underlying allocation can hold
-  value_type *data_; //<! the underlying allocation
+  size_t capacity_;  //!< the number of elements the underlying allocation can hold
+  value_type *data_; //!< the underlying allocation
 
 public:
   /*! Construct from a Buffer
@@ -89,7 +83,5 @@ public:
 
 } // namespace pangolin
 
-#undef PANGOLIN_HOST_DEVICE
-#undef PANGOLIN_HOST
 
 #include "buffer-impl.cuh"

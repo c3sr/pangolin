@@ -51,7 +51,7 @@ template <typename T> void zero_async(T *ptr, const size_t N, const int dev, cud
   CUDA_RUNTIME(cudaSetDevice(dev));
   constexpr size_t dimGrid = 150;
   constexpr size_t dimBlock = 512;
-  LOG(debug, "launch zero: device = {}, blocks = {}, threads = {}", dev, dimGrid, dimBlock);
+  LOG(debug, "device = {}, zero<<<{}, {}, 0, {}>>>", dev, dimGrid, dimBlock, uintptr_t(stream));
   zero<dimGrid, dimBlock><<<dimGrid, dimBlock, 0, stream>>>(ptr, N);
   CUDA_RUNTIME(cudaGetLastError());
 }
@@ -69,6 +69,25 @@ template <size_t N, typename T> void zero_async(T *ptr, const int dev, cudaStrea
       uintptr_t(stream));
   zero<N, dimGrid, dimBlock><<<dimGrid, dimBlock, 0, stream>>>(ptr);
   CUDA_RUNTIME(cudaGetLastError());
+}
+
+template <typename T> __device__ __forceinline__ void block_zero(T *ptr, const size_t n) {
+  for (size_t i = threadIdx.x; i < n; i += blockDim.x) {
+    ptr[i] = 0;
+  }
+}
+
+template <size_t BLOCK_DIM_X, typename T> __device__ __forceinline__ void block_zero(T *ptr, const size_t n) {
+  for (size_t i = threadIdx.x; i < n; i += BLOCK_DIM_X) {
+    ptr[i] = 0;
+  }
+}
+
+template <typename T> __device__ __forceinline__ void warp_zero(T *ptr, const size_t n) {
+  int lx = threadIdx.x % 32;
+  for (size_t i = lx; i < n; i += 32) {
+    ptr[i] = 0;
+  }
 }
 
 } // namespace pangolin

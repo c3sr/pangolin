@@ -1,6 +1,5 @@
 #pragma once
 
-#include "pangolin/namespace.hpp"
 #include "search.cuh"
 
 namespace pangolin {

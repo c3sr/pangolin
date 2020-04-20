@@ -4,11 +4,11 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "search.cuh"
 
 #define UT uint32_t
-#define  BCTYPE char
+#define  BCTYPE bool
 
 	/*! Binary search
   
@@ -845,3 +845,6 @@ public:
 };
 
 } // namespace pangolin
+
+#undef UT
+#undef BCTYPE

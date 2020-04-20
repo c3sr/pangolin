@@ -2,21 +2,26 @@
 
 #include <utility>
 
-#include "namespace.hpp"
-#include "types.hpp"
-
 namespace pangolin {
 
-/*! A directed edge is a std::pair
+/*! A directed, weighted edge
 
-    first() is src, second() is dst
+    \tparam N the node at each end of the edge
+    \tparam T the type of the edge's value
 */
-typedef std::pair<Uint, Uint> Edge;
+template <typename Node, typename T> struct WeightedDiEdge {
+  Node src;
+  Node dst;
+  T val; //!< edge weight
+};
 
-/*! A directed edge is a std::pair
+template <typename Node> struct DiEdge {
+  Node src;
+  Node dst;
 
-    first() is src, second() is dst
-*/
-template <typename NodeTy> using EdgeTy = std::pair<NodeTy, NodeTy>;
+  DiEdge(Node _src, Node _dst) : src(_src), dst(_dst) {}
+
+  DiEdge() = default;
+};
 
 } // namespace pangolin

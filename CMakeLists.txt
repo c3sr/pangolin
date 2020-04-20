@@ -41,12 +41,9 @@ message(STATUS GIT_LOCAL_CHANGES=${GIT_LOCAL_CHANGES})
 option(USE_HUNTER "Turn on to enable using the hunter package manager" ON)
 option(USE_OPENMP "compile with OpenMP support" ON)
 option(USE_NUMA "compile with NUMA support" ON)
+option(USE_CUSPARSE "compile with CUSparse" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
-
-find_package(MPI)
-
-
 
 if(USE_HUNTER)
   hunter_add_package(fmt)
@@ -70,15 +67,16 @@ find_package(NUMA)
 endif(USE_NUMA)
 
 set(PANGOLIN_CPP_HEADERS
+    include/pangolin/bounded_buffer.hpp
     include/pangolin/config.hpp
     include/pangolin/cusparse.hpp
     include/pangolin/dag_lowertriangular_csr.hpp
     include/pangolin/edge.hpp
-    include/pangolin/edge_list.hpp
+    include/pangolin/init.hpp
     include/pangolin/logger.hpp
+    include/pangolin/numa.hpp
     include/pangolin/pangolin.hpp
     include/pangolin/par_graph.hpp
-    include/pangolin/types.hpp
     include/pangolin/utilities.hpp
     include/pangolin/allocator/cuda_managed.hpp
     include/pangolin/allocator/cuda_zero_copy.hpp
@@ -86,32 +84,20 @@ set(PANGOLIN_CPP_HEADERS
     include/pangolin/dense/cuda_zero_copy_vector.hpp
     include/pangolin/file/edge_list_file.hpp
     include/pangolin/generator/complete.hpp
-    include/pangolin/sparse/dag2019.hpp
     include/pangolin/sparse/gpu_csr.hpp
     include/pangolin/sparse/gpu_csr-impl.hpp
-    include/pangolin/sparse/coo.hpp
+    include/pangolin/sparse/csr_coo.hpp
     include/pangolin/sparse/coo-impl.hpp
     include/pangolin/sparse/unified_memory_csr.hpp
     include/pangolin/reader/bel_reader.hpp
     include/pangolin/reader/edge_list_reader.hpp
     include/pangolin/reader/gc_tsv_reader.hpp
-    include/pangolin/triangle_counter/cudamemcpy_tc.hpp
-    include/pangolin/triangle_counter/cpu_triangle_counter.hpp
-    include/pangolin/triangle_counter/cuda_triangle_counter.hpp
-    include/pangolin/triangle_counter/cusparse_tc.hpp
-    include/pangolin/triangle_counter/edge_tc.hpp
-    include/pangolin/triangle_counter/hu_tc.hpp
-    include/pangolin/triangle_counter/impact_2018_tc.hpp
-    include/pangolin/triangle_counter/impact_2019_tc.hpp
-    include/pangolin/triangle_counter/nvgraph_triangle_counter.hpp
-    include/pangolin/triangle_counter/spmm_tc.hpp
-    include/pangolin/triangle_counter/triangle_counter.hpp
-    include/pangolin/triangle_counter/vertex_tc.hpp
 )
 
 set(PANGOLIN_CU_HEADERS
+  include/pangolin/atomic_add.cuh
   include/pangolin/sparse/cusparse_csr.hu
-  include/pangolin/dense/vector.hu
+  include/pangolin/dense/vector.cuh
   include/pangolin/dense/vector-impl.hu
 )
 add_subdirectory(include)
@@ -151,9 +137,7 @@ target_compile_options(
     -Xcompiler=-Wpointer-arith;
     -Xcompiler=-Winit-self;
     -Xcompiler=-Wswitch-enum;
-    -Xcompiler=-Wredundant-decls;
     -Xcompiler=-Wfloat-equal;
-    -Xcompiler=-Wundef;
     -Xcompiler=-Wvla;
     -Xcompiler=-Wshadow;
   >
@@ -171,7 +155,6 @@ target_compile_options(
     -Wpointer-arith;
     -Winit-self;
     -Wswitch-enum;
-    -Wredundant-decls;
     -Wfloat-equal;
     -Wundef;
     -Wvla;
@@ -218,31 +201,12 @@ if(OPENMP_FOUND)
   )
 endif()
 
-if (NUMA_FOUND)
+## Add NUMA Flags
+if(NUMA_FOUND)
+  message(STATUS "NUMA found, compiling with -DPANGOLIN_USE_NUMA")
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_NUMA)
   target_link_libraries(pangolin INTERFACE NUMA::NUMA)
-  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=1)
-  message(STATUS "NUMA found, compiling with USE_NUMA=1")
-else()
-  target_compile_definitions(pangolin INTERFACE -DUSE_NUMA=0)
-  message(STATUS "NUMA not found, compiling with USE_NUMA=0")
 endif()
-
-## just using target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
-## causes device linking with -pthread, even as of 3.15.0-rc1
-## https://gitlab.kitware.com/cmake/cmake/issues/18897
-## Add MPI flags
-if(MPI_FOUND)
-  target_include_directories(pangolin SYSTEM INTERFACE ${MPI_CXX_INCLUDE_DIRS})
-  message(STATUS ${MPI_CXX_LIBRARIES})
-  target_link_libraries(pangolin INTERFACE ${MPI_CXX_LIBRARIES})
-  # target_link_libraries(pangolin INTERFACE MPI::MPI_CXX)
-  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=1)
-  message(STATUS "compiling with PANGOLIN_USE_MPI=1")
-else()
-  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_MPI=0)
-  message(STATUS "compiling with PANGOLIN_USE_MPI=0")
-endif()
-
 
 #include(GenerateExportHeader)
 #generate_export_header(pangolin)
@@ -260,20 +224,33 @@ set(targets_export_name "${PROJECT_NAME}Targets")
 set(namespace "${PROJECT_NAME}::")
 
 ##  Handle the header file with pangolin version info
+# message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/pangolin/configure.hpp")
+# configure_file (
+#     "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
+#     "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+# )
 message(STATUS "${PROJECT_SOURCE_DIR}/src/configure.hpp.in" " -> " "${PROJECT_BINARY_DIR}/include/pangolin/configure.hpp")
 configure_file (
-    "${PROJECT_SOURCE_DIR}/src/configure.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+    "${PROJECT_SOURCE_DIR}/include/pangolin/configure.hpp.in"
+    "${PROJECT_SOURCE_DIR}/include/pangolin/configure.hpp"
 )
-# install the pangolin version file
-install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
-  DESTINATION include/pangolin
-)
+# # install the pangolin version file
+# install(
+#   FILES "${CMAKE_CURRENT_BINARY_DIR}/include/pangolin/configure.hpp"
+#   DESTINATION include/pangolin
+# )
 # include the binary dir during build or the install dir during install
+# target_include_directories(pangolin INTERFACE
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pangolin> # fake that "configure.hpp" is in same dir as pangolin.hpp
+#   $<INSTALL_INTERFACE:include>
+# )
 target_include_directories(pangolin INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pangolin> # fake that "configure.hpp" is in same dir as pangolin.hpp
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include> 
   $<INSTALL_INTERFACE:include>
+)
+target_include_directories(pangolin INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/thirdparty> 
+  $<INSTALL_INTERFACE:thirdparty>
 )
 
 include(CMakePackageConfigHelpers)
@@ -305,12 +282,6 @@ install(
 install(
     FILES "${project_config}" "${version_config}"
     DESTINATION "${config_install_dir}"
-)
-
-# install FindNUMA.cmake
-install(
-  FILES "cmake/FindNUMA.cmake"
-  DESTINATION "${config_install_dir}"
 )
 
 # install libraries
@@ -345,7 +316,10 @@ target_link_libraries(pangolin INTERFACE cub::cub)
 target_link_libraries(pangolin INTERFACE nvgraph)
 target_link_libraries(pangolin INTERFACE nvToolsExt)
 target_link_libraries(pangolin INTERFACE nvidia-ml)
-target_link_libraries(pangolin INTERFACE cusparse)
+if (USE_CUSPARSE)
+  target_compile_definitions(pangolin INTERFACE -DPANGOLIN_USE_CUSPARSE=1)
+  target_link_libraries(pangolin INTERFACE cusparse)
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang or AppleClang

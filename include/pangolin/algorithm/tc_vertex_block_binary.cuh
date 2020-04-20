@@ -4,7 +4,7 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 
 /*!
 Each threadblock handles a row of the adjacency matrix
@@ -17,11 +17,11 @@ Each thread handles a column index and does a binary search of the dst row into 
 */
 template <size_t BLOCK_DIM_X, typename CsrView>
 __global__ void
-row_block_kernel(uint64_t *count,        //<! [out] the count will be accumulated into here
-                 const CsrView adj,      //<! [in] the CSR adjacency matrix to operate on
-                 const size_t rowOffset, //<! [in] the row that this kernel should start at
-                 const size_t numRows,   //<! [in] the number of rows this kernel should operate on
-                 const size_t shmemSz    //<! [in] the number of row elements that can be cached in shared memory
+row_block_kernel(uint64_t *count,        //!< [out] the count will be accumulated into here
+                 const CsrView adj,      //!< [in] the CSR adjacency matrix to operate on
+                 const size_t rowOffset, //!< [in] the row that this kernel should start at
+                 const size_t numRows,   //!< [in] the number of rows this kernel should operate on
+                 const size_t shmemSz    //!< [in] the number of row elements that can be cached in shared memory
 ) {
   typedef typename CsrView::index_type Index;
   extern __shared__ Index srcShared[];
@@ -75,11 +75,11 @@ namespace pangolin {
  */
 class VertexBlockBinaryTC {
 private:
-  int dev_;             //<! the CUDA device used by this counter
-  cudaStream_t stream_; //<! a stream used by this counter
-  uint64_t *count_;     //<! the triangle count
-  dim3 maxGridSize_;    //<! the maximum grid size allowed by this device
-  size_t rowCacheSize_; //<! the size of the kernel's shared memory row cache
+  int dev_;             //!< the CUDA device used by this counter
+  cudaStream_t stream_; //!< a stream used by this counter
+  uint64_t *count_;     //!< the triangle count
+  dim3 maxGridSize_;    //!< the maximum grid size allowed by this device
+  size_t rowCacheSize_; //!< the size of the kernel's shared memory row cache
 
 public:
   VertexBlockBinaryTC(int dev, size_t rowCacheSize) : dev_(dev), count_(nullptr), rowCacheSize_(rowCacheSize) {
@@ -103,9 +103,9 @@ public:
   /*! count triangles in mat. May return before count is complete
    */
   template <typename CsrView>
-  void count_async(const CsrView &adj,    //<! [in] a CSR adjacency matrix to count
+  void count_async(const CsrView &adj,    //!< [in] a CSR adjacency matrix to count
                    const size_t numRows,  //!< [in] the number of rows this count will handle
-                   const size_t rowOffset //<! [in] the first row to count
+                   const size_t rowOffset //!< [in] the first row to count
   ) {
 
     typedef typename CsrView::index_type Index;
@@ -132,9 +132,9 @@ public:
       Counts triangles for rows [rowOffset, rowOffset + numRows)
   */
   template <typename CsrView>
-  uint64_t count_sync(const CsrView &adj,    //<! [in] a CSR adjacency matrix to count
-                      const size_t numRows,  //<! [in] the number of rows to count
-                      const size_t rowOffset //<! [in] the first row to count
+  uint64_t count_sync(const CsrView &adj,    //!< [in] a CSR adjacency matrix to count
+                      const size_t numRows,  //!< [in] the number of rows to count
+                      const size_t rowOffset //!< [in] the first row to count
   ) {
     count_async(adj, numRows, rowOffset);
     sync();

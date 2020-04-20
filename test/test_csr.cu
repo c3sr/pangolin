@@ -3,17 +3,24 @@
 
 #include "pangolin/init.hpp"
 #include "pangolin/sparse/csr.hpp"
+#include "pangolin/edge_list.hpp"
 
 using namespace pangolin;
 
 TEST_CASE("ctor") {
   pangolin::init();
   CSR<int> m;
+
+  SECTION("reserve") {
+    m.reserve(10, 100);
+    REQUIRE(m.num_rows() == 0);
+    REQUIRE(m.nnz() == 0);
+  }
 }
 
 TEST_CASE("COO<int>::from_edgelist") {
   pangolin::init();
-  EdgeList el = {
+  DiEdgeList<int> el = {
       {0, 1},
   };
 
@@ -28,11 +35,11 @@ TEST_CASE("COO<int>::from_edgelist") {
 
 TEST_CASE("CSR<int>::from_edges upper triangular") {
   pangolin::init();
-  std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
+  DiEdgeList<uint64_t> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
   INFO("from_edgelist");
-  auto ut = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+  auto ut = [](DiEdge<uint64_t> e) { return e.src < e.dst; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), ut);
 
   REQUIRE(csr.nnz() == 8);
@@ -40,11 +47,11 @@ TEST_CASE("CSR<int>::from_edges upper triangular") {
 
 TEST_CASE("CSR<int>::from_edges lower triangular") {
   pangolin::init();
-  std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
+  std::vector<DiEdge<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
   INFO("from_edgelist");
-  auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
+  auto lt = [](DiEdge<uint64_t> e) { return e.src > e.dst; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
   REQUIRE(csr.nnz() == 8);
@@ -52,10 +59,10 @@ TEST_CASE("CSR<int>::from_edges lower triangular") {
 
 TEST_CASE("CSR<uint64_t>::view lower triangular") {
   pangolin::init();
-  std::vector<EdgeTy<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
+  std::vector<DiEdge<uint64_t>> el = {{0, 1}, {0, 2}, {1, 0}, {1, 2}, {1, 3}, {1, 4}, {2, 0}, {2, 1},
                                       {2, 3}, {2, 4}, {3, 1}, {3, 2}, {3, 4}, {4, 1}, {4, 2}, {4, 3}};
 
-  auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
+  auto lt = [](DiEdge<uint64_t> e) { return e.src > e.dst; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
   SECTION("nnz") {
@@ -73,9 +80,9 @@ TEST_CASE("CSR<uint64_t>::view lower triangular") {
 
 TEST_CASE("edge 2->100 lt") {
   pangolin::init();
-  std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
+  std::vector<DiEdge<uint64_t>> el = {{2, 100}};
 
-  auto lt = [](EdgeTy<uint64_t> e) { return e.first > e.second; };
+  auto lt = [](DiEdge<uint64_t> e) { return e.src > e.dst; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
   // this should be an empty matrix
@@ -93,9 +100,9 @@ TEST_CASE("edge 2->100 lt") {
 
 TEST_CASE("edge 2->100 ut") {
   pangolin::init();
-  std::vector<EdgeTy<uint64_t>> el = {{2, 100}};
+  std::vector<DiEdge<uint64_t>> el = {{2, 100}};
 
-  auto lt = [](EdgeTy<uint64_t> e) { return e.first < e.second; };
+  auto lt = [](DiEdge<uint64_t> e) { return e.src < e.dst; };
   auto csr = CSR<uint64_t>::from_edges(el.begin(), el.end(), lt);
 
   SECTION("nnz") {

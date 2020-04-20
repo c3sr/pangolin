@@ -1,10 +1,7 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 #include "bounds.hpp"
 #include "pangolin/macro.h"
-#include "pangolin/namespace.hpp"
 
 namespace pangolin {
 
@@ -37,9 +34,9 @@ PANGOLIN_HOST_DEVICE static ulonglong2 serial_sorted_search_binary(const T *cons
  */
 template <typename T>
 __device__ static ulonglong2
-serial_sorted_search_linear(const T *const begin, //<! [in] beginning of array to search through
-                            const T *const end,   //<! [in] end of array to search through
-                            const T searchVal     //<! [in] value to search for
+serial_sorted_search_linear(const T *const begin, //!< [in] beginning of array to search through
+                            const T *const end,   //!< [in] end of array to search through
+                            const T searchVal     //!< [in] value to search for
 ) {
   T *p = nullptr;
   for (p = begin; p < end; ++p) {

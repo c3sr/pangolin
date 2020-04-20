@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
 #include "pangolin/generator/hubspoke.hpp"
@@ -30,9 +29,9 @@ TEMPLATE_TEST_CASE("hub and spoke graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 2);
-      REQUIRE(e.second < 2);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 2);
+      REQUIRE(e.dst < 2);
     }
 
     // expected number of edges
@@ -49,9 +48,9 @@ TEMPLATE_TEST_CASE("hub and spoke graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 3);
-      REQUIRE(e.second < 3);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 3);
+      REQUIRE(e.dst < 3);
     }
 
     // expected number of edges
@@ -69,9 +68,9 @@ TEMPLATE_TEST_CASE("hub and spoke graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c3) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 4);
-      REQUIRE(e.second < 4);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 4);
+      REQUIRE(e.dst < 4);
     }
 
     // expected number of edges
@@ -89,9 +88,9 @@ TEMPLATE_TEST_CASE("hub and spoke graph", "", int, size_t) {
 
     // all edges are within graph
     for (auto e : c) {
-      LOG(debug, "{} -> {}", e.first, e.second);
-      REQUIRE(e.first < 514);
-      REQUIRE(e.second < 514);
+      LOG(debug, "{} -> {}", e.src, e.dst);
+      REQUIRE(e.src < 514);
+      REQUIRE(e.dst < 514);
     }
 
     // expected number of edges

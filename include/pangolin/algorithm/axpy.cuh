@@ -5,7 +5,7 @@
 
 namespace pangolin {
 
-/*! a[i] = a[i] * x + y
+/*! a[i] += y
  */
 template <size_t GRID_DIM_X, size_t BLOCK_DIM_X, typename T> __device__ void grid_apy(T *a, const T y, const size_t n) {
   for (size_t i = BLOCK_DIM_X * blockIdx.x + threadIdx.x; i < n; i += GRID_DIM_X * BLOCK_DIM_X) {
@@ -13,7 +13,7 @@ template <size_t GRID_DIM_X, size_t BLOCK_DIM_X, typename T> __device__ void gri
   }
 }
 
-/*! a[i] = a[i] * x + y
+/*! a[i] += y
  */
 template <size_t GRID_DIM_X, size_t BLOCK_DIM_X, typename T>
 __global__ void apy_async_kernel(T *a, const T y, const size_t n) {
@@ -34,6 +34,6 @@ template <typename T> void device_axpy_async(T *a, const T x, const T y, const s
     exit(-1);
   }
 
-} // namespace pangolin
+}
 
 } // namespace pangolin

@@ -4,8 +4,13 @@
 
 #include "count.cuh"
 #include "pangolin/algorithm/zero.cuh"
-#include "pangolin/dense/vector.hu"
+#include "pangolin/dense/vector.cuh"
 #include "search.cuh"
+
+#include "ktruss_serial.cuh"
+
+#define UT uint32_t
+#define BCTYPE bool
 
 
 	/*! Obtain the index of an edge using its two nodes
@@ -960,3 +965,7 @@ public:
 };
 
 } // namespace pangolin
+
+
+#undef BCTYPE
+#undef UT
