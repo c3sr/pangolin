@@ -8,6 +8,14 @@ __device__ inline uint64_t atomicAdd(uint64_t *p, uint64_t val) {
       atomicAdd(reinterpret_cast<unsigned long long *>(p), static_cast<unsigned long long>(val)));
 }
 
+/*! \brief Convenience wrapper for atomicAdd(int64_t*, int64_t)
+ */
+ __device__ inline int64_t atomicAdd(int64_t *p, int64_t val) {
+  static_assert(sizeof(int64_t) == sizeof(unsigned long long), "expected int64_t to be unsigned long long");
+  return static_cast<unsigned long long>(
+      atomicAdd(reinterpret_cast<unsigned long long *>(p), static_cast<unsigned long long>(val)));
+}
+
 /*! \brief Convenience wrapper for atomicAdd(volatile uint64_t*, uint64_t)
  */
 __device__ inline uint64_t atomicAdd(volatile uint64_t *p, uint64_t val) {
